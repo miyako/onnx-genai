@@ -101,40 +101,6 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
 #define ARGS "m:o:-hp:"
 #endif
 
-struct Page {
-    std::string text;
-};
-
-struct Document {
-    std::string type;
-    std::vector<Page> pages;
-};
-
-static void document_to_json(Document& document, std::string& text, bool rawText) {
-    
-    if(rawText){
-        text = "";
-        for (const auto &page : document.pages) {
-            text += page.text;
-        }
-    }else{
-        Json::Value documentNode(Json::objectValue);
-        documentNode["type"] = document.type;
-        documentNode["pages"] = Json::arrayValue;
-        for (const auto &page : document.pages) {
-            Json::Value pageNode(Json::objectValue);
-            pageNode["paragraphs"] = Json::arrayValue;
-            Json::Value paragraphNode(Json::objectValue);
-            paragraphNode["text"] = page.text;
-            pageNode["paragraphs"].append(paragraphNode);
-            documentNode["pages"].append(pageNode);
-        }
-        Json::StreamWriterBuilder writer;
-        writer["indentation"] = "";
-        text = Json::writeString(writer, documentNode);
-    }
-}
-
 #ifdef _WIN32
 static std::string wchar_to_utf8(const wchar_t* wstr) {
     if (!wstr) return std::string();
@@ -179,7 +145,50 @@ const std::string u_fffe = "\xEF\xBF\xBE";
 
 int main(int argc, OPTARG_T argv[]) {
     
-//    FPDF_InitLibrary();
+
+    const char* model_path = "cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4";
+    
+    std::cout << "Loading model from " << model_path << "..." << std::endl;
+
+    try {
+        // 2. Load Model and Create Generator
+        auto model = OgaModel::Create(model_path);
+        auto tokenizer = OgaTokenizer::Create(*model);
+        auto tokenizer_stream = OgaTokenizerStream::Create(*tokenizer);
+
+        // 3. Encode Prompt
+        const char* prompt = "<|user|>Tell me a joke.<|end|><|assistant|>";
+        auto input_sequences = OgaSequences::Create();
+        tokenizer->Encode(prompt, *input_sequences);
+
+        // 4. Set Generation Parameters
+        auto params = OgaGeneratorParams::Create(*model);
+        params->SetSearchOption("max_length", 200); // Limit output length
+
+        // 5. Generate Token by Token
+        auto generator = OgaGenerator::Create(*model, *params); // <--- Changed back to original signature
+
+        std::cout << "Output: ";
+        
+        while (!generator->IsDone()) {
+            generator->GetLogits();
+            generator->GenerateNextToken();
+            
+            // Get the newly generated token
+            const int32_t* seq_data = generator->GetSequenceData(0);
+            size_t seq_len = generator->GetSequenceCount(0);
+            int32_t new_token = seq_data[seq_len - 1];
+
+            // Decode and print
+            const char* token_str = tokenizer_stream->Decode(new_token);
+            std::cout << token_str << std::flush;
+        }
+        std::cout << std::endl;
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+        return -1;
+    }
     
     const OPTARG_T input_path  = NULL;
     const OPTARG_T output_path = NULL;
@@ -237,15 +246,6 @@ int main(int argc, OPTARG_T argv[]) {
     if(!pdf_data.size()) {
         usage();
     }
-    
-    Document document;
-    
-    std::string pw;
-#ifdef WIN32
-    pw = wchar_to_utf8(password);
-#else
-    pw = password ? password : "";
-#endif
         
     if(!output_path) {
         std::cout << text << std::endl;

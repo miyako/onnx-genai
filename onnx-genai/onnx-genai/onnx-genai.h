@@ -8,6 +8,8 @@
 #include <string>
 #include <chrono>
 
+#include <ort_genai.h>
+
 #define WITH_NATIVE_UTF_DECODE 0
 
 #if WITH_NATIVE_UTF_DECODE
