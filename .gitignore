@@ -1,1 +1,3 @@
 onnx-genai/.build/*
+src/*
+ai_studio_code.cpp
