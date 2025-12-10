@@ -1,0 +1,3 @@
+OBJROOT = $(PROJECT_DIR)/.build/Intermediates
+SYMROOT = $(PROJECT_DIR)/.build/Products
+CONFIGURATION_BUILD_DIR = $(PROJECT_DIR)/macOS/
