@@ -1,29 +1,14 @@
 #ifndef __ONNX_GENAI_H__
 #define __ONNX_GENAI_H__
 
-#include <json/json.h>
 #include <sstream>
 #include <iostream>
-
 #include <string>
 #include <chrono>
-
-#include <ort_genai.h>
-
-#define WITH_NATIVE_UTF_DECODE 0
-
-#if WITH_NATIVE_UTF_DECODE
-#if defined(_WIN32)
-#include <windows.h>
-#endif
-#ifdef __APPLE__
-#include <CoreFoundation/CoreFoundation.h>
-#endif
-#endif
-
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ort_genai.h>
 
 #define BUFLEN 4096
 

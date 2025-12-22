@@ -8,8 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		D157F3122E612DD500DF46D3 /* libjsoncpp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D157F30C2E612DD500DF46D3 /* libjsoncpp.a */; };
-		D1787CE62EE9766500926C89 /* libonnxruntime-genai.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D1787CE52EE9766500926C89 /* libonnxruntime-genai.dylib */; };
-		D1787CE72EE9766500926C89 /* libonnxruntime-genai.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = D1787CE52EE9766500926C89 /* libonnxruntime-genai.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		D178B3E42EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D178B3E32EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib */; };
+		D178B3E52EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = D178B3E32EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		D178B3E82EF9EC2E00F0F0A7 /* libonnxruntime.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D178B3E72EF9EC2E00F0F0A7 /* libonnxruntime.dylib */; };
+		D178B3E92EF9EC2E00F0F0A7 /* libonnxruntime.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = D178B3E72EF9EC2E00F0F0A7 /* libonnxruntime.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -22,13 +24,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
-		D1787CE82EE9766500926C89 /* Embed Libraries */ = {
+		D178B3E62EF9E91B00F0F0A7 /* Embed Libraries */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				D1787CE72EE9766500926C89 /* libonnxruntime-genai.dylib in Embed Libraries */,
+				D178B3E92EF9EC2E00F0F0A7 /* libonnxruntime.dylib in Embed Libraries */,
+				D178B3E52EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib in Embed Libraries */,
 			);
 			name = "Embed Libraries";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -39,7 +42,8 @@
 		D157F30C2E612DD500DF46D3 /* libjsoncpp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libjsoncpp.a; path = a/libjsoncpp.a; sourceTree = "<group>"; };
 		D16478942E611F7700FC9914 /* onnx-genai */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "onnx-genai"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D164789E2E61216B00FC9914 /* onnx-genai.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "onnx-genai.xcconfig"; sourceTree = "<group>"; };
-		D1787CE52EE9766500926C89 /* libonnxruntime-genai.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libonnxruntime-genai.dylib"; path = "a/libonnxruntime-genai.dylib"; sourceTree = "<group>"; };
+		D178B3E32EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libonnxruntime-genai.dylib"; path = "macOS/libonnxruntime-genai.dylib"; sourceTree = "<group>"; };
+		D178B3E72EF9EC2E00F0F0A7 /* libonnxruntime.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libonnxruntime.dylib; path = macOS/libonnxruntime.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -55,8 +59,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D178B3E82EF9EC2E00F0F0A7 /* libonnxruntime.dylib in Frameworks */,
 				D157F3122E612DD500DF46D3 /* libjsoncpp.a in Frameworks */,
-				D1787CE62EE9766500926C89 /* libonnxruntime-genai.dylib in Frameworks */,
+				D178B3E42EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -66,7 +71,8 @@
 		D157F30B2E612DD500DF46D3 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				D1787CE52EE9766500926C89 /* libonnxruntime-genai.dylib */,
+				D178B3E72EF9EC2E00F0F0A7 /* libonnxruntime.dylib */,
+				D178B3E32EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib */,
 				D157F30C2E612DD500DF46D3 /* libjsoncpp.a */,
 			);
 			name = Frameworks;
@@ -100,7 +106,7 @@
 				D16478902E611F7700FC9914 /* Sources */,
 				D16478912E611F7700FC9914 /* Frameworks */,
 				D16478922E611F7700FC9914 /* CopyFiles */,
-				D1787CE82EE9766500926C89 /* Embed Libraries */,
+				D178B3E62EF9E91B00F0F0A7 /* Embed Libraries */,
 			);
 			buildRules = (
 			);
