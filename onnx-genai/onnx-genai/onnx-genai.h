@@ -10,6 +10,8 @@
 #include <cstring>
 #include <ort_genai.h>
 
+#include "json/json.h"
+
 #define BUFLEN 4096
 
 #ifdef __GNUC__

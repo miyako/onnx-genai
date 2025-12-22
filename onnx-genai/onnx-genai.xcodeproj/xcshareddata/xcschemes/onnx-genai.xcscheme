@@ -61,11 +61,11 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-t"
+            argument = "-i"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "&quot;&lt;|user|&gt;Tell me a joke.&lt;|end|&gt;&lt;|assistant|&gt;&quot;"
+            argument = "/Users/miyako/Desktop/prompt.json"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

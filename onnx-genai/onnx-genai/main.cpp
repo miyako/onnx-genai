@@ -9,15 +9,13 @@
 
 static void usage(void)
 {
-    fprintf(stderr, "Usage:  onnx-genai -m model -t template -o output\n\n");
+    fprintf(stderr, "Usage:  onnx-genai -m model -i input\n\n");
     fprintf(stderr, "onnx-genai\n\n");
-    fprintf(stderr, " -%c model    : %s\n", 'm' , "model");
-    fprintf(stderr, " -%c template : %s\n", 't' , "prompt template");
-    fprintf(stderr, " -%c length   : %s\n", 'l' , "max_tokens");
-    fprintf(stderr, " -%c length   : %s\n", 'k' , "top_k");
-    fprintf(stderr, " -%c length   : %s\n", 'p' , "top_p");
-    fprintf(stderr, " -%c length   : %s\n", 'r' , "temperature");
-    fprintf(stderr, " -%c length   : %s\n", 'n' , "n");
+    fprintf(stderr, " -%c path     : %s\n", 'm' , "model");
+    //
+    fprintf(stderr, " -%c path     : %s\n", 'i' , "input");
+    fprintf(stderr, " %c           : %s\n", '-' , "use stdin for input");
+    //
     exit(1);
 }
 
@@ -71,30 +69,120 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:t:o:l:k:p:r:n:-h"
+#define ARGS (OPTARG_T)L"m:i:-h"
 #define _atoi _wtoi
 #define _atof _wtof
 #else
-#define ARGS "m:t:o:l:k:p:r:n:-h"
+#define ARGS "m:i:-h"
 #define _atoi atoi
 #define _atof atof
 #endif
 
+static void parse_request(
+              std::string &json,
+              std::string &prompt,
+              unsigned int *max_tokens,
+              unsigned int *top_k,
+              double *top_p,
+              double *temperature,
+              unsigned int *n) {
+    
+    Json::Value root;
+    Json::CharReaderBuilder builder;
+    std::string errors;
+    
+    Json::CharReader *reader = builder.newCharReader();
+    bool parse = reader->parse(json.c_str(),
+                               json.c_str() + json.size(),
+                               &root,
+                               &errors);
+    delete reader;
+    
+    if(parse)
+    {
+        if(root.isObject())
+        {
+            Json::Value messages_node = root["messages"];
+            if(messages_node.isArray())
+            {
+                prompt = "";
+                for(Json::Value::const_iterator it = messages_node.begin() ; it != messages_node.end() ; it++)
+                {
+                    if(it->isObject())
+                    {
+                        Json::Value defaultValue = "";
+                        Json::Value role = it->get("role", defaultValue);
+                        Json::Value content = it->get("content", defaultValue);
+                        if ((role.isString()) && (content.isString()))
+                        {
+                            std::string role_str = role.asString();
+                            std::string content_str = content.asString();
+                            if ((role_str.length() != 0) && (content_str.length() != 0))
+                            {
+                                prompt += "<|";
+                                prompt += role_str;
+                                prompt += "|>";
+                                prompt += content_str;
+                                prompt += "<|end|>";
+                            }
+                        }
+                    }
+                }
+                if(prompt.length() != 0) prompt += "<|assistant|>";
+            }
+            Json::Value temperature_node = root["temperature"];
+            if(messages_node.isDouble())
+            {
+                *temperature = temperature_node.asDouble();
+            }
+            Json::Value top_p_node = root["top_p"];
+            if(top_p_node.isDouble())
+            {
+                *top_p = top_p_node.asDouble();
+            }
+            Json::Value top_k_node = root["top_k"];
+            if(top_k_node.isInt())
+            {
+                *top_k = top_k_node.asInt();
+            }
+            Json::Value n_node = root["n"];
+            if(n_node.isInt())
+            {
+                *n = n_node.asInt();
+            }
+            Json::Value max_tokens_node = root["max_tokens"];
+            if(max_tokens_node.isInt())
+            {
+                *max_tokens = max_tokens_node.asInt();
+            }
+        }
+    }
+}
+
 int main(int argc, OPTARG_T argv[]) {
     
-    const OPTARG_T model_path  = NULL;      //-m
-    const OPTARG_T prompt = NULL;           //-t
-    unsigned int max_tokens = 2048;         //-l
-    unsigned int top_k = 50;                //-k
-    double top_p = 0.9;                     //-p
-    double temperature = 0.7;               //-r
-    unsigned int n = 1;                     //-n
+    std::string prompt;
+    
+    OPTARG_T model_path  = NULL;      //-m
+    OPTARG_T input_path  = NULL;      //-i
+
+    unsigned int max_tokens = 2048;
+    unsigned int top_k = 50;
+    double top_p = 0.9;
+    double temperature = 0.7;
+    unsigned int n = 1;
+    
+    std::vector<unsigned char>request_json(0);
+    
     int ch;
     
     while ((ch = getopt(argc, argv, ARGS)) != -1){
         switch (ch){
             case 'm':
                 model_path  = optarg;
+                break;
+            case 'i':
+                input_path  = optarg;
                 break;
             case 't':
                 prompt  = optarg;
@@ -111,6 +199,15 @@ int main(int argc, OPTARG_T argv[]) {
             case 'n':
                 n = _atoi(optarg);
                 break;
+            case '-':
+            {
+                std::vector<uint8_t> buf(BUFLEN);
+                size_t s;
+                while ((s = fread(buf.data(), 1, buf.size(), stdin)) > 0) {
+                    request_json.insert(request_json.end(), buf.begin(), buf.begin() + s);
+                }
+            }
+                break;
             case 'h':
             default:
                 usage();
@@ -118,14 +215,35 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
-    if((strlen(model_path) == 0) || (strlen(prompt) == 0)) {
+    if ((model_path == NULL) || (strlen(model_path) == 0)) {
         usage();
     }
     
-    //const char* prompt = "<|system|>You are a helpful AI assistant.<|end|><|user|>Can you introduce yourself?<|end|><|assistant|>";
+    if ((!request_json.size()) && (input_path != NULL)) {
+        FILE *f = _fopen(input_path, _rb);
+        if(f) {
+            _fseek(f, 0, SEEK_END);
+            size_t len = (size_t)_ftell(f);
+            _fseek(f, 0, SEEK_SET);
+            request_json.resize(len);
+            fread(request_json.data(), 1, request_json.size(), f);
+            fclose(f);
+        }
+    }
     
-    std::cerr << "Loading model from " << model_path << "..." << std::endl;
-
+    if (!request_json.size() && prompt.empty()) {
+        usage();
+    }
+    
+    std::string json((const char *)request_json.data(), request_json.size());
+    
+    parse_request(json, prompt,
+                  &max_tokens,
+                  &top_k,
+                  &top_p,
+                  &temperature,
+                  &n);
+    
     try {
         // 2. Load Model and Create Generator
         auto model = OgaModel::Create(model_path);
@@ -134,26 +252,25 @@ int main(int argc, OPTARG_T argv[]) {
 
         // 3. Encode Prompt
         auto input_sequences = OgaSequences::Create();
-        tokenizer->Encode(prompt, *input_sequences);
+        tokenizer->Encode(prompt.c_str(), *input_sequences);
+        size_t input_token_count = input_sequences->SequenceCount(0);
 
         // 4. Set Generation Parameters
         auto params = OgaGeneratorParams::Create(*model);
-        params->SetSearchOption("max_length", max_tokens + strlen(prompt));
+        params->SetSearchOption("max_length", (double)(input_token_count + max_tokens));
         params->SetSearchOption("top_k", top_k);
         params->SetSearchOption("top_p", top_p);
         params->SetSearchOption("temperature", temperature);
         params->SetSearchOption("num_return_sequences", n);
-        
-        // 5. Generate Token by Token
+                
         auto generator = OgaGenerator::Create(*model, *params);
+        generator->AppendTokenSequences(*input_sequences);
 
-        std::cout << "Output: ";
-        
+        // 5. Start Generating
         while (1) {
  
-            generator->GetLogits();
+//            generator->GetLogits();
             generator->GenerateNextToken();
-//            GenerateToken()
             
             if(generator->IsDone()) break;
             
@@ -161,10 +278,7 @@ int main(int argc, OPTARG_T argv[]) {
             size_t seq_len = generator->GetSequenceCount(0);
             int32_t new_token = seq_data[seq_len - 1];
             const char* token_str = tokenizer_stream->Decode(new_token);
-//            GetLastToken()
-                
             std::cout << token_str << std::flush;
-//            PrintLastToken()
         }
         
         std::cout << std::endl;
