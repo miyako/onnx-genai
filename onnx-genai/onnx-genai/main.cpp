@@ -13,7 +13,11 @@ static void usage(void)
     fprintf(stderr, "onnx-genai\n\n");
     fprintf(stderr, " -%c model    : %s\n", 'm' , "model");
     fprintf(stderr, " -%c template : %s\n", 't' , "prompt template");
-    fprintf(stderr, " -%c length   : %s\n", 'l' , "max token length");
+    fprintf(stderr, " -%c length   : %s\n", 'l' , "max_tokens");
+    fprintf(stderr, " -%c length   : %s\n", 'k' , "top_k");
+    fprintf(stderr, " -%c length   : %s\n", 'p' , "top_p");
+    fprintf(stderr, " -%c length   : %s\n", 'r' , "temperature");
+    fprintf(stderr, " -%c length   : %s\n", 'n' , "n");
     exit(1);
 }
 
@@ -67,11 +71,11 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:t:o:l:k:p:r:-h"
+#define ARGS (OPTARG_T)L"m:t:o:l:k:p:r:n:-h"
 #define _atoi _wtoi
 #define _atof _wtof
 #else
-#define ARGS "m:t:o:l:k:p:r:-h"
+#define ARGS "m:t:o:l:k:p:r:n:-h"
 #define _atoi atoi
 #define _atof atof
 #endif
@@ -79,19 +83,21 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
 int main(int argc, OPTARG_T argv[]) {
     
     const OPTARG_T model_path  = NULL;      //-m
-    const OPTARG_T prompt_template  = NULL; //-t
-    unsigned int max_tokens = 1024;         //-l
-    unsigned int top_k = 40;                //-k
-    double top_p = 1;                       //-p
+    const OPTARG_T prompt = NULL;           //-t
+    unsigned int max_tokens = 2048;         //-l
+    unsigned int top_k = 50;                //-k
+    double top_p = 0.9;                     //-p
     double temperature = 0.7;               //-r
+    unsigned int n = 1;                     //-n
     int ch;
+    
     while ((ch = getopt(argc, argv, ARGS)) != -1){
         switch (ch){
             case 'm':
                 model_path  = optarg;
                 break;
             case 't':
-                prompt_template  = optarg;
+                prompt  = optarg;
                 break;
             case 'l':
                 max_tokens = _atoi(optarg);
@@ -102,6 +108,9 @@ int main(int argc, OPTARG_T argv[]) {
             case 'p':
                 top_p = _atof(optarg);
                 break;
+            case 'n':
+                n = _atoi(optarg);
+                break;
             case 'h':
             default:
                 usage();
@@ -109,7 +118,7 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
-    if((strlen(model_path) == 0) || (strlen(prompt_template) == 0)) {
+    if((strlen(model_path) == 0) || (strlen(prompt) == 0)) {
         usage();
     }
     
@@ -125,14 +134,15 @@ int main(int argc, OPTARG_T argv[]) {
 
         // 3. Encode Prompt
         auto input_sequences = OgaSequences::Create();
-        tokenizer->Encode(prompt_template, *input_sequences);
+        tokenizer->Encode(prompt, *input_sequences);
 
         // 4. Set Generation Parameters
         auto params = OgaGeneratorParams::Create(*model);
-        params->SetSearchOption("max_length", max_tokens);
+        params->SetSearchOption("max_length", max_tokens + strlen(prompt));
         params->SetSearchOption("top_k", top_k);
         params->SetSearchOption("top_p", top_p);
         params->SetSearchOption("temperature", temperature);
+        params->SetSearchOption("num_return_sequences", n);
         
         // 5. Generate Token by Token
         auto generator = OgaGenerator::Create(*model, *params);
