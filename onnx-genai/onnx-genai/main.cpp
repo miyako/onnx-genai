@@ -14,7 +14,6 @@ static void usage(void)
     fprintf(stderr, " -%c model    : %s\n", 'm' , "model");
     fprintf(stderr, " -%c template : %s\n", 't' , "prompt template");
     fprintf(stderr, " -%c length   : %s\n", 'l' , "max token length");
-    fprintf(stderr, " -%c output   : %s\n", 'o' , "output (default=stdout)");
     exit(1);
 }
 
@@ -68,21 +67,23 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:t:o:l:-hp:"
+#define ARGS (OPTARG_T)L"m:t:o:l:k:p:r:-h"
 #define _atoi _wtoi
+#define _atof _wtof
 #else
-#define ARGS "m:t:o:l:-hp:"
+#define ARGS "m:t:o:l:k:p:r:-h"
 #define _atoi atoi
+#define _atof atof
 #endif
 
 int main(int argc, OPTARG_T argv[]) {
     
-    const OPTARG_T model_path  = NULL;
-    const OPTARG_T output_path  = NULL;
-    const OPTARG_T prompt_template  = NULL;
-    std::vector<unsigned char>onnx_data(0);
-    unsigned int port = 8080;
-    unsigned int max_length = 1024;
+    const OPTARG_T model_path  = NULL;      //-m
+    const OPTARG_T prompt_template  = NULL; //-t
+    unsigned int max_tokens = 1024;         //-l
+    unsigned int top_k = 40;                //-k
+    double top_p = 1;                       //-p
+    double temperature = 0.7;               //-r
     int ch;
     while ((ch = getopt(argc, argv, ARGS)) != -1){
         switch (ch){
@@ -92,24 +93,14 @@ int main(int argc, OPTARG_T argv[]) {
             case 't':
                 prompt_template  = optarg;
                 break;
-            case 'o':
-                output_path = optarg;
-                break;
             case 'l':
-                max_length = _atoi(optarg);
+                max_tokens = _atoi(optarg);
+                break;
+            case 'k':
+                top_k = _atoi(optarg);
                 break;
             case 'p':
-                port = _atoi(optarg);
-                break;
-            case '-':
-            {
-                std::vector<uint8_t> buf(BUFLEN);
-                size_t n;
-                
-                while ((n = fread(buf.data(), 1, buf.size(), stdin)) > 0) {
-                    onnx_data.insert(onnx_data.end(), buf.begin(), buf.begin() + n);
-                }
-            }
+                top_p = _atof(optarg);
                 break;
             case 'h':
             default:
@@ -122,7 +113,8 @@ int main(int argc, OPTARG_T argv[]) {
         usage();
     }
     
-    //"<|user|>Tell me a joke.<|end|><|assistant|>"
+    //const char* prompt = "<|system|>You are a helpful AI assistant.<|end|><|user|>Can you introduce yourself?<|end|><|assistant|>";
+    
     std::cerr << "Loading model from " << model_path << "..." << std::endl;
 
     try {
@@ -137,8 +129,11 @@ int main(int argc, OPTARG_T argv[]) {
 
         // 4. Set Generation Parameters
         auto params = OgaGeneratorParams::Create(*model);
-        params->SetSearchOption("max_length", max_length); // Limit output length
-
+        params->SetSearchOption("max_length", max_tokens);
+        params->SetSearchOption("top_k", top_k);
+        params->SetSearchOption("top_p", top_p);
+        params->SetSearchOption("temperature", temperature);
+        
         // 5. Generate Token by Token
         auto generator = OgaGenerator::Create(*model, *params);
 
