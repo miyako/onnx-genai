@@ -1,3 +1,5 @@
 onnx-genai/.build/*
 src/*
 ai_studio_code.cpp
+onnx-genai/x64/onnxruntime.pdb
+onnx-genai/x64/onnxruntime-genai.pdb
