@@ -16,3 +16,6 @@ ai_studio_code.cpp
 */main.obj
 cpp/x64/onnxruntime_providers_shared.pdb
 cpp/x64/onnxruntime.pdb
+onnx-genai/userPreferences.*
+onnx-genai/Project/DerivedData/*
+onnx-genai/Data/*
