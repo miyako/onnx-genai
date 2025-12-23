@@ -7,6 +7,46 @@
 
 #include "onnx-genai.h"
 
+#ifdef WIN32
+static std::string wchar_to_utf8(const wchar_t* wstr) {
+    if (!wstr) return std::string();
+
+    // Get required buffer size in bytes
+    int size_needed = WideCharToMultiByte(
+        CP_UTF8,            // convert to UTF-8
+        0,                  // default flags
+        wstr,               // source wide string
+        -1,                 // null-terminated
+        nullptr, 0,         // no output buffer yet
+        nullptr, nullptr
+    );
+
+    if (size_needed <= 0) return std::string();
+
+    // Allocate buffer
+    std::string utf8str(size_needed, 0);
+
+    // Perform conversion
+    WideCharToMultiByte(
+        CP_UTF8,
+        0,
+        wstr,
+        -1,
+        &utf8str[0],
+        size_needed,
+        nullptr,
+        nullptr
+    );
+
+    // Remove the extra null terminator added by WideCharToMultiByte
+    if (!utf8str.empty() && utf8str.back() == '\0') {
+        utf8str.pop_back();
+    }
+
+    return utf8str;
+}
+#endif
+
 static void usage(void)
 {
     fprintf(stderr, "Usage:  onnx-genai -m model -i input\n\n");
@@ -371,9 +411,9 @@ std::string run_inference(
 
 // ------------------------------------------------
 
-int main(int argc, char* argv[]) {
+int main(int argc, OPTARG_T argv[]) {
         
-    OPTARG_T model_path  = NULL;      // -m
+    std::string model_path;           // -m
     OPTARG_T input_path  = NULL;      // -i
     OPTARG_T output_path = NULL;      // -o
     
@@ -386,10 +426,14 @@ int main(int argc, char* argv[]) {
     
     int ch;
 
-    while ((ch = getopt(argc, argv, ARGS)) != -1){
+    while ((ch = getopt(argc, argv, ARGS)) != -1) {
         switch (ch){
             case 'm':
+#if WIN32
+                model_path = wchar_to_utf8(optarg);
+#else
                 model_path = optarg;
+#endif
                 break;
             case 'i':
                 input_path = optarg;
@@ -404,7 +448,11 @@ int main(int argc, char* argv[]) {
                 port = std::stoi(optarg);
                 break;
             case 'h':
+#if WIN32
+                host = wchar_to_utf8(optarg);
+#else
                 host = optarg;
+#endif
                 break;
             case '-':
             {
@@ -422,7 +470,7 @@ int main(int argc, char* argv[]) {
         }
     }
     
-    if ((model_path == NULL) || (strlen(model_path) == 0)) {
+    if (model_path.length() == 0) {
         usage();
         return 1;
     }
@@ -436,7 +484,7 @@ int main(int argc, char* argv[]) {
     std::unique_ptr<OgaTokenizer> tokenizer;
 
     try {
-        model = OgaModel::Create(model_path);
+        model = OgaModel::Create(model_path.c_str());
         tokenizer = OgaTokenizer::Create(*model);
     } catch (const std::exception& e) {
         std::cerr << "Failed to load model: " << e.what() << std::endl;
