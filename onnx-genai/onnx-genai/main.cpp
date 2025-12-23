@@ -79,6 +79,85 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
 #define _atof atof
 #endif
 
+static long long get_created_timestamp() {
+    // std::time(nullptr) returns the current time as a time_t (seconds since epoch)
+    return static_cast<long long>(std::time(nullptr));
+}
+
+namespace fs = std::filesystem;
+static std::string get_model_name(std::string model_path) {
+    // 1. Create a path object
+    fs::path path(model_path);
+
+    // 2. Handle trailing slashes (e.g., "models/phi-3/")
+    // If the path ends in a separator, filename() might return empty.
+    if (path.filename().empty()) {
+        path = path.parent_path();
+    }
+
+    // 3. Return the folder/filename
+    // .filename() returns "phi-3.onnx" (with extension)
+    // .stem() returns "phi-3" (removes extension)
+    return path.stem().string();
+}
+
+// Generate a fingerprint based on model identity and hardware
+static std::string get_system_fingerprint(const std::string& model_path, const std::string& provider) {
+    // 1. Combine identifying factors (Model + Engine)
+    std::string identifier = model_path + "_" + provider;
+
+    // 2. Hash the string to get a unique number
+    std::hash<std::string> hasher;
+    size_t hash = hasher(identifier);
+
+    // 3. Format as hex (e.g., "fp_1a2b3c4d")
+    std::stringstream ss;
+    ss << "fp_" << std::hex << hash;
+
+    return ss.str();
+}
+
+static std::string generate_uuid_v4() {
+    std::stringstream ss;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, 15);
+    std::uniform_int_distribution<> dis2(8, 11);
+
+    ss << std::hex;
+    for (int i = 0; i < 8; i++) { ss << dis(gen); }
+    ss << "-";
+    for (int i = 0; i < 4; i++) { ss << dis(gen); }
+    ss << "-4"; // UUID version 4
+    for (int i = 0; i < 3; i++) { ss << dis(gen); }
+    ss << "-";
+    ss << dis2(gen); // UUID variant
+    for (int i = 0; i < 3; i++) { ss << dis(gen); }
+    ss << "-";
+    for (int i = 0; i < 12; i++) { ss << dis(gen); }
+
+    return ss.str();
+}
+
+static std::string get_openai_id() {
+    return "chatcmpl-" + generate_uuid_v4();
+}
+
+static std::string generate_openai_style_id() {
+    const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    const size_t max_index = (sizeof(charset) - 1);
+    
+    std::string id = "chatcmpl-";
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, max_index - 1);
+
+    for (int i = 0; i < 29; ++i) {
+        id += charset[dis(gen)];
+    }
+    return id;
+}
+
 static void parse_request(
               std::string &json,
               std::string &prompt,
@@ -206,7 +285,7 @@ int main(int argc, OPTARG_T argv[]) {
     if ((model_path == NULL) || (strlen(model_path) == 0)) {
         usage();
     }
-    
+        
     if ((!request_json.size()) && (input_path != NULL)) {
         FILE *f = _fopen(input_path, _rb);
         if(f) {
@@ -223,6 +302,9 @@ int main(int argc, OPTARG_T argv[]) {
         usage();
     }
     
+    std::string fingerprint = get_system_fingerprint(model_path, "directml");
+    std::string modelName = get_model_name(model_path);
+    
     std::string request((const char *)request_json.data(), request_json.size());
     std::string prompt;
     
@@ -235,6 +317,10 @@ int main(int argc, OPTARG_T argv[]) {
                   &n);
     
     std::string response;
+    std::string content;
+    Json::Value rootNode(Json::objectValue);
+    size_t completion_tokens = 0;
+    double max_length = 0;
     
     try {
         // 2. Load Model and Create Generator
@@ -246,10 +332,11 @@ int main(int argc, OPTARG_T argv[]) {
         auto input_sequences = OgaSequences::Create();
         tokenizer->Encode(prompt.c_str(), *input_sequences);
         size_t input_token_count = input_sequences->SequenceCount(0);
-
+        max_length = (double)(input_token_count + max_tokens);
+        
         // 4. Set Generation Parameters
         auto params = OgaGeneratorParams::Create(*model);
-        params->SetSearchOption("max_length", (double)(input_token_count + max_tokens));
+        params->SetSearchOption("max_length", max_length);
         params->SetSearchOption("top_k", top_k);
         params->SetSearchOption("top_p", top_p);
         params->SetSearchOption("temperature", temperature);
@@ -264,29 +351,64 @@ int main(int argc, OPTARG_T argv[]) {
             
             if(generator->IsDone()) break;
             
-            const int32_t* seq_data = generator->GetSequenceData(0);
+            auto seq_data = generator->GetSequenceData(0);
             size_t seq_len = generator->GetSequenceCount(0);
             int32_t new_token = seq_data[seq_len - 1];
             const char* token_str = tokenizer_stream->Decode(new_token);
-            std::cout << token_str << std::flush;
+            content += token_str;
+            completion_tokens++;
         }
         
-        std::cout << std::endl;
+        std::string finish_reason = "stop";
+        Json::Int total_tokens = (Json::Int)(input_token_count+completion_tokens);
+        if (total_tokens >= max_length) {
+            finish_reason = "length";
+        }
         
         
+        rootNode["id"] = generate_openai_style_id();
+        rootNode["object"] = "chat.completion";
+        rootNode["created"] = get_created_timestamp();
+        rootNode["model"] = modelName;
+        rootNode["system_fingerprint"] = fingerprint;
+        
+        Json::Value choicesNode(Json::arrayValue);
+        Json::Value choiceNode(Json::objectValue);
+        choiceNode["index"] = 0;
+        choiceNode["logprobs"] = Json::nullValue;
+        choiceNode["finish_reason"] = finish_reason;
+        Json::Value messageNode(Json::objectValue);
+        messageNode["role"] = "assistant";
+        messageNode["content"] = content;
+        messageNode["refusal"] = Json::nullValue;
+        choiceNode["message"] = messageNode;
+        choicesNode.append(choiceNode);
+        rootNode["choices"] = choicesNode;
+        
+        Json::Value usageNode(Json::objectValue);
+        usageNode["prompt_tokens"] = (Json::Int)input_token_count;
+        usageNode["completion_tokens"] = (Json::Int)completion_tokens;
+        usageNode["total_tokens"] = total_tokens;
+        Json::Value usageDetailsNode(Json::objectValue);
+        usageDetailsNode["reasoning_tokens"] = 0;
+        usageDetailsNode["accepted_prediction_tokens"] = 0;
+        usageDetailsNode["rejected_prediction_tokens"] = 0;
+        usageNode["completion_tokens_details"] = usageDetailsNode;
+        rootNode["usage"] = usageNode;
 
     } catch (const std::exception& e) {
-        Json::Value rootNode(Json::objectValue);
+
         Json::Value errorNode(Json::objectValue);
         rootNode["error"] = errorNode;
         errorNode["message"] = e.what();
         errorNode["type"] = "invalid_request_error";
         errorNode["param"] = Json::nullValue;
         errorNode["code"] = Json::nullValue;
-        Json::StreamWriterBuilder writer;
-        writer["indentation"] = "";
-        response = Json::writeString(writer, rootNode);
     }
+
+    Json::StreamWriterBuilder writer;
+    writer["indentation"] = "";
+    response = Json::writeString(writer, rootNode);
     
     if(!output_path) {
         std::cout << response << std::endl;

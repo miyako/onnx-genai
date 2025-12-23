@@ -6,8 +6,12 @@
 #include <string>
 #include <chrono>
 #include <cstdio>
+#include <ctime>
 #include <cstdlib>
 #include <cstring>
+#include <random>
+#include <functional>
+#include <filesystem> 
 #include <ort_genai.h>
 
 #include "json/json.h"
