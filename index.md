@@ -50,8 +50,37 @@ curl -X 'POST' \
 Or, use AI Kit:
 
 ```4d
+var $ChatCompletionsParameters : cs.AIKit.OpenAIChatCompletionsParameters
+$ChatCompletionsParameters:=cs.AIKit.OpenAIChatCompletionsParameters.new({model: ""})
 
+$ChatCompletionsParameters.max_completion_tokens:=2048
+$ChatCompletionsParameters.n:=1
+$ChatCompletionsParameters.temperature:=0.7
+//%W-550.26
+$ChatCompletionsParameters.top_k:=50
+$ChatCompletionsParameters.top_p:=0.9
+//%W+550.26
+$ChatCompletionsParameters.body:=Formula($0:={\
+top_k: This.top_k; \
+top_p: This.top_p; \
+temperature: This.temperature; \
+n: This.n; \
+max_completion_tokens: This.max_completion_tokens})
+$messages:=[]
+$messages.push({role: "system"; content: "You are a helpful assistant."})
+$messages.push({role: "user"; content: "The window was shattered. Inside the room were 3 cats, a piano, 1 million dollars, a baseball bat, a bar of soap. What happened?"})
+
+var $OpenAI : cs.AIKit.OpenAI
+$OpenAI:=cs.AIKit.OpenAI.new({baseURL: "http://127.0.0.1:8080/v1"})
+
+var $ChatCompletionsResult : cs.AIKit.OpenAIChatCompletionsResult
+$ChatCompletionsResult:=$OpenAI.chat.completions.create($messages; $ChatCompletionsParameters)
+If ($ChatCompletionsResult.success)
+    ALERT($ChatCompletionsResult.choice.message.text)
+End if 
 ```
+
+#### Models
 
 Use [optimum-cli](https://github.com/huggingface/optimum) to convert a specific model to ONNX:
 
