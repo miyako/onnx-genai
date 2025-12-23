@@ -189,7 +189,7 @@
     <ClCompile Include="onnx-genai\main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="opc-parser\opc-parser.h" />
+    <ClInclude Include="onnx-genai\onnx-genai.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

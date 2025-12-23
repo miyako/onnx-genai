@@ -7,3 +7,8 @@ onnx-genai/.vs/*
 onnx-genai/onnx-genai/x64/Release/vc143.pdb
 onnx-genai/onnx-genai/x64/Release/onnx-genai.tlog/*
 onnx-genai/onnx-genai/x64/Release/onnx-genai.log
+onnx-genai/onnx-genai/x64/Release/onnx-genai.exe.recipe
+onnx-genai/onnx-genai/x64/Release/onnx-genai.iobj
+onnx-genai/x64/Release/onnx-genai.pdb
+onnx-genai/onnx-genai/x64/Release/onnx-genai.ipdb
+onnx-genai/onnx-genai/x64/Release/main.obj

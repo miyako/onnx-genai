@@ -81,6 +81,46 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
 #define _strlen strlen
 #endif
 
+#ifdef WIN32
+static std::string wchar_to_utf8(const wchar_t* wstr) {
+    if (!wstr) return std::string();
+
+    // Get required buffer size in bytes
+    int size_needed = WideCharToMultiByte(
+        CP_UTF8,            // convert to UTF-8
+        0,                  // default flags
+        wstr,               // source wide string
+        -1,                 // null-terminated
+        nullptr, 0,         // no output buffer yet
+        nullptr, nullptr
+    );
+
+    if (size_needed <= 0) return std::string();
+
+    // Allocate buffer
+    std::string utf8str(size_needed, 0);
+
+    // Perform conversion
+    WideCharToMultiByte(
+        CP_UTF8,
+        0,
+        wstr,
+        -1,
+        &utf8str[0],
+        size_needed,
+        nullptr,
+        nullptr
+    );
+
+    // Remove the extra null terminator added by WideCharToMultiByte
+    if (!utf8str.empty() && utf8str.back() == '\0') {
+        utf8str.pop_back();
+    }
+
+    return utf8str;
+}
+#endif
+
 static void parse_request(
               std::string &json,
               std::string &prompt,
@@ -164,10 +204,10 @@ static void parse_request(
 
 int main(int argc, OPTARG_T argv[]) {
         
-    OPTARG_T model_path  = NULL;      //-m
     OPTARG_T input_path  = NULL;      //-i
     OPTARG_T output_path = NULL;      //-o
     
+    std::string model_path;           //-m
     unsigned int max_tokens = 2048;
     unsigned int top_k = 50;
     double top_p = 0.9;
@@ -181,7 +221,13 @@ int main(int argc, OPTARG_T argv[]) {
     while ((ch = getopt(argc, argv, ARGS)) != -1){
         switch (ch){
             case 'm':
-                model_path  = optarg;
+            {
+#ifdef WIN32
+                model_path = wchar_to_utf8(optarg);
+#else
+                model_path = optarg;
+#endif          
+            }
                 break;
             case 'i':
                 input_path  = optarg;
@@ -205,7 +251,7 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
-    if ((model_path == NULL) || (_strlen(model_path) == 0)) {
+    if (model_path.length() == 0) {
         usage();
     }
     
@@ -240,7 +286,7 @@ int main(int argc, OPTARG_T argv[]) {
     
     try {
         // 2. Load Model and Create Generator
-        auto model = OgaModel::Create(model_path);
+        auto model = OgaModel::Create(model_path.c_str());
         auto tokenizer = OgaTokenizer::Create(*model);
         auto tokenizer_stream = OgaTokenizerStream::Create(*tokenizer);
 

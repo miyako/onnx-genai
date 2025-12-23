@@ -10,6 +10,10 @@
 #include <cstring>
 #include <ort_genai.h>
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 #include "json/json.h"
 
 #define BUFLEN 4096
