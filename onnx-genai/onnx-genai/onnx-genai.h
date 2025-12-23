@@ -14,17 +14,16 @@
 #include <filesystem>
 #include <vector>
 #include <exception>
-
 #include <ort_genai.h>
-
 #include "httplib.h"
-
 #ifdef WIN32
 #include <windows.h>
 #endif
-
 #include "json/json.h"
 
+#include <onnxruntime_cxx_api.h>
+#include <cmath>
+#include <numeric>
 
 #define BUFLEN 4096
 

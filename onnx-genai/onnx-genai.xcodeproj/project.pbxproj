@@ -302,7 +302,10 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SYSTEM_HEADER_SEARCH_PATHS = include;
+				SYSTEM_HEADER_SEARCH_PATHS = (
+					include,
+					include/onnxruntime/core/session,
+				);
 			};
 			name = Debug;
 		};
@@ -321,7 +324,10 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SYSTEM_HEADER_SEARCH_PATHS = include;
+				SYSTEM_HEADER_SEARCH_PATHS = (
+					include,
+					include/onnxruntime/core/session,
+				);
 			};
 			name = Release;
 		};

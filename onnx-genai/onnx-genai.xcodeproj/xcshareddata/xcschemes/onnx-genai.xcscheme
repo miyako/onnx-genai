@@ -61,6 +61,14 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
+            argument = "-e"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/onnx/bge-base-en-v1.5/model.onnx"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
             argument = "-i"
             isEnabled = "NO">
          </CommandLineArgument>

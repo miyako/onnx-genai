@@ -121,26 +121,30 @@ Or, use AI Kit:
 
 ```
 
+```
+
+```
+
+```
+hf download LightEmbed/baai-bge-base-en-v1.5-onnx --local-dir .
+```
+
+
+
+
+Use [optimum-cli](https://github.com/huggingface/optimum) to convert a specific model to ONNX:
+
+```
+optimum-cli export onnx --model BAAI/bge-base-en-v1.5 onnx_output_dir/
+```
+
+
+
 Finally to terminate the server:
 
 ```4d
-var $llama : cs.llama.llama
-$llama:=cs.llama.llama.new()
-$llama.terminate()
+
 ```
-
-#### Vision
-
-`llama-server` supports OCR if you use a model converted to .gguf. `Q4_K_M` is generally considered a best level of quantisation for OCR.
-
-|Model|Parameters|Size|
-|-|-:|-:|
-|[Llama-3.2-11B-Vision-Instruct.Q4_K_M.gguf](https://huggingface.co/leafspark/Llama-3.2-11B-Vision-Instruct-GGUF/resolve/main/Llama-3.2-11B-Vision-Instruct.Q4_K_M.gguf)|`11`B|`5.96`GB|
-|[MiniCPM-V-2_6-Q4_K_M.gguf](https://huggingface.co/second-state/MiniCPM-V-2_6-GGUF/resolve/main/MiniCPM-V-2_6-Q4_K_M.gguf)|`8`B|`4.68`GB|
-|[Qwen2-VL-7B-Instruct-Q4_K_M.gguf](https://huggingface.co/bartowski/Qwen2-VL-7B-Instruct-GGUF/resolve/main/Qwen2-VL-7B-Instruct-Q4_K_M.gguf)|`7`B|`4.68`GB|
-|[Qwen2-VL-2B-Instruct-Q4_K_M.gguf](https://huggingface.co/bartowski/Qwen2-VL-2B-Instruct-GGUF/resolve/main/Qwen2-VL-2B-Instruct-Q4_K_M.gguf)|`2`B|`986`MB|
-
-`llama-server` does not support the `/v1/files` API so you need to reference the image via a data URI in your chat completion request.
 
 #### AI Kit compatibility
 
