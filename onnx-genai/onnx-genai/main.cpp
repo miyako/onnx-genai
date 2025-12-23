@@ -72,10 +72,12 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
 #define ARGS (OPTARG_T)L"m:i:-h"
 #define _atoi _wtoi
 #define _atof _wtof
+#define _strlen wcslen
 #else
 #define ARGS "m:i:-h"
 #define _atoi atoi
 #define _atof atof
+#define _strlen strlen
 #endif
 
 static void parse_request(
@@ -215,7 +217,7 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
-    if ((model_path == NULL) || (strlen(model_path) == 0)) {
+    if ((model_path == NULL) || (_strlen(model_path) == 0)) {
         usage();
     }
     
