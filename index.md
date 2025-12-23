@@ -7,7 +7,7 @@ layout: default
 [![license](https://img.shields.io/github/license/miyako/onnx-genai)](LICENSE)
 ![downloads](https://img.shields.io/github/downloads/miyako/onnx-genai/total)
 
-# Use ONNX from 4D
+# Use ONNX Runtime from 4D
 
 #### Abstract
 
