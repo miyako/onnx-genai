@@ -70,11 +70,11 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:i:o:-h"
+#define ARGS (OPTARG_T)L"m:i:o:sp:-h"
 #define _atoi _wtoi
 #define _atof _wtof
 #else
-#define ARGS "m:i:o:-h"
+#define ARGS "m:i:o:sp:-h"
 #define _atoi atoi
 #define _atof atof
 #endif
@@ -159,7 +159,7 @@ static std::string generate_openai_style_id() {
 }
 
 static void parse_request(
-              std::string &json,
+                          const std::string &json,
               std::string &prompt,
               unsigned int *max_tokens,
               unsigned int *top_k,
@@ -210,28 +210,39 @@ static void parse_request(
                 }
                 if(prompt.length() != 0) prompt += "<|assistant|>";
             }
-            Json::Value temperature_node = root["temperature"];
-            if(messages_node.isDouble())
-            {
-                *temperature = temperature_node.asDouble();
-            }
+
             Json::Value top_p_node = root["top_p"];
-            if(top_p_node.isDouble())
+            if(top_p_node.isNumeric())
             {
                 *top_p = top_p_node.asDouble();
             }
             Json::Value top_k_node = root["top_k"];
-            if(top_k_node.isInt())
+            if(top_k_node.isNumeric())
             {
                 *top_k = top_k_node.asInt();
             }
+            Json::Value max_tokens_node = root["max_tokens"];
+            if(max_tokens_node.isNumeric())
+            {
+                *max_tokens = max_tokens_node.asInt();
+            }
+            
+            
+            /*
+             only these are set by AI-Kit
+             */
+            Json::Value temperature_node = root["temperature"];
+            if(temperature_node.isNumeric())
+            {
+                *temperature = temperature_node.asDouble();
+            }
             Json::Value n_node = root["n"];
-            if(n_node.isInt())
+            if(n_node.isNumeric())
             {
                 *n = n_node.asInt();
             }
-            Json::Value max_tokens_node = root["max_tokens"];
-            if(max_tokens_node.isInt())
+            max_tokens_node = root["max_completion_tokens"];
+            if(max_tokens_node.isNumeric())
             {
                 *max_tokens = max_tokens_node.asInt();
             }
@@ -239,102 +250,47 @@ static void parse_request(
     }
 }
 
-int main(int argc, OPTARG_T argv[]) {
-        
-    OPTARG_T model_path  = NULL;      //-m
-    OPTARG_T input_path  = NULL;      //-i
-    OPTARG_T output_path = NULL;      //-o
-    
+/*
+ * Encapsulates the core inference logic to be used by both CLI and Server modes.
+ */
+std::string run_inference(
+    OgaModel* model,
+    OgaTokenizer* tokenizer,
+    const std::string& modelName,
+    const std::string& fingerprint,
+    const std::string& request_body
+) {
+    // Default parameters
     unsigned int max_tokens = 2048;
     unsigned int top_k = 50;
     double top_p = 0.9;
     double temperature = 0.7;
     unsigned int n = 1;
-        
-    std::vector<unsigned char>request_json(0);
     
-    int ch;
-    
-    while ((ch = getopt(argc, argv, ARGS)) != -1){
-        switch (ch){
-            case 'm':
-                model_path  = optarg;
-                break;
-            case 'i':
-                input_path  = optarg;
-                break;
-            case 'o':
-                output_path  = optarg;
-                break;
-            case '-':
-            {
-                std::vector<uint8_t> buf(BUFLEN);
-                size_t s;
-                while ((s = fread(buf.data(), 1, buf.size(), stdin)) > 0) {
-                    request_json.insert(request_json.end(), buf.begin(), buf.begin() + s);
-                }
-            }
-                break;
-            case 'h':
-            default:
-                usage();
-                break;
-        }
-    }
-    
-    if ((model_path == NULL) || (strlen(model_path) == 0)) {
-        usage();
-    }
-        
-    if ((!request_json.size()) && (input_path != NULL)) {
-        FILE *f = _fopen(input_path, _rb);
-        if(f) {
-            _fseek(f, 0, SEEK_END);
-            size_t len = (size_t)_ftell(f);
-            _fseek(f, 0, SEEK_SET);
-            request_json.resize(len);
-            fread(request_json.data(), 1, request_json.size(), f);
-            fclose(f);
-        }
-    }
-    
-    if (request_json.size() == 0) {
-        usage();
-    }
-    
-    std::string fingerprint = get_system_fingerprint(model_path, "directml");
-    std::string modelName = get_model_name(model_path);
-    
-    std::string request((const char *)request_json.data(), request_json.size());
     std::string prompt;
     
-    parse_request(request,
-                  prompt,
-                  &max_tokens,
-                  &top_k,
-                  &top_p,
-                  &temperature,
-                  &n);
-    
-    std::string response;
+    // Parse the input JSON
+    // Note: If parse_request fails/throws, it should be caught by the caller
+    parse_request(request_body, prompt, &max_tokens, &top_k, &top_p, &temperature, &n);
+
     std::string content;
     Json::Value rootNode(Json::objectValue);
     size_t completion_tokens = 0;
+    size_t input_token_count = 0;
+    std::string finish_reason = "stop";
     double max_length = 0;
-    
+
     try {
-        // 2. Load Model and Create Generator
-        auto model = OgaModel::Create(model_path);
-        auto tokenizer = OgaTokenizer::Create(*model);
+        // Create Tokenizer Stream
         auto tokenizer_stream = OgaTokenizerStream::Create(*tokenizer);
 
-        // 3. Encode Prompt
+        // Encode Prompt
         auto input_sequences = OgaSequences::Create();
         tokenizer->Encode(prompt.c_str(), *input_sequences);
-        size_t input_token_count = input_sequences->SequenceCount(0);
+        input_token_count = input_sequences->SequenceCount(0);
         max_length = (double)(input_token_count + max_tokens);
         
-        // 4. Set Generation Parameters
+        // Set Generation Parameters
         auto params = OgaGeneratorParams::Create(*model);
         params->SetSearchOption("max_length", max_length);
         params->SetSearchOption("top_k", top_k);
@@ -342,10 +298,11 @@ int main(int argc, OPTARG_T argv[]) {
         params->SetSearchOption("temperature", temperature);
         params->SetSearchOption("num_return_sequences", n);
                 
+        // Create Generator (Generator is stateful and must be created per request)
         auto generator = OgaGenerator::Create(*model, *params);
         generator->AppendTokenSequences(*input_sequences);
 
-        // 5. Start Generating
+        // Start Generating
         while (1) {
             generator->GenerateNextToken();
             
@@ -355,17 +312,18 @@ int main(int argc, OPTARG_T argv[]) {
             size_t seq_len = generator->GetSequenceCount(0);
             int32_t new_token = seq_data[seq_len - 1];
             const char* token_str = tokenizer_stream->Decode(new_token);
-            content += token_str;
+            if (token_str) {
+                content += token_str;
+            }
             completion_tokens++;
         }
         
-        std::string finish_reason = "stop";
-        Json::Int total_tokens = (Json::Int)(input_token_count+completion_tokens);
+        Json::Int total_tokens = (Json::Int)(input_token_count + completion_tokens);
         if (total_tokens >= max_length) {
             finish_reason = "length";
         }
         
-        
+        // Build Response JSON
         rootNode["id"] = generate_openai_style_id();
         rootNode["object"] = "chat.completion";
         rootNode["created"] = get_created_timestamp();
@@ -377,11 +335,13 @@ int main(int argc, OPTARG_T argv[]) {
         choiceNode["index"] = 0;
         choiceNode["logprobs"] = Json::nullValue;
         choiceNode["finish_reason"] = finish_reason;
+        
         Json::Value messageNode(Json::objectValue);
         messageNode["role"] = "assistant";
         messageNode["content"] = content;
         messageNode["refusal"] = Json::nullValue;
         choiceNode["message"] = messageNode;
+        
         choicesNode.append(choiceNode);
         rootNode["choices"] = choicesNode;
         
@@ -389,34 +349,235 @@ int main(int argc, OPTARG_T argv[]) {
         usageNode["prompt_tokens"] = (Json::Int)input_token_count;
         usageNode["completion_tokens"] = (Json::Int)completion_tokens;
         usageNode["total_tokens"] = total_tokens;
+        
+        // Details
         Json::Value usageDetailsNode(Json::objectValue);
         usageDetailsNode["reasoning_tokens"] = 0;
         usageDetailsNode["accepted_prediction_tokens"] = 0;
         usageDetailsNode["rejected_prediction_tokens"] = 0;
         usageNode["completion_tokens_details"] = usageDetailsNode;
+        
         rootNode["usage"] = usageNode;
 
     } catch (const std::exception& e) {
-
-        Json::Value errorNode(Json::objectValue);
-        rootNode["error"] = errorNode;
-        errorNode["message"] = e.what();
-        errorNode["type"] = "invalid_request_error";
-        errorNode["param"] = Json::nullValue;
-        errorNode["code"] = Json::nullValue;
+        // Rethrow to be handled by the caller (CLI or Server)
+        throw;
     }
 
     Json::StreamWriterBuilder writer;
     writer["indentation"] = "";
-    response = Json::writeString(writer, rootNode);
+    return Json::writeString(writer, rootNode);
+}
+
+// ------------------------------------------------
+
+int main(int argc, char* argv[]) {
+        
+    OPTARG_T model_path  = NULL;      // -m
+    OPTARG_T input_path  = NULL;      // -i
+    OPTARG_T output_path = NULL;      // -o
     
-    if(!output_path) {
-        std::cout << response << std::endl;
-    }else{
-        FILE *f = _fopen(output_path, _wb);
-        if(f) {
-            fwrite(response.c_str(), 1, response.length(), f);
-            fclose(f);
+    // Server mode flags
+    bool server_mode = false;         // -s
+    int port = 8080;                  // -p
+    std::string host = "127.0.0.1";   // -h
+
+    std::vector<unsigned char> cli_request_json(0);
+    
+    int ch;
+
+    while ((ch = getopt(argc, argv, ARGS)) != -1){
+        switch (ch){
+            case 'm':
+                model_path = optarg;
+                break;
+            case 'i':
+                input_path = optarg;
+                break;
+            case 'o':
+                output_path = optarg;
+                break;
+            case 's':
+                server_mode = true;
+                break;
+            case 'p':
+                port = std::stoi(optarg);
+                break;
+            case 'h':
+                host = optarg;
+                break;
+            case '-':
+            {
+                // Only relevant for CLI mode
+                std::vector<uint8_t> buf(BUFLEN);
+                size_t s;
+                while ((s = fread(buf.data(), 1, buf.size(), stdin)) > 0) {
+                    cli_request_json.insert(cli_request_json.end(), buf.begin(), buf.begin() + s);
+                }
+            }
+            break;
+            default:
+                usage();
+                break;
+        }
+    }
+    
+    if ((model_path == NULL) || (strlen(model_path) == 0)) {
+        usage();
+        return 1;
+    }
+
+    // 1. Initialize Model and Tokenizer (Load once)
+    std::cerr << "[Model] Loading from " << model_path << std::endl;
+    std::string fingerprint = get_system_fingerprint(model_path, "directml");
+    std::string modelName = get_model_name(model_path);
+    
+    std::unique_ptr<OgaModel> model;
+    std::unique_ptr<OgaTokenizer> tokenizer;
+
+    try {
+        model = OgaModel::Create(model_path);
+        tokenizer = OgaTokenizer::Create(*model);
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to load model: " << e.what() << std::endl;
+        return 1;
+    }
+
+    // ---------------------------------------------------------
+    // SERVER MODE
+    // ---------------------------------------------------------
+    if (server_mode) {
+        httplib::Server svr;
+
+        // Route: /v1/chat/completions
+        svr.Post("/v1/chat/completions", [&](const httplib::Request& req, httplib::Response& res) {
+            
+            std::cout << "[Server] Request received." << std::endl;
+
+            try {
+                
+                // Run Inference
+                std::string response_json = run_inference(
+                    model.get(),
+                    tokenizer.get(),
+                    modelName,
+                    fingerprint,
+                    req.body
+                );
+
+                res.set_content(response_json, "application/json");
+                res.status = 200;
+
+            } catch (const std::exception& e) {
+                // Build Error JSON
+                Json::Value rootNode(Json::objectValue);
+                Json::Value errorNode(Json::objectValue);
+                errorNode["message"] = e.what();
+                errorNode["type"] = "invalid_request_error";
+                errorNode["param"] = Json::nullValue;
+                errorNode["code"] = Json::nullValue;
+                rootNode["error"] = errorNode;
+                
+                Json::StreamWriterBuilder writer;
+                writer["indentation"] = "";
+                std::string error_str = Json::writeString(writer, rootNode);
+
+                res.set_content(error_str, "application/json");
+                res.status = 400; // Bad Request as per requirement
+                std::cerr << "[Server] Error: " << e.what() << std::endl;
+            }
+        });
+
+        // Route: /v1/models
+        svr.Get("/v1/models", [&](const httplib::Request& req, httplib::Response& res) {
+            std::cout << "[Server] /v1/models request received." << std::endl;
+            
+            // 1. Create the model object
+            Json::Value modelCard(Json::objectValue);
+            modelCard["id"] = modelName;
+            modelCard["object"] = "model";
+            modelCard["created"] = (Json::UInt64)std::time(nullptr); 
+            modelCard["owned_by"] = "system";
+            
+            // 2. Create the list wrapper
+            Json::Value root(Json::objectValue);
+            root["object"] = "list";
+            root["data"] = Json::Value(Json::arrayValue);
+            root["data"].append(modelCard);
+            
+            // 3. Serialize
+            Json::StreamWriterBuilder writer;
+            writer["indentation"] = ""; // Minified JSON
+            std::string json_str = Json::writeString(writer, root);
+            
+            // 4. Respond
+            res.set_content(json_str, "application/json");
+            res.status = 200;
+        });
+        
+        std::cout << "[Server] Listening on " << host << ":" << port << std::endl;
+        
+        // Listen (Blocking call)
+        if (!svr.listen(host.c_str(), port)) {
+            std::cerr << "Error: Could not start server on " << host << ":" << port << std::endl;
+            return 1;
+        }
+    }
+    // ---------------------------------------------------------
+    // CLI MODE
+    // ---------------------------------------------------------
+    else {
+        // Handle input file reading if not piped via stdin ('-')
+        if ((!cli_request_json.size()) && (input_path != NULL)) {
+            FILE *f = _fopen(input_path, _rb);
+            if(f) {
+                fseek(f, 0, SEEK_END);
+                size_t len = (size_t)ftell(f);
+                fseek(f, 0, SEEK_SET);
+                cli_request_json.resize(len);
+                fread(cli_request_json.data(), 1, cli_request_json.size(), f);
+                fclose(f);
+            }
+        }
+        
+        if (cli_request_json.size() == 0) {
+            usage();
+            return 1;
+        }
+
+        std::string request_str((const char *)cli_request_json.data(), cli_request_json.size());
+        std::string response;
+
+        try {
+            response = run_inference(
+                model.get(),
+                tokenizer.get(),
+                modelName,
+                fingerprint,
+                request_str
+            );
+        } catch (const std::exception& e) {
+            // CLI Error Format
+            Json::Value rootNode(Json::objectValue);
+            Json::Value errorNode(Json::objectValue);
+            rootNode["error"] = errorNode;
+            errorNode["message"] = e.what();
+            errorNode["type"] = "invalid_request_error";
+            
+            Json::StreamWriterBuilder writer;
+            writer["indentation"] = "";
+            response = Json::writeString(writer, rootNode);
+        }
+
+        // Output logic
+        if(!output_path) {
+            std::cout << response << std::endl;
+        } else {
+            FILE *f = _fopen(output_path, _wb);
+            if(f) {
+                fwrite(response.c_str(), 1, response.length(), f);
+                fclose(f);
+            }
         }
     }
       

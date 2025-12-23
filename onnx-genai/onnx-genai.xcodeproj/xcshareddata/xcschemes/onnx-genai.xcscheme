@@ -62,10 +62,14 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-i"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/Desktop/prompt.json"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-s"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

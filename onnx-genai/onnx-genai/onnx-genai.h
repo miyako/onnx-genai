@@ -11,10 +11,14 @@
 #include <cstring>
 #include <random>
 #include <functional>
-#include <filesystem> 
+#include <filesystem>
+#include <vector>
+#include <exception>
+
 #include <ort_genai.h>
 
 #include "json/json.h"
+#include "httplib.h"
 
 #define BUFLEN 4096
 
