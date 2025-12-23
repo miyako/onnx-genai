@@ -452,7 +452,7 @@ int main(int argc, char* argv[]) {
         // Route: /v1/chat/completions
         svr.Post("/v1/chat/completions", [&](const httplib::Request& req, httplib::Response& res) {
             
-            std::cout << "[Server] Request received." << std::endl;
+            std::cout << "[Server] /v1/chat/completions request received." << std::endl;
 
             try {
                 
