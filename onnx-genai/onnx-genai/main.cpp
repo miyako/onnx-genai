@@ -15,6 +15,7 @@ static void usage(void)
     //
     fprintf(stderr, " -%c path     : %s\n", 'i' , "input");
     fprintf(stderr, " %c           : %s\n", '-' , "use stdin for input");
+    fprintf(stderr, " -%c path     : %s\n", 'o' , "output (default=stdout)");
     //
     exit(1);
 }
@@ -69,12 +70,12 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:i:-h"
+#define ARGS (OPTARG_T)L"m:i:o:-h"
 #define _atoi _wtoi
 #define _atof _wtof
 #define _strlen wcslen
 #else
-#define ARGS "m:i:-h"
+#define ARGS "m:i:o:-h"
 #define _atoi atoi
 #define _atof atof
 #define _strlen strlen
@@ -162,18 +163,17 @@ static void parse_request(
 }
 
 int main(int argc, OPTARG_T argv[]) {
-    
-    std::string prompt;
-    
+        
     OPTARG_T model_path  = NULL;      //-m
     OPTARG_T input_path  = NULL;      //-i
-
+    OPTARG_T output_path = NULL;      //-o
+    
     unsigned int max_tokens = 2048;
     unsigned int top_k = 50;
     double top_p = 0.9;
     double temperature = 0.7;
     unsigned int n = 1;
-    
+        
     std::vector<unsigned char>request_json(0);
     
     int ch;
@@ -186,20 +186,8 @@ int main(int argc, OPTARG_T argv[]) {
             case 'i':
                 input_path  = optarg;
                 break;
-            case 't':
-                prompt  = optarg;
-                break;
-            case 'l':
-                max_tokens = _atoi(optarg);
-                break;
-            case 'k':
-                top_k = _atoi(optarg);
-                break;
-            case 'p':
-                top_p = _atof(optarg);
-                break;
-            case 'n':
-                n = _atoi(optarg);
+            case 'o':
+                output_path  = optarg;
                 break;
             case '-':
             {
@@ -233,18 +221,22 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
-    if (!request_json.size() && prompt.empty()) {
+    if (request_json.size() == 0) {
         usage();
     }
     
-    std::string json((const char *)request_json.data(), request_json.size());
+    std::string request((const char *)request_json.data(), request_json.size());
+    std::string prompt;
     
-    parse_request(json, prompt,
+    parse_request(request,
+                  prompt,
                   &max_tokens,
                   &top_k,
                   &top_p,
                   &temperature,
                   &n);
+    
+    std::string response;
     
     try {
         // 2. Load Model and Create Generator
@@ -270,8 +262,6 @@ int main(int argc, OPTARG_T argv[]) {
 
         // 5. Start Generating
         while (1) {
- 
-//            generator->GetLogits();
             generator->GenerateNextToken();
             
             if(generator->IsDone()) break;
@@ -284,10 +274,30 @@ int main(int argc, OPTARG_T argv[]) {
         }
         
         std::cout << std::endl;
+        
+        
 
     } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-        return -1;
+        Json::Value rootNode(Json::objectValue);
+        Json::Value errorNode(Json::objectValue);
+        rootNode["error"] = errorNode;
+        errorNode["message"] = e.what();
+        errorNode["type"] = "invalid_request_error";
+        errorNode["param"] = Json::nullValue;
+        errorNode["code"] = Json::nullValue;
+        Json::StreamWriterBuilder writer;
+        writer["indentation"] = "";
+        response = Json::writeString(writer, rootNode);
+    }
+    
+    if(!output_path) {
+        std::cout << response << std::endl;
+    }else{
+        FILE *f = _fopen(output_path, _wb);
+        if(f) {
+            fwrite(response.c_str(), 1, response.length(), f);
+            fclose(f);
+        }
     }
       
     return 0;
