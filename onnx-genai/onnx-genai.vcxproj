@@ -32,7 +32,7 @@
     <ProjectGuid>{4331e269-c304-4866-9954-fbe875b0b304}</ProjectGuid>
     <RootNamespace>opcparser</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>pdfium-parser</ProjectName>
+    <ProjectName>onnx-genai</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -185,7 +185,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="pdfium-parser\main.cpp" />
+    <ClCompile Include="onnx-genai\main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="opc-parser\opc-parser.h" />
