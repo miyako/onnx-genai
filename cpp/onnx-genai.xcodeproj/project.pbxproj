@@ -1,0 +1,358 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		D157F3122E612DD500DF46D3 /* libjsoncpp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D157F30C2E612DD500DF46D3 /* libjsoncpp.a */; };
+		D178B3E42EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D178B3E32EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib */; };
+		D178B3E52EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = D178B3E32EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		D178B3E82EF9EC2E00F0F0A7 /* libonnxruntime.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D178B3E72EF9EC2E00F0F0A7 /* libonnxruntime.dylib */; };
+		D178B3E92EF9EC2E00F0F0A7 /* libonnxruntime.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = D178B3E72EF9EC2E00F0F0A7 /* libonnxruntime.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D16478922E611F7700FC9914 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		D178B3E62EF9E91B00F0F0A7 /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				D178B3E92EF9EC2E00F0F0A7 /* libonnxruntime.dylib in Embed Libraries */,
+				D178B3E52EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib in Embed Libraries */,
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		D157F30C2E612DD500DF46D3 /* libjsoncpp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libjsoncpp.a; path = a/libjsoncpp.a; sourceTree = "<group>"; };
+		D16478942E611F7700FC9914 /* onnx-genai */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "onnx-genai"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D164789E2E61216B00FC9914 /* onnx-genai.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "onnx-genai.xcconfig"; sourceTree = "<group>"; };
+		D178B3E32EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libonnxruntime-genai.dylib"; path = "macOS/libonnxruntime-genai.dylib"; sourceTree = "<group>"; };
+		D178B3E72EF9EC2E00F0F0A7 /* libonnxruntime.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libonnxruntime.dylib; path = macOS/libonnxruntime.dylib; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		D16478962E611F7700FC9914 /* onnx-genai */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "onnx-genai";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D16478912E611F7700FC9914 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D178B3E82EF9EC2E00F0F0A7 /* libonnxruntime.dylib in Frameworks */,
+				D157F3122E612DD500DF46D3 /* libjsoncpp.a in Frameworks */,
+				D178B3E42EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D157F30B2E612DD500DF46D3 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D178B3E72EF9EC2E00F0F0A7 /* libonnxruntime.dylib */,
+				D178B3E32EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib */,
+				D157F30C2E612DD500DF46D3 /* libjsoncpp.a */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		D164788B2E611F7700FC9914 = {
+			isa = PBXGroup;
+			children = (
+				D164789E2E61216B00FC9914 /* onnx-genai.xcconfig */,
+				D16478962E611F7700FC9914 /* onnx-genai */,
+				D157F30B2E612DD500DF46D3 /* Frameworks */,
+				D16478952E611F7700FC9914 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D16478952E611F7700FC9914 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D16478942E611F7700FC9914 /* onnx-genai */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D16478932E611F7700FC9914 /* onnx-genai */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D164789B2E611F7700FC9914 /* Build configuration list for PBXNativeTarget "onnx-genai" */;
+			buildPhases = (
+				D16478902E611F7700FC9914 /* Sources */,
+				D16478912E611F7700FC9914 /* Frameworks */,
+				D16478922E611F7700FC9914 /* CopyFiles */,
+				D178B3E62EF9E91B00F0F0A7 /* Embed Libraries */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D16478962E611F7700FC9914 /* onnx-genai */,
+			);
+			name = "onnx-genai";
+			packageProductDependencies = (
+			);
+			productName = "opc-parser";
+			productReference = D16478942E611F7700FC9914 /* onnx-genai */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D164788C2E611F7700FC9914 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1610;
+				TargetAttributes = {
+					D16478932E611F7700FC9914 = {
+						CreatedOnToolsVersion = 16.1;
+					};
+				};
+			};
+			buildConfigurationList = D164788F2E611F7700FC9914 /* Build configuration list for PBXProject "onnx-genai" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D164788B2E611F7700FC9914;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D16478952E611F7700FC9914 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D16478932E611F7700FC9914 /* onnx-genai */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D16478902E611F7700FC9914 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		D16478992E611F7700FC9914 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D164789E2E61216B00FC9914 /* onnx-genai.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD)";
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SYMROOT = "";
+			};
+			name = Debug;
+		};
+		D164789A2E611F7700FC9914 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D164789E2E61216B00FC9914 /* onnx-genai.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD)";
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SYMROOT = "";
+			};
+			name = Release;
+		};
+		D164789C2E611F7700FC9914 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D164789E2E61216B00FC9914 /* onnx-genai.xcconfig */;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = Y69CWUC25B;
+				ENABLE_HARDENED_RUNTIME = YES;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/a",
+					"$(PROJECT_DIR)/macOS",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 11.5;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SYSTEM_HEADER_SEARCH_PATHS = (
+					include,
+					include/onnxruntime/core/session,
+				);
+			};
+			name = Debug;
+		};
+		D164789D2E611F7700FC9914 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = D164789E2E61216B00FC9914 /* onnx-genai.xcconfig */;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = Y69CWUC25B;
+				ENABLE_HARDENED_RUNTIME = YES;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/a",
+					"$(PROJECT_DIR)/macOS",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 11.5;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SYSTEM_HEADER_SEARCH_PATHS = (
+					include,
+					include/onnxruntime/core/session,
+				);
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D164788F2E611F7700FC9914 /* Build configuration list for PBXProject "onnx-genai" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D16478992E611F7700FC9914 /* Debug */,
+				D164789A2E611F7700FC9914 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D164789B2E611F7700FC9914 /* Build configuration list for PBXNativeTarget "onnx-genai" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D164789C2E611F7700FC9914 /* Debug */,
+				D164789D2E611F7700FC9914 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D164788C2E611F7700FC9914 /* Project object */;
+}
