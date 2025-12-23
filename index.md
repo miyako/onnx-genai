@@ -84,14 +84,16 @@ End if
 
 Use [optimum-cli](https://github.com/huggingface/optimum) to convert a specific model to ONNX:
 
-```
+```sh
 optimum-cli export onnx --model BAAI/bge-base-en-v1.5 onnx_output_dir/
 ```
 
 Finally to terminate the server:
 
 ```4d
-
+var $onnx : cs.onnx
+$onnx:=cs.onnx.new()
+$onnx.terminate()
 ```
 
 #### AI Kit compatibility
