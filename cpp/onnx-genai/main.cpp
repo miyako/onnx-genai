@@ -234,117 +234,6 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
 #define _atof atof
 #endif
 
-static std::vector<float> GenerateEmbeddings(
-    Ort::Session* session,
-    const std::vector<int64_t>& input_ids,
-    const std::vector<int64_t>& attention_mask,
-    int64_t batch_size,
-    int64_t seq_len
-) {
-    Ort::MemoryInfo memory_info =
-        Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-
-    std::vector<int64_t> shape = { batch_size, seq_len };
-
-    Ort::Value input_ids_tensor = Ort::Value::CreateTensor<int64_t>(
-        memory_info,
-        const_cast<int64_t*>(input_ids.data()),
-        input_ids.size(),
-        shape.data(),
-        shape.size()
-    );
-
-    Ort::Value attention_mask_tensor = Ort::Value::CreateTensor<int64_t>(
-        memory_info,
-        const_cast<int64_t*>(attention_mask.data()),
-        attention_mask.size(),
-        shape.data(),
-        shape.size()
-    );
-
-    const char* input_names[] = { "input_ids", "attention_mask" };
-    Ort::Value input_tensors[] = {
-        std::move(input_ids_tensor),
-        std::move(attention_mask_tensor)
-    };
-
-    const char* output_names[] = { "last_hidden_state" };
-
-    auto outputs = session->Run(
-        Ort::RunOptions{nullptr},
-        input_names,
-        input_tensors,
-        2,
-        output_names,
-        1
-    );
-
-    const float* data = outputs[0].GetTensorData<float>();
-    size_t len = outputs[0].GetTensorTypeAndShapeInfo().GetElementCount();
-
-    return std::vector<float>(data, data + len);
-}
-
-
-
-
-std::vector<float> GenerateEmbeddings_(Ort::Session* session,
-                                       const std::vector<std::string>& sentences) {
-    Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(
-        OrtAllocatorType::OrtArenaAllocator,
-        OrtMemType::OrtMemTypeDefault
-    );
-
-    // 1. Create Input Tensor (String)
-    // The fused model now accepts raw strings!
-//    const char* input_strings[] = { text.c_str() };
-    
-    
-//    int64_t input_shape[] = { 1 }; // [BatchSize]
-    // CHANGE: Use a 1D shape [batch_size], NOT [batch_size, 1]
-    std::vector<int64_t> input_shape = {(int64_t)sentences.size()};
-    
-    Ort::AllocatorWithDefaultOptions allocator;
-    // Create Tensor of type STRING
-    Ort::Value input_tensor = Ort::Value::CreateTensor(
-                                                       allocator,
-                                                       input_shape.data(),
-                                                       input_shape.size(),
-                                                       ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING
-                                                       );
-
-    // Fill tensor with string data
-//    input_tensor.FillStringTensor(input_strings, 1);
-
-    // Fill the tensor
-    std::vector<const char*> c_strs;
-    for (const auto& s : sentences) c_strs.push_back(s.c_str());
-    input_tensor.FillStringTensor(c_strs.data(), c_strs.size());
-
-    auto input_name_ptr = session->GetInputNameAllocated(0, allocator);
-    auto output_name_ptr = session->GetOutputNameAllocated(0, allocator);
-    
-    const char* input_names[] = { input_name_ptr.get() };
-    const char* output_names[] = { output_name_ptr.get() };
-
-    // 3. Run Inference
-    auto output_tensors = session->Run(
-        Ort::RunOptions{nullptr},
-        input_names,
-        &input_tensor,
-        1,
-        output_names,
-        1
-    );
-
-    // 4. Extract Float Embeddings
-    const auto& output_tensor = output_tensors.front();
-    const float* float_data = output_tensor.GetTensorData<float>();
-    size_t total_len = output_tensor.GetTensorTypeAndShapeInfo().GetElementCount();
-
-    return std::vector<float>(float_data, float_data + total_len);
-}
-
 static long long get_created_timestamp() {
     // std::time(nullptr) returns the current time as a time_t (seconds since epoch)
     return static_cast<long long>(std::time(nullptr));
@@ -566,6 +455,8 @@ static std::string run_embedding(
     }
 
     // Create Ort Tensors
+    
+    
     Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
     std::vector<int64_t> input_shape = {1, (int64_t)seq_len}; // Batch size 1
 
@@ -883,9 +774,8 @@ int main(int argc, OPTARG_T argv[]) {
             embedding_modelName = get_model_name(embedding_model_path);
             Ort::SessionOptions session_options;
             session_options.SetIntraOpNumThreads(1);
-//            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
-
+            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+//            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
             Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
             embeddings_session = std::make_unique<Ort::Session>(env, embedding_model_path.c_str(), session_options);
             GetMaxSeqLen(embeddings_session.get(), &max_seq_len);
@@ -908,13 +798,13 @@ int main(int argc, OPTARG_T argv[]) {
     for (size_t i = 0; i < num_input_nodes; i++) {
         auto input_name_ptr = embeddings_session->GetInputNameAllocated(i, allocator);
         input_node_names.push_back(input_name_ptr.get());
-//        std::cout << "  [" << i << "] Name: " << input_node_names.back() << std::endl;
+        std::cout << "Input " << i << " Name: " << input_name_ptr.get() << std::endl;
     }
     
     for (size_t i = 0; i < num_output_nodes; i++) {
         auto output_name_ptr = embeddings_session->GetOutputNameAllocated(i, allocator);
         output_node_names.push_back(output_name_ptr.get());
-//        std::cout << "  [" << i << "] Name: " << output_node_names.back() << std::endl;
+        std::cout << "Input " << i << " Name: " << output_name_ptr.get() << std::endl;
     }
     
     // 1. Convert std::string names to const char* array
@@ -929,107 +819,142 @@ int main(int argc, OPTARG_T argv[]) {
     }
 
     try {
-        if(false) {
+        if(true) {
+            
             const char* input_text_arr[] = { "This is the text to embed." };
             
-            // Convert string to Tensor
-            /*
-            Ort::Value input_tensor = Ort::Value::CreateTensor(
-                                                               allocator,
-                                                               input_shape.data(), input_shape.size(),
-                                                               ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING
-                                                               );
-            */
-            
-            const char* text_input = "Hello world";
-            std::vector<const char*> input_strings = { text_input }; // Vector of pointers
+            // --- STEP 1: PREPARE DATA ---
+            const char* text_val = "Hello world";
+            const char* input_strings[] = { text_val };
             size_t batch_size = 1;
-            int64_t input_node_dims[] = { (int64_t)batch_size };
+            int64_t input_shape[] = { (int64_t)batch_size };
             
+            // --- STEP 2: GET C-API ACCESS ---
+            const OrtApi& api = Ort::GetApi();
             
-            auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-            
-            
-            Ort::Value input_tensor = Ort::Value::CreateTensor(
-                memory_info,
-                input_strings.data(),   // Pointer to the array of strings (char**)
-                batch_size,             // Number of strings
-                input_node_dims,        // Shape definition
-                1                       // Rank (Number of dimensions, must be 1)
-                                                               ,ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING
-            );
-            
-            input_tensor.FillStringTensor(input_text_arr, 1);
-            
-            // 4. Run Inference
-            const char* input_names[] = {"input_text"}; // or whatever your model calls it (check sess.get_inputs()[0])
-            const char* output_names[] = {"last_hidden_state"};
-            
-            auto outputs = embeddings_session->Run(
-                Ort::RunOptions{nullptr},
-                input_names,
-                &input_tensor,
-                1,
-                output_names,
-                1
-            );
-            
-            /*
-            // 5. Run Inference
-            auto outputs = embeddings_session->Run(
-                Ort::RunOptions{nullptr},
-                input_names_c_array.data(),
-                &input_tensor,
-                num_input_nodes,
-                output_names_c_array.data(),
-                num_output_nodes
-            );
-            */
-             
-            // Get the actual shape returned by the model
-            auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
-            auto shape = output_info.GetShape();
-            int64_t seq_len = shape[1];      // <--- DYNAMIC: e.g., 5, 12, or 50
-            int64_t hidden_size = shape[2];  // e.g., 768
+            // --- STEP 3: CREATE EMPTY TENSOR ---
+            OrtAllocator* allocator;
+            api.GetAllocatorWithDefaultOptions(&allocator);
+            OrtValue* raw_tensor_ptr = nullptr;
+            OrtStatus* status = api.CreateTensorAsOrtValue(
+                                                           allocator,                            // 1. Allocator
+                                                           input_shape,                          // 2. Shape
+                                                           1,                                    // 3. Shape Rank
+                                                           ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING, // 4. Type
+                                                           &raw_tensor_ptr                       // 5. Output
+                                                           );
+            if (status != nullptr) {
+                std::cerr << "Creation failed: " << api.GetErrorMessage(status) << std::endl;
+                api.ReleaseStatus(status);
+            }else{
+                // --- STEP 4: FILL TENSOR WITH STRINGS ---
+                // Now we copy the C-strings into the allocated tensor
+                status = api.FillStringTensor(
+                                              raw_tensor_ptr,                       // Tensor to fill
+                                              input_strings,                        // Array of C-strings
+                                              batch_size                            // Number of strings
+                                              );
+                if (status != nullptr) {
+                    std::cerr << "Filling failed: " << api.GetErrorMessage(status) << std::endl;
+                    api.ReleaseStatus(status);
+                }else{
+                    // --- STEP 5: CONVERT TO C++ OBJECT ---
+                    // Ort::Value takes ownership and handles cleanup
+                    Ort::Value input_tensor(raw_tensor_ptr);
+                    
+                    auto outputs = embeddings_session->Run(
+                                                           Ort::RunOptions{nullptr},
+                                                           input_names_c_array.data(),
+                                                           &input_tensor,
+                                                           num_input_nodes,
+                                                           output_names_c_array.data(),
+                                                           num_output_nodes
+                                                           );
+                    std::cout << "Inference Successful!" << std::endl;
+                    
+//                    auto _outputs = embeddings_session->GetOutputs();
+                    
+                    size_t dimensions = outputs.size();
+                    auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
+                    auto shape = output_info.GetShape();
+                    
+                    // 2. Identify the Embedding Dimension
+                    // If shape is [512], then dim is 512.
+                    int64_t embedding_dim = shape[1];
 
-            float* float_data = outputs[0].GetTensorMutableData<float>();
+                    float* floatarr = outputs[0].GetTensorMutableData<float>();
+                    // 3. Create the std::vector
+                    std::vector<float> embeddings(floatarr, floatarr + embedding_dim);
+                    
 
-            std::cout << "Dynamic Sequence Length: " << seq_len << std::endl;
-
-            // Compute Mean Pooling
-            std::vector<float> embedding(hidden_size, 0.0f);
-
-            for (int i = 0; i < seq_len; i++) {
-                for (int j = 0; j < hidden_size; j++) {
-                    // Safe access using dynamic seq_len
-                    embedding[j] += float_data[i * hidden_size + j];
+                    if(dimensions == 1) {
+                        float sum_squares = 0.0f;
+                        for (float val : embeddings) {
+                            sum_squares += val * val;
+                        }
+                        // Calculate Norm
+                        float norm = std::sqrt(sum_squares);
+                        // Normalize the vector
+                        // (Check for near-zero to avoid NaN, though unlikely with embeddings)
+                        if (norm > 1e-9) {
+                            for (size_t i = 0; i < embedding_dim; ++i) {
+                                embeddings[i] /= norm;
+                            }
+                        }
+                        std::cout << "Final Embedding: [ ";
+                                           for(int i = 0; i < embedding_dim; ++i) std::cout << embeddings[i] << " ";
+                                           std::cout << "... ]" << std::endl;
+                    }
+                    
+                
+                    
+                    
+      
+                    
+                    
+                    
+                    
+                    
+                    
+//                    for (int i = 0; i < seq_len; i++) {
+//                        for (int j = 0; j < hidden_size; j++) {
+//                            // Safe access using dynamic seq_len
+//                            embedding[j] += float_data[i * hidden_size + j];
+//                        }
+//                    }
+                    
+                    // Average
+//                    if (seq_len > 0) {
+//                        for (float& val : embedding) val /= static_cast<float>(seq_len);
+//                    }
+                    
+                    // 3. L2 Normalization (Optional, but recommended for cosine similarity)
+//                    float sum_squares = 0.0f;
+//                    for (float val : embedding) sum_squares += val * val;
+//                    float magnitude = std::sqrt(sum_squares);
+//                    
+//                    if (magnitude > 1e-9) {
+//                        for (float& val : embedding) val /= magnitude;
+//                    }
+                    
+                    // 4. Print Result
+//                    std::cout << "Final Embedding: [ ";
+//                    for(int i=0; i<5; ++i) std::cout << embedding[i] << " ";
+//                    std::cout << "... ]" << std::endl;
+//                    
+                    
+                    
+                    
+                    
+                    
                 }
             }
-
-            // Average
-            if (seq_len > 0) {
-                for (float& val : embedding) val /= static_cast<float>(seq_len);
-            }
-            
-            // 3. L2 Normalization (Optional, but recommended for cosine similarity)
-            float sum_squares = 0.0f;
-            for (float val : embedding) sum_squares += val * val;
-            float magnitude = std::sqrt(sum_squares);
-
-            if (magnitude > 1e-9) {
-                for (float& val : embedding) val /= magnitude;
-            }
-
-            // 4. Print Result
-            std::cout << "Final Embedding: [ ";
-            for(int i=0; i<5; ++i) std::cout << embedding[i] << " ";
-            std::cout << "... ]" << std::endl;
-            
         }
-       } catch (const std::exception& e) {
-           std::cerr << "Error: " << e.what() << std::endl;
-       }
-
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+    
+            
     // ---------------------------------------------------------
     // SERVER MODE
     // ---------------------------------------------------------
@@ -1152,8 +1077,6 @@ int main(int argc, OPTARG_T argv[]) {
             Json::Value root(Json::objectValue);
             root["object"] = "list";
             root["data"] = Json::Value(Json::arrayValue);
-            
-
             
             // 1. Create the model object
             if(model_created != 0) {

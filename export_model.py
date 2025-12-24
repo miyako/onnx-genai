@@ -1,69 +1,105 @@
+import sys
 import torch
 import onnx
+import onnx.compose
 from transformers import AutoTokenizer, AutoModel
 from onnxruntime_extensions import gen_processing_models
-import onnx.compose
 
-# Settings
-model_name = "intfloat/e5-small-v2"
-base_model_path = "base_model.onnx"
-final_model_path = "fused_model.onnx"
+# -----------------------------
+# 1. Setup
+# -----------------------------
+if len(sys.argv) < 3:
+    print("Usage: python fix_clean_sweep.py <model_id> <output.onnx>")
+    sys.exit(1)
 
-print(f"Loading {model_name}...")
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModel.from_pretrained(model_name)
+model_id = sys.argv[1]
+output_path = sys.argv[2]
+
+print(f"🚀 Starting Repair for: {model_id}")
+
+# -----------------------------
+# 2. Export Components
+# -----------------------------
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+model = AutoModel.from_pretrained(model_id)
 model.eval()
 
-# --- STEP 1: Export Base Model ---
-print("Exporting base model...")
-dummy_input = tokenizer("Test input", return_tensors="pt")
+# Dummy input
+dummy = tokenizer(["test"], return_tensors="pt", padding=False, truncation=True)
+
+print("   1. Exporting Encoder...")
+# We only define input_ids and attention_mask
+dynamic_axes = {
+    "input_ids":       {0: "batch", 1: "seq_len"},
+    "attention_mask":  {0: "batch", 1: "seq_len"},
+    "last_hidden_state": {0: "batch", 1: "seq_len"}
+}
+
 torch.onnx.export(
     model,
-    (dummy_input["input_ids"], dummy_input["attention_mask"]),
-    base_model_path,
+    (dummy["input_ids"], dummy["attention_mask"]),
+    "encoder.onnx",
     input_names=["input_ids", "attention_mask"],
     output_names=["last_hidden_state"],
-    dynamic_axes={
-        "input_ids": {0: "batch", 1: "seq"},
-        "attention_mask": {0: "batch", 1: "seq"},
-        "last_hidden_state": {0: "batch", 1: "seq"}
-    },
-    opset_version=17
+    dynamic_axes=dynamic_axes,
+    opset_version=17,
+    do_constant_folding=True
 )
 
-# --- STEP 2: Generate Tokenizer ONNX ---
-print("Generating tokenizer model...")
-pre_model = gen_processing_models(
+print("   2. Exporting Tokenizer...")
+# gen_processing_models often generates 3 outputs (ids, mask, type_ids)
+# even if you ask it not to. We will fix this in the next step.
+tokenizer_onnx = gen_processing_models(
     tokenizer,
-    pre_kwargs={"opset": 17}
+    pre_kwargs={"padding": False, "truncation": True},
+    opset_version=17
 )[0]
 
-# --- STEP 3: Fix Version Mismatch & Merge ---
-print("Loading base model for merging...")
-base_onnx = onnx.load(base_model_path)
-tokenizer_onnx = pre_model
+# -----------------------------
+# 3. Clean Tokenizer (The "Surgical" Fix)
+# -----------------------------
+print("   3. Cleaning Tokenizer outputs...")
+# We only want the tokenizer to expose these two outputs to match our encoder
+required_outputs = ["input_ids", "attention_mask"]
 
-# === THE FIX ===
-# Check versions
-print(f"Tokenizer IR Version: {tokenizer_onnx.ir_version}")
-print(f"Base Model IR Version: {base_onnx.ir_version}")
-
-if base_onnx.ir_version != tokenizer_onnx.ir_version:
-    print(f"Fixing mismatch: Downgrading Base Model IR version from {base_onnx.ir_version} to {tokenizer_onnx.ir_version}")
-    # We force the Base Model to match the Tokenizer (usually version 8)
-    # This is safer than upgrading the tokenizer.
-    base_onnx.ir_version = tokenizer_onnx.ir_version
-
-# Merge
-print("Merging models...")
-combined_model = onnx.compose.merge_models(
+# Create a new version of the tokenizer graph that only exposes what we need
+# This automatically handles the "dangling reference" problem by pruning the graph
+tokenizer_onnx = onnx.compose.select_model_inputs_outputs(
     tokenizer_onnx,
-    base_onnx,
+    outputs=required_outputs
+)
+onnx.save(tokenizer_onnx, "tokenizer_cleaned.onnx")
+
+# -----------------------------
+# 4. Merge
+# -----------------------------
+print("   4. Merging Models...")
+tok = onnx.load("tokenizer_cleaned.onnx")
+enc = onnx.load("encoder.onnx")
+
+# Align IR and Opset versions
+max_ir = max(enc.ir_version, tok.ir_version)
+enc.ir_version = tok.ir_version = max_ir
+
+fused = onnx.compose.merge_models(
+    tok,
+    enc,
     io_map=[
         ("input_ids", "input_ids"),
-        ("attention_mask", "attention_mask")
+        ("attention_mask", "attention_mask"),
+        ("token_type_ids", "token_type_ids") # <--- Make sure this is included!
     ]
 )
 
-onnx.save(combined_model, final_model_path)
-print(f"Success! Fused model saved to {final_model_path}")
+# -----------------------------
+# 5. Final Polish
+# -----------------------------
+# Run a quick check to ensure the graph is valid
+try:
+    onnx.checker.check_model(fused)
+    print("✅ Model logic is valid.")
+except Exception as e:
+    print(f"⚠️ Validation Warning: {e}")
+
+onnx.save(fused, output_path)
+print(f"✨ Clean Model Saved: {output_path}")

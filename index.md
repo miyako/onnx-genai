@@ -17,6 +17,8 @@ To use ONNX you must first convert a plain model to ONNX fornat.
 
 [`optimum-cli`](https://github.com/huggingface/optimum)
 
+https://huggingface.co/SamLowe/universal-sentence-encoder-large-5-onnx/tree/main
+
 #### Usage
 
 Instantiate `cs.onnx.onnx` in your *On Startup* database method:
