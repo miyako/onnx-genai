@@ -65,7 +65,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/miyako/onnx/bge-base-en-v1.5/model.onnx"
+            argument = "/Users/miyako/Desktop/model/bge-base-en-v1.5/onnx/model.onnx"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument

@@ -22,6 +22,7 @@
 #include "json/json.h"
 
 #include <onnxruntime_cxx_api.h>
+#include <onnxruntime_extensions.h>
 #include <cmath>
 #include <numeric>
 

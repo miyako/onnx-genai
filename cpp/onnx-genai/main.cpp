@@ -6,6 +6,98 @@
 //
 
 #include "onnx-genai.h"
+    
+static void run_inference_stream(
+                                 OgaModel* model,
+                                 OgaTokenizer* tokenizer,
+                                 const std::string& modelName,
+                                 const std::string& fingerprint,
+                                 long long created,
+                                 unsigned int max_tokens,
+                                 unsigned int top_k,
+                                 double top_p,
+                                 double temperature,
+                                 unsigned int n,
+                                 std::string prompt,
+                                 std::function<bool(const std::string&)> on_token_generated
+                                 ) {
+    
+    // Create Tokenizer Stream
+    auto tokenizer_stream = OgaTokenizerStream::Create(*tokenizer);
+    
+    size_t input_token_count = 0;
+    double max_length = 0;
+    
+    // Encode Prompt
+    auto input_sequences = OgaSequences::Create();
+    tokenizer->Encode(prompt.c_str(), *input_sequences);
+    input_token_count = input_sequences->SequenceCount(0);
+    max_length = (double)(input_token_count + max_tokens);
+    
+    // Set Generation Parameters
+    auto params = OgaGeneratorParams::Create(*model);
+    params->SetSearchOption("max_length", max_length);
+    params->SetSearchOption("top_k", top_k);
+    params->SetSearchOption("top_p", top_p);
+    params->SetSearchOption("temperature", temperature);
+    params->SetSearchOption("num_return_sequences", n);
+ 
+    // Create Generator (Generator is stateful and must be created per request)
+    auto generator = OgaGenerator::Create(*model, *params);
+    generator->AppendTokenSequences(*input_sequences);
+    
+    while (1) {
+        generator->GenerateNextToken();
+        
+        if(generator->IsDone()) break;
+        
+        auto seq_data = generator->GetSequenceData(0);
+        size_t seq_len = generator->GetSequenceCount(0);
+        int32_t new_token = seq_data[seq_len - 1];
+        const char* token_str = tokenizer_stream->Decode(new_token);
+        if (token_str) {
+            // 3. SEND TOKEN TO HTTP SERVER
+            if (!on_token_generated(token_str)) {
+                // If callback returns false, client disconnected
+                break;
+            }
+        }
+    }
+}
+
+static // Helper to create the specific JSON format OpenAI expects for streams
+std::string create_stream_chunk(const std::string& id, const std::string& model, const std::string& content, bool finish = false) {
+    Json::Value root;
+    root["id"] = id;
+    root["object"] = "chat.completion.chunk";
+    root["created"] = (Json::UInt64)std::time(nullptr);
+    root["model"] = model;
+
+    Json::Value choice;
+    choice["index"] = 0;
+    
+    Json::Value delta;
+    if (content.empty() && !finish) {
+        // First packet often contains role
+        delta["role"] = "assistant";
+    } else {
+        delta["content"] = content;
+    }
+    
+    choice["delta"] = delta;
+    
+    if (finish) {
+        choice["finish_reason"] = "stop";
+    } else {
+        choice["finish_reason"] = Json::nullValue;
+    }
+    
+    root["choices"].append(choice);
+
+    Json::StreamWriterBuilder writer;
+    writer["indentation"] = ""; // Minify
+    return "data: " + Json::writeString(writer, root) + "\n\n";
+}
 
 #ifdef WIN32
 static std::string wchar_to_utf8(const wchar_t* wstr) {
@@ -47,127 +139,27 @@ static std::string wchar_to_utf8(const wchar_t* wstr) {
 }
 #endif
 
-// Helper to calculate vector magnitude for normalization
-static float compute_magnitude(const std::vector<float>& vec) {
-    float sum = 0.0f;
-    for (float val : vec) sum += val * val;
-    return std::sqrt(sum);
+// Helper to calculate vector magnitude for L2 Normalization
+float calculate_magnitude(const std::vector<float>& vec) {
+    float sum_squares = 0.0f;
+    for (float val : vec) sum_squares += val * val;
+    return std::sqrt(sum_squares);
 }
 
-// Helper to normalize vector (L2 Norm)
-static void normalize_vector(std::vector<float>& vec) {
-    float mag = compute_magnitude(vec);
-    if (mag == 0) return;
-    for (float& val : vec) val /= mag;
-}
-
-class EmbeddingModel {
-private:
-    Ort::Env env;
-    Ort::Session session;
+static bool GetMaxSeqLen(Ort::Session* session, size_t *max_seq_len) {
     Ort::AllocatorWithDefaultOptions allocator;
-
-public:
-    EmbeddingModel(const std::string& model_path)
-        : env(ORT_LOGGING_LEVEL_WARNING, "EmbeddingModel"),
-          session(nullptr) {
-        
-        Ort::SessionOptions session_options;
-        session_options.SetIntraOpNumThreads(1);
-        session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-
-        // Load the model
-        session = Ort::Session(env, model_path.c_str(), session_options);
+    auto input_name = session->GetInputNameAllocated(0, allocator);
+    Ort::TypeInfo type_info = session->GetInputTypeInfo(0);
+    auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
+    auto shape = tensor_info.GetShape();
+    // shape = [batch, seq_len]
+    if (shape.size() != 2 || shape[1] <= 0) {
+        return false;
+    }else{
+        *max_seq_len = static_cast<size_t>(shape[1]);
     }
-
-    // Main function: Takes tokenized inputs, runs inference, performs mean pooling
-    std::vector<float> encode(const std::vector<int64_t>& input_ids,
-                              const std::vector<int64_t>& attention_mask) {
-        
-        // 1. Prepare Input Tensors
-        // Calculate shapes. Batch size is 1 for this example.
-        size_t seq_length = input_ids.size();
-        std::vector<int64_t> input_node_dims = {1, (int64_t)seq_length};
-
-        // Create Memory Info
-        auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-
-        // Create Tensors (Model usually expects Input IDs, Attention Mask, and Token Type IDs)
-        // Note: Some models (like DistilBERT) don't use token_type_ids.
-        // We create copies of data because Ort::Value takes non-const pointers usually.
-        std::vector<int64_t> input_ids_copy = input_ids;
-        std::vector<int64_t> attention_mask_copy = attention_mask;
-        std::vector<int64_t> token_type_ids(seq_length, 0); // Usually 0 for single sentence
-
-        std::vector<Ort::Value> input_tensors;
-        input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-            memory_info, input_ids_copy.data(), input_ids_copy.size(), input_node_dims.data(), input_node_dims.size()));
-        
-        input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-            memory_info, attention_mask_copy.data(), attention_mask_copy.size(), input_node_dims.data(), input_node_dims.size()));
-        
-        input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-            memory_info, token_type_ids.data(), token_type_ids.size(), input_node_dims.data(), input_node_dims.size()));
-
-        // 2. Setup Input/Output Names
-        // These names must match your ONNX model's graph input names.
-        // Standard BERT/MiniLM names: "input_ids", "attention_mask", "token_type_ids"
-        const char* input_names[] = {"input_ids", "attention_mask", "token_type_ids"};
-        const char* output_names[] = {"last_hidden_state"}; // Sometimes called "embeddings"
-
-        // 3. Run Inference
-        auto output_tensors = session.Run(
-            Ort::RunOptions{nullptr},
-            input_names,
-            input_tensors.data(),
-            3, // Number of inputs
-            output_names,
-            1  // Number of outputs
-        );
-
-        // 4. Extract Output Data
-        // Shape is typically [Batch_Size, Seq_Len, Hidden_Size] (e.g., 1, 12, 384)
-        float* floatarr = output_tensors[0].GetTensorMutableData<float>();
-        
-        auto type_info = output_tensors[0].GetTensorTypeAndShapeInfo();
-        auto shape = type_info.GetShape();
-        
-        int64_t dim_batch = shape[0]; // 1
-        int64_t dim_seq   = shape[1]; // Sequence Length
-        int64_t dim_hidden= shape[2]; // Hidden Size (e.g. 384 or 768)
-
-        // 5. Mean Pooling Logic
-        // Formula: Sum(TokenVector * AttentionMask) / Sum(AttentionMask)
-        // We accumulate the vectors only where attention_mask is 1
-        
-        std::vector<float> output_vector(dim_hidden, 0.0f);
-        int valid_token_count = 0;
-
-        for (int i = 0; i < dim_seq; ++i) {
-            // Only consider tokens that are NOT padding (mask == 1)
-            if (attention_mask[i] == 1) {
-                for (int j = 0; j < dim_hidden; ++j) {
-                    // Access the flat array: [batch=0][seq=i][hidden=j]
-                    float val = floatarr[i * dim_hidden + j];
-                    output_vector[j] += val;
-                }
-                valid_token_count++;
-            }
-        }
-
-        // Average the sum
-        if (valid_token_count > 0) {
-            for (float& val : output_vector) {
-                val /= static_cast<float>(valid_token_count);
-            }
-        }
-
-        // 6. Normalize (Optional, but recommended for cosine similarity)
-        normalize_vector(output_vector);
-
-        return output_vector;
-    }
-};
+    return true;
+}
 
 static void usage(void)
 {
@@ -241,6 +233,117 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
 #define _atoi atoi
 #define _atof atof
 #endif
+
+static std::vector<float> GenerateEmbeddings(
+    Ort::Session* session,
+    const std::vector<int64_t>& input_ids,
+    const std::vector<int64_t>& attention_mask,
+    int64_t batch_size,
+    int64_t seq_len
+) {
+    Ort::MemoryInfo memory_info =
+        Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+
+    std::vector<int64_t> shape = { batch_size, seq_len };
+
+    Ort::Value input_ids_tensor = Ort::Value::CreateTensor<int64_t>(
+        memory_info,
+        const_cast<int64_t*>(input_ids.data()),
+        input_ids.size(),
+        shape.data(),
+        shape.size()
+    );
+
+    Ort::Value attention_mask_tensor = Ort::Value::CreateTensor<int64_t>(
+        memory_info,
+        const_cast<int64_t*>(attention_mask.data()),
+        attention_mask.size(),
+        shape.data(),
+        shape.size()
+    );
+
+    const char* input_names[] = { "input_ids", "attention_mask" };
+    Ort::Value input_tensors[] = {
+        std::move(input_ids_tensor),
+        std::move(attention_mask_tensor)
+    };
+
+    const char* output_names[] = { "last_hidden_state" };
+
+    auto outputs = session->Run(
+        Ort::RunOptions{nullptr},
+        input_names,
+        input_tensors,
+        2,
+        output_names,
+        1
+    );
+
+    const float* data = outputs[0].GetTensorData<float>();
+    size_t len = outputs[0].GetTensorTypeAndShapeInfo().GetElementCount();
+
+    return std::vector<float>(data, data + len);
+}
+
+
+
+
+std::vector<float> GenerateEmbeddings_(Ort::Session* session,
+                                       const std::vector<std::string>& sentences) {
+    Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(
+        OrtAllocatorType::OrtArenaAllocator,
+        OrtMemType::OrtMemTypeDefault
+    );
+
+    // 1. Create Input Tensor (String)
+    // The fused model now accepts raw strings!
+//    const char* input_strings[] = { text.c_str() };
+    
+    
+//    int64_t input_shape[] = { 1 }; // [BatchSize]
+    // CHANGE: Use a 1D shape [batch_size], NOT [batch_size, 1]
+    std::vector<int64_t> input_shape = {(int64_t)sentences.size()};
+    
+    Ort::AllocatorWithDefaultOptions allocator;
+    // Create Tensor of type STRING
+    Ort::Value input_tensor = Ort::Value::CreateTensor(
+                                                       allocator,
+                                                       input_shape.data(),
+                                                       input_shape.size(),
+                                                       ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING
+                                                       );
+
+    // Fill tensor with string data
+//    input_tensor.FillStringTensor(input_strings, 1);
+
+    // Fill the tensor
+    std::vector<const char*> c_strs;
+    for (const auto& s : sentences) c_strs.push_back(s.c_str());
+    input_tensor.FillStringTensor(c_strs.data(), c_strs.size());
+
+    auto input_name_ptr = session->GetInputNameAllocated(0, allocator);
+    auto output_name_ptr = session->GetOutputNameAllocated(0, allocator);
+    
+    const char* input_names[] = { input_name_ptr.get() };
+    const char* output_names[] = { output_name_ptr.get() };
+
+    // 3. Run Inference
+    auto output_tensors = session->Run(
+        Ort::RunOptions{nullptr},
+        input_names,
+        &input_tensor,
+        1,
+        output_names,
+        1
+    );
+
+    // 4. Extract Float Embeddings
+    const auto& output_tensor = output_tensors.front();
+    const float* float_data = output_tensor.GetTensorData<float>();
+    size_t total_len = output_tensor.GetTensorTypeAndShapeInfo().GetElementCount();
+
+    return std::vector<float>(float_data, float_data + total_len);
+}
 
 static long long get_created_timestamp() {
     // std::time(nullptr) returns the current time as a time_t (seconds since epoch)
@@ -323,12 +426,13 @@ static std::string generate_openai_style_id() {
 
 static void parse_request(
                           const std::string &json,
-              std::string &prompt,
-              unsigned int *max_tokens,
-              unsigned int *top_k,
-              double *top_p,
-              double *temperature,
-              unsigned int *n) {
+                          std::string &prompt,
+                          unsigned int *max_tokens,
+                          unsigned int *top_k,
+                          double *top_p,
+                          double *temperature,
+                          unsigned int *n,
+                          bool *is_stream) {
     
     Json::Value root;
     Json::CharReaderBuilder builder;
@@ -389,8 +493,6 @@ static void parse_request(
             {
                 *max_tokens = max_tokens_node.asInt();
             }
-            
-            
             /*
              only these are set by AI-Kit
              */
@@ -408,6 +510,11 @@ static void parse_request(
             if(max_tokens_node.isNumeric())
             {
                 *max_tokens = max_tokens_node.asInt();
+            }
+            Json::Value stream_node = root["stream"];
+            if(stream_node.isBool())
+            {
+                *is_stream = stream_node.asBool();
             }
         }
     }
@@ -546,26 +653,34 @@ static std::string run_embedding(
     return Json::writeString(writer, rootNode);
 }
 
-static std::string run_inference(
-    OgaModel* model,
-    OgaTokenizer* tokenizer,
-    const std::string& modelName,
-    const std::string& fingerprint,
-    const std::string& request_body
-) {
-    // Default parameters
-    unsigned int max_tokens = 2048;
-    unsigned int top_k = 50;
-    double top_p = 0.9;
-    double temperature = 0.7;
-    unsigned int n = 1;
+static void before_run_inference(
+                                 const std::string& request_body,
+                                 std::string &prompt,
+                                 unsigned int *max_tokens,
+                                 unsigned int *top_k,
+                                 double *top_p,
+                                 double *temperature,
+                                 unsigned int *n,
+                                 bool *is_stream) {
     
-    std::string prompt;
-    
-    // Parse the input JSON
-    // Note: If parse_request fails/throws, it should be caught by the caller
-    parse_request(request_body, prompt, &max_tokens, &top_k, &top_p, &temperature, &n);
+    parse_request(request_body, prompt, max_tokens, top_k, top_p, temperature, n, is_stream);
+}
 
+static std::string run_inference(
+                                 OgaModel* model,
+                                 OgaTokenizer* tokenizer,
+                                 const std::string& modelName,
+                                 const std::string& fingerprint,
+                                 long long created,
+                                 unsigned int max_tokens,
+                                 unsigned int top_k,
+                                 double top_p,
+                                 double temperature,
+                                 unsigned int n,
+                                 bool is_stream,
+                                 std::string prompt
+                                 ) {
+ 
     std::string content;
     Json::Value rootNode(Json::objectValue);
     size_t completion_tokens = 0;
@@ -607,8 +722,8 @@ static std::string run_inference(
             const char* token_str = tokenizer_stream->Decode(new_token);
             if (token_str) {
                 content += token_str;
+                completion_tokens++;
             }
-            completion_tokens++;
         }
         
         Json::Int total_tokens = (Json::Int)(input_token_count + completion_tokens);
@@ -619,7 +734,7 @@ static std::string run_inference(
         // Build Response JSON
         rootNode["id"] = generate_openai_style_id();
         rootNode["object"] = "chat.completion";
-        rootNode["created"] = get_created_timestamp();
+        rootNode["created"] = created;
         rootNode["model"] = modelName;
         rootNode["system_fingerprint"] = fingerprint;
         
@@ -730,77 +845,250 @@ int main(int argc, OPTARG_T argv[]) {
                 break;
         }
     }
-    
-    if (model_path.length() == 0) {
-        usage();
-        return 1;
-    }
-
-    // 1.a Initialize Model and Tokenizer (Load once)
-    std::cerr << "[Model] Loading from " << model_path << std::endl;
-    std::string fingerprint = get_system_fingerprint(model_path, "directml");
-    std::string modelName = get_model_name(model_path);
+        
+    std::string fingerprint;
+    long long model_created = 0;
+    std::string modelName;
     std::unique_ptr<OgaModel> model;
     std::unique_ptr<OgaTokenizer> tokenizer;
-    try {
-        model = OgaModel::Create(model_path.c_str());
-        tokenizer = OgaTokenizer::Create(*model);
-    } catch (const std::exception& e) {
-        std::cerr << "Failed to load model: " << e.what() << std::endl;
-        return 1;
-    }
-    std::unique_ptr<EmbeddingModel> embedding_model;
-    if (embedding_model_path.length() != 0) {
+
+    std::string embedding_fingerprint;
+    long long embedding_model_created = 0;
+    std::string embedding_modelName;
+    std::unique_ptr<Ort::Session> embeddings_session;
+    size_t max_seq_len = 384;
+    
+    if (model_path.length() != 0) {
+        // 1.a Initialize Model and Tokenizer (Load once)
+        std::cerr << "[Chat] Loading from " << model_path << std::endl;
+        fingerprint = get_system_fingerprint(model_path, "directml");
+        modelName = get_model_name(model_path);
         try {
-            embedding_model = std::make_unique<EmbeddingModel>(embedding_model_path);
+            model = OgaModel::Create(model_path.c_str());
+            tokenizer = OgaTokenizer::Create(*model);
+            model_created = get_created_timestamp();
         } catch (const std::exception& e) {
-            std::cerr << "Failed to load embedding model: " << e.what() << std::endl;
+            std::cerr << "Failed to load model: " << e.what() << std::endl;
             return 1;
         }
     }
     
-    /*
+    if (embedding_model_path.length() != 0) {
+        // 1.b Initialize Embedding and Session (Load once)
+        std::cerr << "[Embedding] Loading from " << embedding_model_path << std::endl;
+        embedding_fingerprint = get_system_fingerprint(embedding_model_path, "directml");
+        Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "Embedding");
+
         try {
-            std::vector<int64_t> input_ids = {101, 7592, 2088, 102, 0, 0};
-            std::vector<int64_t> attention_mask = {1, 1, 1, 1, 0, 0};
-            std::vector<float> embedding = embedding_model->encode(input_ids, attention_mask);
-            std::cout << "Embedding dimension: " << embedding.size() << std::endl;
-            std::cout << "First 5 values: ";
-            for(size_t i=0; i<5 && i<embedding.size(); i++) {
-                std::cout << embedding[i] << " ";
-            }
-            std::cout << std::endl;
+            embedding_modelName = get_model_name(embedding_model_path);
+            Ort::SessionOptions session_options;
+            session_options.SetIntraOpNumThreads(1);
+//            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
+
+            Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
+            embeddings_session = std::make_unique<Ort::Session>(env, embedding_model_path.c_str(), session_options);
+            GetMaxSeqLen(embeddings_session.get(), &max_seq_len);
+            embedding_model_created = get_created_timestamp();
         } catch (const std::exception& e) {
-            std::cerr << "Failed to load embedding model: " << e.what() << std::endl;
+            std::cerr << "Failed to load model: " << e.what() << std::endl;
             return 1;
         }
-    */
+    }
+
+    size_t num_input_nodes = embeddings_session->GetInputCount();
+    size_t num_output_nodes = embeddings_session->GetOutputCount();
+    
+    std::vector<std::string> input_node_names;
+    std::vector<std::string> output_node_names;
+    
+    Ort::AllocatorWithDefaultOptions allocator;
+    std::vector<int64_t> input_shape = {1}; // Batch size 1
+    
+    for (size_t i = 0; i < num_input_nodes; i++) {
+        auto input_name_ptr = embeddings_session->GetInputNameAllocated(i, allocator);
+        input_node_names.push_back(input_name_ptr.get());
+//        std::cout << "  [" << i << "] Name: " << input_node_names.back() << std::endl;
+    }
+    
+    for (size_t i = 0; i < num_output_nodes; i++) {
+        auto output_name_ptr = embeddings_session->GetOutputNameAllocated(i, allocator);
+        output_node_names.push_back(output_name_ptr.get());
+//        std::cout << "  [" << i << "] Name: " << output_node_names.back() << std::endl;
+    }
+    
+    // 1. Convert std::string names to const char* array
+    std::vector<const char*> input_names_c_array;
+    for (const auto& name : input_node_names) {
+        input_names_c_array.push_back(name.c_str());
+    }
+
+    std::vector<const char*> output_names_c_array;
+    for (const auto& name : output_node_names) {
+        output_names_c_array.push_back(name.c_str());
+    }
+
+    try {
+        if(false) {
+            const char* input_text_arr[] = { "This is the text to embed." };
+            
+            // Convert string to Tensor
+            Ort::Value input_tensor = Ort::Value::CreateTensor(
+                                                               allocator,
+                                                               input_shape.data(), input_shape.size(),
+                                                               ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING
+                                                               );
+            
+            input_tensor.FillStringTensor(input_text_arr, 1);
+            
+            // 5. Run Inference
+            auto outputs = embeddings_session->Run(
+                Ort::RunOptions{nullptr},
+                input_names_c_array.data(),
+                &input_tensor,
+                num_input_nodes,
+                output_names_c_array.data(),
+                num_output_nodes
+            );
+            
+            // Get the actual shape returned by the model
+            auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
+            auto shape = output_info.GetShape();
+            int64_t seq_len = shape[1];      // <--- DYNAMIC: e.g., 5, 12, or 50
+            int64_t hidden_size = shape[2];  // e.g., 768
+
+            float* float_data = outputs[0].GetTensorMutableData<float>();
+
+            std::cout << "Dynamic Sequence Length: " << seq_len << std::endl;
+
+            // Compute Mean Pooling
+            std::vector<float> embedding(hidden_size, 0.0f);
+
+            for (int i = 0; i < seq_len; i++) {
+                for (int j = 0; j < hidden_size; j++) {
+                    // Safe access using dynamic seq_len
+                    embedding[j] += float_data[i * hidden_size + j];
+                }
+            }
+
+            // Average
+            if (seq_len > 0) {
+                for (float& val : embedding) val /= static_cast<float>(seq_len);
+            }
+            
+            // 3. L2 Normalization (Optional, but recommended for cosine similarity)
+            float sum_squares = 0.0f;
+            for (float val : embedding) sum_squares += val * val;
+            float magnitude = std::sqrt(sum_squares);
+
+            if (magnitude > 1e-9) {
+                for (float& val : embedding) val /= magnitude;
+            }
+
+            // 4. Print Result
+            std::cout << "Final Embedding: [ ";
+            for(int i=0; i<5; ++i) std::cout << embedding[i] << " ";
+            std::cout << "... ]" << std::endl;
+            
+        }
+       } catch (const std::exception& e) {
+           std::cerr << "Error: " << e.what() << std::endl;
+       }
 
     // ---------------------------------------------------------
     // SERVER MODE
     // ---------------------------------------------------------
     if (server_mode) {
         httplib::Server svr;
-
+        
         // Route: /v1/chat/completions
         svr.Post("/v1/chat/completions", [&](const httplib::Request& req, httplib::Response& res) {
             
             std::cout << "[Server] /v1/chat/completions request received." << std::endl;
 
             try {
+
+                std::string request_body;
+                std::string prompt;
+                unsigned int max_tokens = 2048;
+                unsigned int top_k = 50;
+                double top_p = 0.9;
+                double temperature = 0.7;
+                unsigned int n = 1;
+                bool is_stream = false;
                 
-                // Run Inference
-                std::string response_json = run_inference(
-                    model.get(),
-                    tokenizer.get(),
-                    modelName,
-                    fingerprint,
-                    req.body
-                );
-
-                res.set_content(response_json, "application/json");
-                res.status = 200;
-
+                before_run_inference(req.body,
+                                     prompt,
+                                     &max_tokens,
+                                     &top_k,
+                                     &top_p,
+                                     &temperature,
+                                     &n,
+                                     &is_stream);
+                
+                if(is_stream) {
+                    std::string req_id = generate_openai_style_id();
+                    
+                    // Corrected Lambda structure
+                    res.set_chunked_content_provider("text/event-stream",
+                        [&, req_id, prompt, max_tokens, top_k, top_p, temperature, n ](size_t offset, httplib::DataSink &sink) {
+                        // 1. Send initial role packet (optional but good practice)
+                        std::string role_chunk = create_stream_chunk(req_id, modelName, "");
+                        sink.write(role_chunk.data(), role_chunk.size());
+                        // 2. Define a callback to handle tokens as they are generated
+                        auto token_callback = [&](const std::string& token) {
+                            std::string chunk = create_stream_chunk(req_id, modelName, token);
+                            sink.write(chunk.data(), chunk.size());
+                            return true; // Return false to stop inference if needed
+                        };
+                        // 3. Run Inference (You must implement run_inference_stream)
+                        // Note: This function must block here until finished, calling token_callback repeatedly
+                        run_inference_stream(
+                                             model.get(),
+                                             tokenizer.get(),
+                                             modelName,
+                                             fingerprint,
+                                             model_created,
+                                             max_tokens,
+                                             top_k,
+                                             top_p,
+                                             temperature,
+                                             n,
+                                             prompt,
+                                             token_callback
+                                             );
+                        // 4. Send finish reason
+                        std::string finish_chunk = create_stream_chunk(req_id, modelName, "", true);
+                        sink.write(finish_chunk.data(), finish_chunk.size());
+                        
+                        // 5. Send [DONE] to close the stream for the client
+                        std::string done = "data: [DONE]\n\n";
+                        sink.write(done.data(), done.size());
+                        
+                        sink.done(); // Close the connection
+                        return true;
+                    }
+                    );
+                    
+                }else{
+                    // Run Inference
+                    std::string response_json = run_inference(
+                                                              model.get(),
+                                                              tokenizer.get(),
+                                                              modelName,
+                                                              fingerprint,
+                                                              model_created,
+                                                              max_tokens,
+                                                              top_k,
+                                                              top_p,
+                                                              temperature,
+                                                              n,
+                                                              is_stream,
+                                                              prompt
+                                                              );
+                    res.set_content(response_json, "application/json");
+                    res.status = 200;
+                }
             } catch (const std::exception& e) {
                 // Build Error JSON
                 Json::Value rootNode(Json::objectValue);
@@ -825,18 +1113,30 @@ int main(int argc, OPTARG_T argv[]) {
         svr.Get("/v1/models", [&](const httplib::Request& req, httplib::Response& res) {
             std::cout << "[Server] /v1/models request received." << std::endl;
             
-            // 1. Create the model object
-            Json::Value modelCard(Json::objectValue);
-            modelCard["id"] = modelName;
-            modelCard["object"] = "model";
-            modelCard["created"] = get_created_timestamp();
-            modelCard["owned_by"] = "system";
-            
             // 2. Create the list wrapper
             Json::Value root(Json::objectValue);
             root["object"] = "list";
             root["data"] = Json::Value(Json::arrayValue);
-            root["data"].append(modelCard);
+            
+
+            
+            // 1. Create the model object
+            if(model_created != 0) {
+                Json::Value modelCard(Json::objectValue);
+                modelCard["id"] = modelName;
+                modelCard["object"] = "model";
+                modelCard["created"] = model_created;
+                modelCard["owned_by"] = "system";
+                root["data"].append(modelCard);
+            }
+            if(embedding_model_created != 0) {
+                Json::Value modelCard(Json::objectValue);
+                modelCard["id"] = embedding_modelName;
+                modelCard["object"] = "model";
+                modelCard["created"] = embedding_model_created;
+                modelCard["owned_by"] = "system";
+                root["data"].append(modelCard);
+            }
             
             // 3. Serialize
             Json::StreamWriterBuilder writer;
@@ -916,13 +1216,40 @@ int main(int argc, OPTARG_T argv[]) {
         std::string response;
 
         try {
+            
+            std::string request_body;
+            std::string prompt;
+            unsigned int max_tokens = 2048;
+            unsigned int top_k = 50;
+            double top_p = 0.9;
+            double temperature = 0.7;
+            unsigned int n = 1;
+            bool is_stream = false;
+            
+            before_run_inference(request_body,
+                                 prompt,
+                                 &max_tokens,
+                                 &top_k,
+                                 &top_p,
+                                 &temperature,
+                                 &n,
+                                 &is_stream);
+            
             response = run_inference(
-                model.get(),
-                tokenizer.get(),
-                modelName,
-                fingerprint,
-                request_str
-            );
+                                     model.get(),
+                                     tokenizer.get(),
+                                     modelName,
+                                     fingerprint,
+                                     model_created,
+                                     max_tokens,
+                                     top_k,
+                                     top_p,
+                                     temperature,
+                                     n,
+                                     is_stream,
+                                     prompt
+                                     );
+
         } catch (const std::exception& e) {
             // CLI Error Format
             Json::Value rootNode(Json::objectValue);
