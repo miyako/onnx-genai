@@ -15,6 +15,8 @@ layout: default
 
 To use ONNX you must first convert a plain model to ONNX fornat.
 
+[`optimum-cli`](https://github.com/huggingface/optimum)
+
 #### Usage
 
 Instantiate `cs.onnx.onnx` in your *On Startup* database method:
@@ -101,7 +103,21 @@ hf download microsoft/Phi-3.5-mini-instruct-onnx \
 
 #### Embeddings Model
 
-The model needs to be customised to accept strings not integers.
+Embeddings model need to be converted to ONNX too:
+
+```
+pip install "optimum[onnx]"
+```
+
+
+
+
+
+```
+pip install "optimum[exporters]"
+```
+
+
 
 > Use conda to avoid "python too new" issue with `python3 -m venv`.
 

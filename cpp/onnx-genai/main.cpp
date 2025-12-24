@@ -933,14 +933,48 @@ int main(int argc, OPTARG_T argv[]) {
             const char* input_text_arr[] = { "This is the text to embed." };
             
             // Convert string to Tensor
+            /*
             Ort::Value input_tensor = Ort::Value::CreateTensor(
                                                                allocator,
                                                                input_shape.data(), input_shape.size(),
                                                                ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING
                                                                );
+            */
+            
+            const char* text_input = "Hello world";
+            std::vector<const char*> input_strings = { text_input }; // Vector of pointers
+            size_t batch_size = 1;
+            int64_t input_node_dims[] = { (int64_t)batch_size };
+            
+            
+            auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+            
+            
+            Ort::Value input_tensor = Ort::Value::CreateTensor(
+                memory_info,
+                input_strings.data(),   // Pointer to the array of strings (char**)
+                batch_size,             // Number of strings
+                input_node_dims,        // Shape definition
+                1                       // Rank (Number of dimensions, must be 1)
+                                                               ,ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING
+            );
             
             input_tensor.FillStringTensor(input_text_arr, 1);
             
+            // 4. Run Inference
+            const char* input_names[] = {"input_text"}; // or whatever your model calls it (check sess.get_inputs()[0])
+            const char* output_names[] = {"last_hidden_state"};
+            
+            auto outputs = embeddings_session->Run(
+                Ort::RunOptions{nullptr},
+                input_names,
+                &input_tensor,
+                1,
+                output_names,
+                1
+            );
+            
+            /*
             // 5. Run Inference
             auto outputs = embeddings_session->Run(
                 Ort::RunOptions{nullptr},
@@ -950,7 +984,8 @@ int main(int argc, OPTARG_T argv[]) {
                 output_names_c_array.data(),
                 num_output_nodes
             );
-            
+            */
+             
             // Get the actual shape returned by the model
             auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
             auto shape = output_info.GetShape();

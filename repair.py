@@ -1,99 +1,135 @@
 import sys
+import torch
 import onnx
+import onnx.compose
+from transformers import AutoTokenizer, AutoModel
+from onnxruntime_extensions import gen_processing_models
 
-# -------------------------------------------------------------
-# Configuration: The Kill List
-# -------------------------------------------------------------
-# We add both nodes to ensure they are both gone.
-TARGET_NODES = ["node_slice_1", "node_slice_2"]
+# -----------------------------
+# 1. Setup
+# -----------------------------
+if len(sys.argv) < 3:
+    print("Usage: python fix_clean_sweep.py <model_id> <output.onnx>")
+    sys.exit(1)
 
-def bypass_node_recursive(graph, target_name):
-    """
-    Recursively searches for a node by name in the graph and all subgraphs.
-    If found, removes the node and rewires its input to its output consumers.
-    Returns True if the node was found and removed.
-    """
-    node_found = False
-    nodes_to_remove = []
-    
-    # Map to track rewiring: Old_Output -> New_Input
+model_id = sys.argv[1]
+output_path = sys.argv[2]
+
+print(f"🚀 Starting Clean Sweep Repair for: {model_id}")
+
+# -----------------------------
+# 2. Export Components
+# -----------------------------
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+model = AutoModel.from_pretrained(model_id)
+model.eval()
+
+# Dummy input
+dummy = tokenizer(
+    ["test"],
+    return_tensors="pt",
+    padding=False,
+    truncation=True,
+    return_token_type_ids=False
+)
+
+print("   1. Exporting Encoder (Opset 17)...")
+dynamic_axes = {
+    "input_ids":       {0: "batch", 1: "seq_len"},
+    "attention_mask":  {0: "batch", 1: "seq_len"},
+    "last_hidden_state": {0: "batch", 1: "seq_len"}
+}
+
+# Export Encoder (without token_type_ids in signature)
+torch.onnx.export(
+    model,
+    (dummy["input_ids"], dummy["attention_mask"]),
+    "encoder.onnx",
+    input_names=["input_ids", "attention_mask"], # Note: token_type_ids is NOT here
+    output_names=["last_hidden_state"],
+    dynamic_axes=dynamic_axes,
+    opset_version=17,
+    do_constant_folding=True
+)
+
+print("   2. Exporting Tokenizer (Opset 18)...")
+tokenizer_onnx = gen_processing_models(
+    tokenizer,
+    pre_kwargs={
+        "padding": False,
+        "truncation": False,
+        "return_tensors": "np",
+        "return_token_type_ids": False
+    },
+    opset_version=18
+)[0]
+onnx.save(tokenizer_onnx, "tokenizer.onnx")
+
+# -----------------------------
+# 3. Merge
+# -----------------------------
+print("   3. Merging...")
+tok = onnx.load("tokenizer.onnx")
+enc = onnx.load("encoder.onnx")
+
+max_ir = max(enc.ir_version, tok.ir_version)
+enc.ir_version = tok.ir_version = max_ir
+for op in enc.opset_import: op.version = 18
+for op in tok.opset_import: op.version = 18
+
+fused = onnx.compose.merge_models(
+    tok,
+    enc,
+    io_map=[("input_ids", "input_ids"), ("attention_mask", "attention_mask")]
+)
+
+# -----------------------------
+# 4. SURGICAL REMOVAL (The Kill List)
+# -----------------------------
+# We delete the Slices (crash 1) AND the Expands (crash 2)
+# Since token_type_ids aren't used, deleting Expand is safe.
+NODES_TO_KILL = ["node_slice_1", "node_slice_2", "node_expand", "node_expand_1"]
+
+def remove_dead_nodes(node_list, context="Graph"):
+    nodes_to_keep = []
     replacement_map = {}
 
-    # 1. Iterate over nodes
-    for node in graph.node:
-        # A. Recurse into Subgraphs (If, Loop, Scan)
+    for node in node_list:
+        # A. Recurse into Subgraphs
         for attr in node.attribute:
-            if attr.type == 5: # GRAPH
-                if bypass_node_recursive(attr.g, target_name):
-                    node_found = True
-            elif attr.type == 9: # GRAPHS
-                for g in attr.graphs:
-                    if bypass_node_recursive(g, target_name):
-                        node_found = True
+            if attr.type == 5: remove_dead_nodes(attr.g.node, f"{context}->Sub")
+            elif attr.type == 9:
+                for g in attr.graphs: remove_dead_nodes(g.node, f"{context}->Sub")
 
-        # B. Check if this is the target node
-        if node.name == target_name:
-            print(f"🔪 FOUND TARGET in graph '{graph.name}': '{node.name}' ({node.op_type})")
+        # B. Check Kill List
+        if node.name in NODES_TO_KILL:
+            print(f"      [{context}] 🔪 Deleting '{node.name}' ({node.op_type})")
             
-            # Identify Input (Data) and Output (Data)
-            # Slice inputs: data(0), starts(1), ends(2)...
+            # Map output to input (bypass) just in case something downstream checks for existence
             if len(node.input) > 0 and len(node.output) > 0:
-                source_data = node.input[0]
-                output_data = node.output[0]
-                
-                print(f"   -> Wiring '{output_data}' to come directly from '{source_data}'")
-                replacement_map[output_data] = source_data
-                
-                nodes_to_remove.append(node)
-                node_found = True
-            else:
-                print(f"   ⚠️ Skipping '{node.name}' - Strange Input/Output count.")
+                replacement_map[node.output[0]] = node.input[0]
+            continue
 
-    # 2. Apply Rewiring
+        nodes_to_keep.append(node)
+
+    # C. Apply Rewiring
     if replacement_map:
-        # A. Update Graph Outputs
-        for output in graph.output:
-            if output.name in replacement_map:
-                print(f"   -> Redirecting Graph Output '{output.name}'")
-                output.name = replacement_map[output.name]
-
-        # B. Update Node Inputs (Consumers)
-        for node in graph.node:
+        for node in nodes_to_keep:
             for i, inp in enumerate(node.input):
                 if inp in replacement_map:
                     node.input[i] = replacement_map[inp]
-    
-    # 3. Remove the node
-    for n in nodes_to_remove:
-        graph.node.remove(n)
-        
-    return node_found
 
-# -------------------------------------------------------------
-# Main Execution
-# -------------------------------------------------------------
-if len(sys.argv) < 2:
-    print("Usage: python fix_all_slices.py <path_to_model.onnx>")
-    sys.exit(1)
+    # D. Commit changes
+    del node_list[:]
+    node_list.extend(nodes_to_keep)
 
-model_path = sys.argv[1]
-print(f"Opening: {model_path}")
-model = onnx.load(model_path)
+print("   4. removing broken/unused nodes...")
+remove_dead_nodes(fused.graph.node, "MainGraph")
 
-print(f"Scanning for targets: {TARGET_NODES}...")
+# Also scan functions
+if hasattr(fused, 'functions'):
+    for func in fused.functions:
+        remove_dead_nodes(func.node, f"Func:{func.name}")
 
-any_fixed = False
-for target in TARGET_NODES:
-    print(f"--- Hunting '{target}' ---")
-    if bypass_node_recursive(model.graph, target):
-        print(f"✅ Removed '{target}'")
-        any_fixed = True
-    else:
-        print(f"ℹ️  '{target}' not found (already removed?)")
-
-if any_fixed:
-    onnx.save(model, model_path)
-    print(f"💾 Saved fixed model to: {model_path}")
-    print("🚀 Try running your C++ code now!")
-else:
-    print("⚠️ No nodes were removed. Check if the model is already fixed.")
+onnx.save(fused, output_path)
+print(f"✅ Clean Model Saved: {output_path}")
