@@ -101,5 +101,10 @@ static void run_inference_stream(
                                  std::string prompt,
                                  std::function<bool(const std::string&)> on_token_generated
                                  );
-
+static std::string create_stream_chunk(int n,
+                                       const std::string& id,
+                                       const std::string& model,
+                                       const std::string& content,
+                                       const std::string& fingerprint,
+                                       bool finish = false);
 #endif  /* __ONNX_GENAI_H__ */

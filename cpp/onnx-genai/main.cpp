@@ -7,98 +7,6 @@
 
 #include "onnx-genai.h"
 
-static void run_inference_stream(
-                                 OgaModel* model,
-                                 OgaTokenizer* tokenizer,
-                                 const std::string& modelName,
-                                 const std::string& fingerprint,
-                                 long long created,
-                                 unsigned int max_tokens,
-                                 unsigned int top_k,
-                                 double top_p,
-                                 double temperature,
-                                 unsigned int n,
-                                 std::string prompt,
-                                 std::function<bool(const std::string&)> on_token_generated
-                                 ) {
-    
-    // Create Tokenizer Stream
-    auto tokenizer_stream = OgaTokenizerStream::Create(*tokenizer);
-    
-    size_t input_token_count = 0;
-    double max_length = 0;
-    
-    // Encode Prompt
-    auto input_sequences = OgaSequences::Create();
-    tokenizer->Encode(prompt.c_str(), *input_sequences);
-    input_token_count = input_sequences->SequenceCount(0);
-    max_length = (double)(input_token_count + max_tokens);
-    
-    // Set Generation Parameters
-    auto params = OgaGeneratorParams::Create(*model);
-    params->SetSearchOption("max_length", max_length);
-    params->SetSearchOption("top_k", top_k);
-    params->SetSearchOption("top_p", top_p);
-    params->SetSearchOption("temperature", temperature);
-    params->SetSearchOption("num_return_sequences", n);
-    
-    // Create Generator (Generator is stateful and must be created per request)
-    auto generator = OgaGenerator::Create(*model, *params);
-    generator->AppendTokenSequences(*input_sequences);
-    
-    while (1) {
-        generator->GenerateNextToken();
-        
-        if(generator->IsDone()) break;
-        
-        auto seq_data = generator->GetSequenceData(0);
-        size_t seq_len = generator->GetSequenceCount(0);
-        int32_t new_token = seq_data[seq_len - 1];
-        const char* token_str = tokenizer_stream->Decode(new_token);
-        if (token_str) {
-            // 3. SEND TOKEN TO HTTP SERVER
-            if (!on_token_generated(token_str)) {
-                // If callback returns false, client disconnected
-                break;
-            }
-        }
-    }
-}
-
-static // Helper to create the specific JSON format OpenAI expects for streams
-std::string create_stream_chunk(const std::string& id, const std::string& model, const std::string& content, bool finish = false) {
-    Json::Value root;
-    root["id"] = id;
-    root["object"] = "chat.completion.chunk";
-    root["created"] = (Json::UInt64)std::time(nullptr);
-    root["model"] = model;
-    
-    Json::Value choice;
-    choice["index"] = 0;
-    
-    Json::Value delta;
-    if (content.empty() && !finish) {
-        // First packet often contains role
-        delta["role"] = "assistant";
-    } else {
-        delta["content"] = content;
-    }
-    
-    choice["delta"] = delta;
-    
-    if (finish) {
-        choice["finish_reason"] = "stop";
-    } else {
-        choice["finish_reason"] = Json::nullValue;
-    }
-    
-    root["choices"].append(choice);
-    
-    Json::StreamWriterBuilder writer;
-    writer["indentation"] = ""; // Minify
-    return "data: " + Json::writeString(writer, root) + "\n\n";
-}
-
 #ifdef WIN32
 static std::string wchar_to_utf8(const wchar_t* wstr) {
     if (!wstr) return std::string();
@@ -695,6 +603,120 @@ static std::string run_inference(
     return Json::writeString(writer, rootNode);
 }
 
+/*
+ The chat completion chunk object
+ https://platform.openai.com/docs/api-reference/chat-streaming/streaming
+ */
+static std::string create_stream_chunk(int n,
+                                       const std::string& id,
+                                       const std::string& model,
+                                       const std::string& content,
+                                       const std::string& fingerprint,
+                                       bool finish) {
+    Json::Value root;
+    root["id"] = id;
+    root["object"] = "chat.completion.chunk";
+    root["created"] = (Json::UInt64)std::time(nullptr);
+    root["model"] = model;
+    root["system_fingerprint"] = fingerprint;//Deprecated
+    
+    Json::Value choice;
+    choice["index"] = n;
+    
+    Json::Value delta;
+    if (content.empty() && !finish) {
+        delta["role"] = "assistant";
+    } else {
+        delta["content"] = content;
+    }
+    delta["logprobs"] = Json::nullValue;
+    choice["delta"] = delta;
+    
+    if (finish) {
+        choice["finish_reason"] = "stop";
+    } else {
+        choice["finish_reason"] = Json::nullValue;
+    }
+    root["choices"].append(choice);
+    
+    Json::StreamWriterBuilder writer;
+    writer["indentation"] = "";
+    return "data: " + Json::writeString(writer, root) + "\n\n";
+}
+
+static void run_inference_stream(
+                                 OgaModel* model,
+                                 OgaTokenizer* tokenizer,
+                                 const std::string& modelName,
+                                 const std::string& fingerprint,
+                                 long long created,
+                                 unsigned int max_tokens,
+                                 unsigned int top_k,
+                                 double top_p,
+                                 double temperature,
+                                 unsigned int n,
+                                 std::string prompt,
+                                 std::function<bool(const std::string&, unsigned int)> on_token_generated
+                                 ) {
+    
+    // Create Tokenizer Stream
+    auto tokenizer_stream = OgaTokenizerStream::Create(*tokenizer);
+    
+    size_t input_token_count = 0;
+    double max_length = 0;
+    
+    // Encode Prompt
+    auto input_sequences = OgaSequences::Create();
+    tokenizer->Encode(prompt.c_str(), *input_sequences);
+    input_token_count = input_sequences->SequenceCount(0);
+    max_length = (double)(input_token_count + max_tokens);
+    
+    // Set Generation Parameters
+    auto params = OgaGeneratorParams::Create(*model);
+    params->SetSearchOption("max_length", max_length);
+    params->SetSearchOption("top_k", top_k);
+    params->SetSearchOption("top_p", top_p);
+    params->SetSearchOption("temperature", temperature);
+    params->SetSearchOption("num_return_sequences", n);
+    
+    // Create Generator
+    // Generator is stateful; we need 1 per request.
+    auto generator = OgaGenerator::Create(*model, *params);
+    generator->AppendTokenSequences(*input_sequences);
+    
+    // Create a vector of streams
+    // Decoding is stateful; we need 1 decoder per sequence.
+    std::vector<std::string> generated_responses(n);
+    std::vector<std::unique_ptr<OgaTokenizerStream>> streams;
+    for (int i = 0; i < n; i++) {
+        streams.push_back(OgaTokenizerStream::Create(*tokenizer));
+    }
+    
+    // Start Generating
+    while (1) {
+        generator->GenerateNextToken();
+        if(generator->IsDone()) break;
+        // Iterate through each sequence (0 to n-1) to collect results
+        for (int i = 0; i < n; i++) {
+            // Get the full sequence data for the i-th choice
+            const auto* seq_data = generator->GetSequenceData(i);
+            size_t seq_len = generator->GetSequenceCount(i);
+            // Safety check to ensure we have data
+            if (seq_len == 0) continue;
+            // Get the most recently generated token
+            int32_t new_token = seq_data[seq_len - 1];
+            // Decode using the specific stream for this sequence
+            const char* token_str = streams[i]->Decode(new_token);
+            if (token_str) {
+                if (!on_token_generated(token_str, i)) {
+                    // If callback returns false, client disconnected
+                    break;
+                }
+            }
+        }
+    }
+}
+
 #pragma mark -
 
 int main(int argc, OPTARG_T argv[]) {
@@ -1030,16 +1052,20 @@ int main(int argc, OPTARG_T argv[]) {
                     // Corrected Lambda structure
                     res.set_chunked_content_provider("text/event-stream",
                                                      [&, req_id, prompt, max_tokens, top_k, top_p, temperature, n ](size_t offset, httplib::DataSink &sink) {
-                        // 1. Send initial role packet (optional but good practice)
-                        std::string role_chunk = create_stream_chunk(req_id, modelName, "");
-                        sink.write(role_chunk.data(), role_chunk.size());
-                        // 2. Define a callback to handle tokens as they are generated
-                        auto token_callback = [&](const std::string& token) {
-                            std::string chunk = create_stream_chunk(req_id, modelName, token);
+                        // Send initial role packet (optional but good practice)
+                        for (int i = 0; i < n; i++) {
+                            std::string role_chunk = create_stream_chunk(i, req_id, modelName, fingerprint, "");
+                            sink.write(role_chunk.data(), role_chunk.size());
+                        }
+                        
+                        // Define a callback to handle tokens as they are generated
+                        auto token_callback = [&](const std::string& token, unsigned int n) {
+                            std::string chunk = create_stream_chunk(n, req_id, modelName, fingerprint, token);
                             sink.write(chunk.data(), chunk.size());
                             return true; // Return false to stop inference if needed
                         };
-                        // 3. Run Inference (You must implement run_inference_stream)
+                        
+                        // Run Inference (You must implement run_inference_stream)
                         // Note: This function must block here until finished, calling token_callback repeatedly
                         run_inference_stream(
                                              model.get(),
@@ -1056,7 +1082,7 @@ int main(int argc, OPTARG_T argv[]) {
                                              token_callback
                                              );
                         // 4. Send finish reason
-                        std::string finish_chunk = create_stream_chunk(req_id, modelName, "", true);
+                        std::string finish_chunk = create_stream_chunk(n, req_id, modelName, fingerprint, "", true);
                         sink.write(finish_chunk.data(), finish_chunk.size());
                         
                         // 5. Send [DONE] to close the stream for the client
