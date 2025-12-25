@@ -139,12 +139,14 @@ static std::string wchar_to_utf8(const wchar_t* wstr) {
 }
 #endif
 
-// Helper to calculate vector magnitude for L2 Normalization
+/*
 float calculate_magnitude(const std::vector<float>& vec) {
+    // Helper to calculate vector magnitude for L2 Normalization
     float sum_squares = 0.0f;
     for (float val : vec) sum_squares += val * val;
     return std::sqrt(sum_squares);
 }
+*/
 
 static bool GetMaxSeqLen(Ort::Session* session, size_t *max_seq_len) {
     Ort::AllocatorWithDefaultOptions allocator;
@@ -160,6 +162,8 @@ static bool GetMaxSeqLen(Ort::Session* session, size_t *max_seq_len) {
     }
     return true;
 }
+
+#pragma mark -
 
 static void usage(void)
 {
@@ -233,6 +237,8 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
 #define _atoi atoi
 #define _atof atof
 #endif
+
+#pragma mark -
 
 static long long get_created_timestamp() {
     // std::time(nullptr) returns the current time as a time_t (seconds since epoch)
@@ -557,6 +563,8 @@ static void before_run_inference(
     parse_request(request_body, prompt, max_tokens, top_k, top_p, temperature, n, is_stream);
 }
 
+#pragma mark -
+
 static std::string run_inference(
                                  OgaModel* model,
                                  OgaTokenizer* tokenizer,
@@ -570,13 +578,15 @@ static std::string run_inference(
                                  unsigned int n,
                                  std::string prompt
                                  ) {
-    
+    /*
+     The chat completion object
+     https://platform.openai.com/docs/api-reference/chat/object
+     */
     std::string content;
     Json::Value rootNode(Json::objectValue);
     size_t completion_tokens = 0;
     size_t input_token_count = 0;
-    std::string finish_reason = "stop";
-    double max_length = 0;
+    std::string finish_reason = "stop";//length, content_filter, tool_calls, function_call
     
     try {
         // Create Tokenizer Stream
@@ -586,7 +596,7 @@ static std::string run_inference(
         auto input_sequences = OgaSequences::Create();
         tokenizer->Encode(prompt.c_str(), *input_sequences);
         input_token_count = input_sequences->SequenceCount(0);
-        max_length = (double)(input_token_count + max_tokens);
+        double max_length = (double)(input_token_count + max_tokens);
         
         // Set Generation Parameters
         auto params = OgaGeneratorParams::Create(*model);
@@ -596,23 +606,38 @@ static std::string run_inference(
         params->SetSearchOption("temperature", temperature);
         params->SetSearchOption("num_return_sequences", n);
         
-        // Create Generator (Generator is stateful and must be created per request)
+        // Create Generator
+        // Generator is stateful; we need 1 per request.
         auto generator = OgaGenerator::Create(*model, *params);
         generator->AppendTokenSequences(*input_sequences);
+                
+        // Create a vector of streams
+        // Decoding is stateful; we need 1 decoder per sequence.
+        std::vector<std::string> generated_responses(n);
+        std::vector<std::unique_ptr<OgaTokenizerStream>> streams;
+        for (int i = 0; i < n; i++) {
+            streams.push_back(OgaTokenizerStream::Create(*tokenizer));
+        }
         
         // Start Generating
         while (1) {
             generator->GenerateNextToken();
-            
             if(generator->IsDone()) break;
-            
-            auto seq_data = generator->GetSequenceData(0);
-            size_t seq_len = generator->GetSequenceCount(0);
-            int32_t new_token = seq_data[seq_len - 1];
-            const char* token_str = tokenizer_stream->Decode(new_token);
-            if (token_str) {
-                content += token_str;
-                completion_tokens++;
+            // Iterate through each sequence (0 to n-1) to collect results
+            for (int i = 0; i < n; i++) {
+                // Get the full sequence data for the i-th choice
+                const auto* seq_data = generator->GetSequenceData(i);
+                size_t seq_len = generator->GetSequenceCount(i);
+                // Safety check to ensure we have data
+                if (seq_len == 0) continue;
+                // Get the most recently generated token
+                int32_t new_token = seq_data[seq_len - 1];
+                // Decode using the specific stream for this sequence
+                const char* token_str = streams[i]->Decode(new_token);
+                if (token_str) {
+                    generated_responses[i] += token_str;
+                    completion_tokens++;
+                }
             }
         }
         
@@ -620,27 +645,27 @@ static std::string run_inference(
         if (total_tokens >= max_length) {
             finish_reason = "length";
         }
-        
         // Build Response JSON
         rootNode["id"] = generate_openai_style_id();
         rootNode["object"] = "chat.completion";
         rootNode["created"] = created;
         rootNode["model"] = modelName;
-        rootNode["system_fingerprint"] = fingerprint;
-        
+        rootNode["system_fingerprint"] = fingerprint;//Deprecated
+        rootNode["service_tier"] = "default";
         Json::Value choicesNode(Json::arrayValue);
-        Json::Value choiceNode(Json::objectValue);
-        choiceNode["index"] = 0;
-        choiceNode["logprobs"] = Json::nullValue;
-        choiceNode["finish_reason"] = finish_reason;
         
-        Json::Value messageNode(Json::objectValue);
-        messageNode["role"] = "assistant";
-        messageNode["content"] = content;
-        messageNode["refusal"] = Json::nullValue;
-        choiceNode["message"] = messageNode;
-        
-        choicesNode.append(choiceNode);
+        for (int i = 0; i < n; i++) {
+            Json::Value choiceNode(Json::objectValue);
+            choiceNode["index"] = i;
+            Json::Value messageNode(Json::objectValue);
+            messageNode["role"] = "assistant";
+            messageNode["content"] = generated_responses[i].c_str();
+            messageNode["refusal"] = Json::nullValue;
+            choiceNode["message"] = messageNode;
+            choicesNode.append(choiceNode);
+            choiceNode["logprobs"] = Json::nullValue;
+            choiceNode["finish_reason"] = finish_reason;
+        }
         rootNode["choices"] = choicesNode;
         
         Json::Value usageNode(Json::objectValue);
@@ -648,26 +673,29 @@ static std::string run_inference(
         usageNode["completion_tokens"] = (Json::Int)completion_tokens;
         usageNode["total_tokens"] = total_tokens;
         
-        // Details
-        Json::Value usageDetailsNode(Json::objectValue);
-        usageDetailsNode["reasoning_tokens"] = 0;
-        usageDetailsNode["accepted_prediction_tokens"] = 0;
-        usageDetailsNode["rejected_prediction_tokens"] = 0;
-        usageNode["completion_tokens_details"] = usageDetailsNode;
+        Json::Value promptTokenDetailsNode(Json::objectValue);
+        promptTokenDetailsNode["cached_tokens"] = 0;
+        promptTokenDetailsNode["audio_tokens"] = 0;
+        usageNode["prompt_tokens_details"] = promptTokenDetailsNode;
+        
+        Json::Value completionTokenDetailsNode(Json::objectValue);
+        completionTokenDetailsNode["reasoning_tokens"] = 0;
+        completionTokenDetailsNode["audio_tokens"] = 0;
+        completionTokenDetailsNode["accepted_prediction_tokens"] = 0;
+        completionTokenDetailsNode["rejected_prediction_tokens"] = 0;
+        usageNode["completion_tokens_details"] = completionTokenDetailsNode;
         
         rootNode["usage"] = usageNode;
         
     } catch (const std::exception& e) {
-        // Rethrow to be handled by the caller (CLI or Server)
         throw;
     }
-    
     Json::StreamWriterBuilder writer;
     writer["indentation"] = "";
     return Json::writeString(writer, rootNode);
 }
 
-// ------------------------------------------------
+#pragma mark -
 
 int main(int argc, OPTARG_T argv[]) {
     
