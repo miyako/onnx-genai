@@ -11,7 +11,7 @@ layout: default
 
 #### Abstract
 
-[**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. Unlike the GGUF format which requires an inference engine for every model architecture as well as hardware optimisation for every chip architecture, ONNX is **framework agnostic** since the file contains the **computation graph of the neural network**.
+[**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. Unlike the GGUF format which requires an inference engine designed for every model architecture and hardware optimisation engineered for every chip architecture, ONNX is **framework agnostic** because the model file contains the **computation graph of the neural network**.
 
 #### Usage
 
@@ -83,7 +83,7 @@ End if
 
 #### Chat Completions Model
 
-The ONNX format is based on Protocol Buffers, which has a hard limit of `2GB` for a single file. ONNX splits the model into a `.onnx` file (the graph) and a `.data` file (the weights).
+The ONNX format is based on **Protocol Buffers**, which has a hard limit of `2GB` for a single file. ONNX splits the model into a `.onnx` file (the graph) and a `.data` file (the weights).
 
 Use [optimum-cli](https://github.com/huggingface/optimum) to convert a specific model to ONNX:
 
@@ -133,9 +133,13 @@ $onnx.terminate()
 
 #### Embeddings Model
 
-Convert TensorFlow to ONNX "end-to-end" model:
+Usw an "End-to-End" (E2E) model where the input is a raw string and the output is the vector embedding:
+
+> An E2E model uses `onnxruntime-extensions` to embed **pre-processing** like **tokenisation** as well as **post-processing** such as **mean-pooling** and **L2 normalization** within the model. 
 
 [SamLowe/universal-sentence-encoder-large-5-onnx](https://huggingface.co/SamLowe/universal-sentence-encoder-large-5-onnx/)
+
+Use [`**tf2onnx**`](https://github.com/onnx/tensorflow-onnx) to convert a **TensorFlow** to an ONNX "end-to-end" model:
 
 ```bash
 pip install tf2onnx onnxruntime-extensions tensorflow-hub
@@ -146,8 +150,6 @@ python -m tf2onnx.convert \
     --extra_opset ai.onnx.contrib:1 \
     --tag serve
 ```
-
-An "end-to-end" model uses `onnxruntime-extensions` to embed the tokeniser within the model.  Post-processing such as mean-pooling or L2 normalization are also implemented within the model.
 
 #### AI Kit compatibility
 
