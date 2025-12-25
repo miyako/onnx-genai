@@ -568,7 +568,6 @@ static std::string run_inference(
                                  double top_p,
                                  double temperature,
                                  unsigned int n,
-                                 bool is_stream,
                                  std::string prompt
                                  ) {
     
@@ -943,7 +942,7 @@ int main(int argc, OPTARG_T argv[]) {
                     //                    float sum_squares = 0.0f;
                     //                    for (float val : embedding) sum_squares += val * val;
                     //                    float magnitude = std::sqrt(sum_squares);
-                    //                    
+                    //
                     //                    if (magnitude > 1e-9) {
                     //                        for (float& val : embedding) val /= magnitude;
                     //                    }
@@ -952,7 +951,7 @@ int main(int argc, OPTARG_T argv[]) {
                     //                    std::cout << "Final Embedding: [ ";
                     //                    for(int i=0; i<5; ++i) std::cout << embedding[i] << " ";
                     //                    std::cout << "... ]" << std::endl;
-                    //                    
+                    //
                     
                     
                     
@@ -1054,7 +1053,6 @@ int main(int argc, OPTARG_T argv[]) {
                                                               top_p,
                                                               temperature,
                                                               n,
-                                                              is_stream,
                                                               prompt
                                                               );
                     res.set_content(response_json, "application/json");
@@ -1215,7 +1213,6 @@ int main(int argc, OPTARG_T argv[]) {
                                      top_p,
                                      temperature,
                                      n,
-                                     is_stream,
                                      prompt
                                      );
             
