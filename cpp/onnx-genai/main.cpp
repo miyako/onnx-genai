@@ -644,6 +644,9 @@ static std::string run_embeddings(
 
 int main(int argc, OPTARG_T argv[]) {
     
+#if WIN32
+    std::wstring embedding_model_path_u16;
+#endif
     std::string model_path;           // -m
     std::string embedding_model_path; // -e
     OPTARG_T input_path  = NULL;      // -i
@@ -662,7 +665,8 @@ int main(int argc, OPTARG_T argv[]) {
         switch (ch){
             case 'm':
 #if WIN32
-                model_path = wchar_to_utf8(optarg);
+                embedding_model_path_u16 = optarg;
+                model_path = wchar_to_utf8(embedding_model_path_u16.c_str());
 #else
                 model_path = optarg;
 #endif
@@ -748,7 +752,11 @@ int main(int argc, OPTARG_T argv[]) {
             session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
             //            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
             Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
+#if WIN32
+            embeddings_session = std::make_unique<Ort::Session>(env, embedding_model_path_u16.c_str(), session_options);
+#else
             embeddings_session = std::make_unique<Ort::Session>(env, embedding_model_path.c_str(), session_options);
+#endif
             embedding_model_created = get_created_timestamp();
         } catch (const std::exception& e) {
             std::cerr << "Failed to load model: " << e.what() << std::endl;
