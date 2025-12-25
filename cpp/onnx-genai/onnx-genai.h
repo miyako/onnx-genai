@@ -74,6 +74,13 @@ extern "C" {
 
 #pragma mark -
 
+static std::string run_embeddings(
+                                  Ort::Session *session,
+                                  std::string& input,
+                                  std::vector<const char*>&  input_names_c_array,
+                                  size_t num_input_nodes,
+                                  std::vector<const char*>&   output_names_c_array,
+                                  size_t num_output_nodes);
 static std::string run_inference(
                                  OgaModel* model,
                                  OgaTokenizer* tokenizer,

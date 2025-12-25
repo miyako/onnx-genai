@@ -179,6 +179,33 @@ static std::string get_openai_style_id() {
 
 #pragma mark -
 
+static void parse_request_embeddings(const std::string &json,
+                                     std::string &input) {
+    
+    Json::Value root;
+    Json::CharReaderBuilder builder;
+    std::string errors;
+    
+    Json::CharReader *reader = builder.newCharReader();
+    bool parse = reader->parse(json.c_str(),
+                               json.c_str() + json.size(),
+                               &root,
+                               &errors);
+    delete reader;
+    
+    if(parse)
+    {
+        if(root.isObject())
+        {
+            Json::Value input_node = root["input"];
+            if(input_node.isString())
+            {
+                input = input_node.asString();
+            }
+        }
+    }
+}
+
 static void parse_request(
                           const std::string &json,
                           std::string &prompt,
@@ -273,6 +300,13 @@ static void parse_request(
             }
         }
     }
+}
+
+static void before_run_embeddings(
+                                  const std::string& request_body,
+                                  std::string &input
+                                  ) {
+    parse_request_embeddings(request_body, input);
 }
 
 static void before_run_inference(
@@ -532,6 +566,80 @@ static void run_inference_stream(
     }
 }
 
+static std::string run_embeddings(
+                                  Ort::Session *session,
+                                  std::string& input,
+                                  std::vector<const char*>&  input_names_c_array,
+                                  size_t num_input_nodes,
+                                  std::vector<const char*>&   output_names_c_array,
+                                  size_t num_output_nodes) {
+
+    Json::Value rootNode(Json::objectValue);
+    try {
+        const char* input_strings[] = { input.c_str() };
+        size_t batch_size = 1;
+        int64_t input_shape[] = { (int64_t)batch_size };
+        const OrtApi& api = Ort::GetApi();
+        OrtAllocator* allocator;
+        OrtStatus* status = api.GetAllocatorWithDefaultOptions(&allocator);
+        OrtValue* raw_tensor_ptr = nullptr;
+        status = api.CreateTensorAsOrtValue(
+                                                       allocator,                            // 1. Allocator
+                                                       input_shape,                          // 2. Shape
+                                                       1,                                    // 3. Shape Rank
+                                                       ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING, // 4. Type
+                                                       &raw_tensor_ptr                       // 5. Output
+                                                       );
+        if (status != nullptr) {
+            std::cerr << "CreateTensorAsOrtValue() failed: " << api.GetErrorMessage(status) << std::endl;
+            api.ReleaseStatus(status);
+            return "";
+        }
+        status = api.FillStringTensor(
+                                      raw_tensor_ptr,                       // Tensor to fill
+                                      input_strings,                        // Array of C-strings
+                                      batch_size                            // Number of strings
+                                      );
+        if (status != nullptr) {
+            std::cerr << "FillStringTensor() failed: " << api.GetErrorMessage(status) << std::endl;
+            api.ReleaseStatus(status);
+            return "";
+        }
+        Ort::Value input_tensor(raw_tensor_ptr);
+        auto outputs = session->Run(
+                                    Ort::RunOptions{nullptr},
+                                    input_names_c_array.data(),
+                                    &input_tensor,
+                                    num_input_nodes,
+                                    output_names_c_array.data(),
+                                    num_output_nodes
+                                    );
+        size_t dimensions = outputs.size();
+        if(dimensions > 0) {
+            auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
+            auto shape = output_info.GetShape();
+            // Identify the Embedding Dimension
+            // If shape is [512], then dim is 512.
+            int64_t embedding_dim = shape[1];
+            float* floatarr = outputs[0].GetTensorMutableData<float>();
+            // Create the std::vector
+            std::vector<float> embeddings(floatarr, floatarr + embedding_dim);
+            rootNode["object"] = "embedding";
+            Json::Value embeddingsNode(Json::arrayValue);
+            for (float val : embeddings) {
+                embeddingsNode.append(val);
+            }
+            rootNode["embedding"] = embeddingsNode;
+            rootNode["index"] = 0;
+        }
+    } catch (const std::exception& e) {
+        throw;
+    }
+    Json::StreamWriterBuilder writer;
+    writer["indentation"] = "";
+    return Json::writeString(writer, rootNode);
+}
+
 #pragma mark -
 
 int main(int argc, OPTARG_T argv[]) {
@@ -650,7 +758,6 @@ int main(int argc, OPTARG_T argv[]) {
     
     size_t num_input_nodes = embeddings_session->GetInputCount();
     size_t num_output_nodes = embeddings_session->GetOutputCount();
-    
     std::vector<std::string> input_node_names;
     std::vector<std::string> output_node_names;
     
@@ -660,174 +767,22 @@ int main(int argc, OPTARG_T argv[]) {
     for (size_t i = 0; i < num_input_nodes; i++) {
         auto input_name_ptr = embeddings_session->GetInputNameAllocated(i, allocator);
         input_node_names.push_back(input_name_ptr.get());
-        std::cout << "Input " << i << " Name: " << input_name_ptr.get() << std::endl;
+//        std::cout << "Input " << i << " Name: " << input_name_ptr.get() << std::endl;
     }
-    
     for (size_t i = 0; i < num_output_nodes; i++) {
         auto output_name_ptr = embeddings_session->GetOutputNameAllocated(i, allocator);
         output_node_names.push_back(output_name_ptr.get());
-        std::cout << "Input " << i << " Name: " << output_name_ptr.get() << std::endl;
+//        std::cout << "Input " << i << " Name: " << output_name_ptr.get() << std::endl;
     }
-    
-    // 1. Convert std::string names to const char* array
+    // Convert std::string names to const char* array
     std::vector<const char*> input_names_c_array;
     for (const auto& name : input_node_names) {
         input_names_c_array.push_back(name.c_str());
     }
-    
     std::vector<const char*> output_names_c_array;
     for (const auto& name : output_node_names) {
         output_names_c_array.push_back(name.c_str());
     }
-    
-    try {
-        if(true) {
-            
-            const char* input_text_arr[] = { "This is the text to embed." };
-            
-            // --- STEP 1: PREPARE DATA ---
-            const char* text_val = "Hello world";
-            const char* input_strings[] = { text_val };
-            size_t batch_size = 1;
-            int64_t input_shape[] = { (int64_t)batch_size };
-            
-            // --- STEP 2: GET C-API ACCESS ---
-            const OrtApi& api = Ort::GetApi();
-            
-            // --- STEP 3: CREATE EMPTY TENSOR ---
-            OrtAllocator* allocator;
-            api.GetAllocatorWithDefaultOptions(&allocator);
-            OrtValue* raw_tensor_ptr = nullptr;
-            OrtStatus* status = api.CreateTensorAsOrtValue(
-                                                           allocator,                            // 1. Allocator
-                                                           input_shape,                          // 2. Shape
-                                                           1,                                    // 3. Shape Rank
-                                                           ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING, // 4. Type
-                                                           &raw_tensor_ptr                       // 5. Output
-                                                           );
-            if (status != nullptr) {
-                std::cerr << "Creation failed: " << api.GetErrorMessage(status) << std::endl;
-                api.ReleaseStatus(status);
-            }else{
-                // --- STEP 4: FILL TENSOR WITH STRINGS ---
-                // Now we copy the C-strings into the allocated tensor
-                status = api.FillStringTensor(
-                                              raw_tensor_ptr,                       // Tensor to fill
-                                              input_strings,                        // Array of C-strings
-                                              batch_size                            // Number of strings
-                                              );
-                if (status != nullptr) {
-                    std::cerr << "Filling failed: " << api.GetErrorMessage(status) << std::endl;
-                    api.ReleaseStatus(status);
-                }else{
-                    // --- STEP 5: CONVERT TO C++ OBJECT ---
-                    // Ort::Value takes ownership and handles cleanup
-                    Ort::Value input_tensor(raw_tensor_ptr);
-                    
-                    auto outputs = embeddings_session->Run(
-                                                           Ort::RunOptions{nullptr},
-                                                           input_names_c_array.data(),
-                                                           &input_tensor,
-                                                           num_input_nodes,
-                                                           output_names_c_array.data(),
-                                                           num_output_nodes
-                                                           );
-                    std::cout << "Inference Successful!" << std::endl;
-                    
-                    //                    auto _outputs = embeddings_session->GetOutputs();
-                    
-                    size_t dimensions = outputs.size();
-                    auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
-                    auto shape = output_info.GetShape();
-                    
-                    // 2. Identify the Embedding Dimension
-                    // If shape is [512], then dim is 512.
-                    int64_t embedding_dim = shape[1];
-                    
-                    float* floatarr = outputs[0].GetTensorMutableData<float>();
-                    // 3. Create the std::vector
-                    std::vector<float> embeddings(floatarr, floatarr + embedding_dim);
-                    
-                    /*
-                     
-                     https://huggingface.co/SamLowe/universal-sentence-encoder-large-5-onnx
-                     
-                     It uses the ONNXRuntime Extensions to embed the tokenizer within the ONNX model, so no seperate tokenizer is needed, and text is fed directly into the ONNX model.
-                     
-                     Post-processing (E.g. pooling, normalization) is also implemented within the ONNX model, so no separate processing is necessary.
-                     */
-                    
-                    std::cout << "Final Embedding: [ ";
-                    for(int i = 0; i < embedding_dim; ++i) std::cout << embeddings[i] << " ";
-                    std::cout << "... ]" << std::endl;
-                    
-                    
-                    if(false) {
-                        float sum_squares = 0.0f;
-                        for (float val : embeddings) {
-                            sum_squares += val * val;
-                        }
-                        // Calculate Norm
-                        float norm = std::sqrt(sum_squares);
-                        // Normalize the vector
-                        // (Check for near-zero to avoid NaN, though unlikely with embeddings)
-                        if (norm > 1e-9) {
-                            for (size_t i = 0; i < embedding_dim; ++i) {
-                                embeddings[i] /= norm;
-                            }
-                        }
-                        
-                    }
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    //                    for (int i = 0; i < seq_len; i++) {
-                    //                        for (int j = 0; j < hidden_size; j++) {
-                    //                            // Safe access using dynamic seq_len
-                    //                            embedding[j] += float_data[i * hidden_size + j];
-                    //                        }
-                    //                    }
-                    
-                    // Average
-                    //                    if (seq_len > 0) {
-                    //                        for (float& val : embedding) val /= static_cast<float>(seq_len);
-                    //                    }
-                    
-                    // 3. L2 Normalization (Optional, but recommended for cosine similarity)
-                    //                    float sum_squares = 0.0f;
-                    //                    for (float val : embedding) sum_squares += val * val;
-                    //                    float magnitude = std::sqrt(sum_squares);
-                    //
-                    //                    if (magnitude > 1e-9) {
-                    //                        for (float& val : embedding) val /= magnitude;
-                    //                    }
-                    
-                    // 4. Print Result
-                    //                    std::cout << "Final Embedding: [ ";
-                    //                    for(int i=0; i<5; ++i) std::cout << embedding[i] << " ";
-                    //                    std::cout << "... ]" << std::endl;
-                    //
-                    
-                    
-                    
-                    
-                    
-                }
-            }
-        }
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-    }
-    
-    
     // ---------------------------------------------------------
     // SERVER MODE
     // ---------------------------------------------------------
@@ -841,7 +796,10 @@ int main(int argc, OPTARG_T argv[]) {
             
             try {
                 
-                std::string request_body;
+                if(model_created == 0) {
+                    throw std::invalid_argument("[Chat] Model not loaded.");
+                }
+                
                 std::string prompt;
                 unsigned int max_tokens = 2048;
                 unsigned int top_k = 50;
@@ -948,13 +906,15 @@ int main(int argc, OPTARG_T argv[]) {
         // Route: /v1/models
         svr.Get("/v1/models", [&](const httplib::Request& req, httplib::Response& res) {
             std::cout << "[Server] /v1/models request received." << std::endl;
-            
-            // 2. Create the list wrapper
+            /*
+             The model object
+             https://platform.openai.com/docs/api-reference/models/object
+             */
+            // Create the list wrapper
             Json::Value root(Json::objectValue);
             root["object"] = "list";
             root["data"] = Json::Value(Json::arrayValue);
-            
-            // 1. Create the model object
+            // Create the model object
             if(model_created != 0) {
                 Json::Value modelCard(Json::objectValue);
                 modelCard["id"] = modelName;
@@ -971,13 +931,11 @@ int main(int argc, OPTARG_T argv[]) {
                 modelCard["owned_by"] = "system";
                 root["data"].append(modelCard);
             }
-            
-            // 3. Serialize
+            // Serialize
             Json::StreamWriterBuilder writer;
             writer["indentation"] = ""; // Minified JSON
             std::string json_str = Json::writeString(writer, root);
-            
-            // 4. Respond
+            // Respond
             res.set_content(json_str, "application/json");
             res.status = 200;
         });
@@ -989,12 +947,22 @@ int main(int argc, OPTARG_T argv[]) {
             
             try {
                 
+                if(embedding_model_created == 0) {
+                    throw std::invalid_argument("[Embedding] Model not loaded.");
+                }
+
+                std::string input;
+                before_run_embeddings(req.body, input);
+                // Run Embeddings
+                std::string response_json = run_embeddings(
+                                                           embeddings_session.get(),
+                                                           input, input_names_c_array,
+                                                           num_input_nodes,
+                                                           output_names_c_array,
+                                                           num_output_nodes);
                 
-                
-                
-                //                res.set_content(response_json, "application/json");
+                res.set_content(response_json, "application/json");
                 res.status = 200;
-                
             } catch (const std::exception& e) {
                 // Build Error JSON
                 Json::Value rootNode(Json::objectValue);
@@ -1051,7 +1019,6 @@ int main(int argc, OPTARG_T argv[]) {
         
         try {
             
-            std::string request_body;
             std::string prompt;
             unsigned int max_tokens = 2048;
             unsigned int top_k = 50;
@@ -1060,7 +1027,7 @@ int main(int argc, OPTARG_T argv[]) {
             unsigned int n = 1;
             bool is_stream = false;
             
-            before_run_inference(request_body,
+            before_run_inference(request_str,
                                  prompt,
                                  &max_tokens,
                                  &top_k,
