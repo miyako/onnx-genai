@@ -47,30 +47,6 @@ static std::string wchar_to_utf8(const wchar_t* wstr) {
 }
 #endif
 
-/*
-float calculate_magnitude(const std::vector<float>& vec) {
-    // Helper to calculate vector magnitude for L2 Normalization
-    float sum_squares = 0.0f;
-    for (float val : vec) sum_squares += val * val;
-    return std::sqrt(sum_squares);
-}
-*/
-
-static bool GetMaxSeqLen(Ort::Session* session, size_t *max_seq_len) {
-    Ort::AllocatorWithDefaultOptions allocator;
-    auto input_name = session->GetInputNameAllocated(0, allocator);
-    Ort::TypeInfo type_info = session->GetInputTypeInfo(0);
-    auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
-    auto shape = tensor_info.GetShape();
-    // shape = [batch, seq_len]
-    if (shape.size() != 2 || shape[1] <= 0) {
-        return false;
-    }else{
-        *max_seq_len = static_cast<size_t>(shape[1]);
-    }
-    return true;
-}
-
 #pragma mark -
 
 static void usage(void)
@@ -186,33 +162,7 @@ static std::string get_system_fingerprint(const std::string& model_path, const s
     return ss.str();
 }
 
-static std::string generate_uuid_v4() {
-    std::stringstream ss;
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(0, 15);
-    std::uniform_int_distribution<> dis2(8, 11);
-    
-    ss << std::hex;
-    for (int i = 0; i < 8; i++) { ss << dis(gen); }
-    ss << "-";
-    for (int i = 0; i < 4; i++) { ss << dis(gen); }
-    ss << "-4"; // UUID version 4
-    for (int i = 0; i < 3; i++) { ss << dis(gen); }
-    ss << "-";
-    ss << dis2(gen); // UUID variant
-    for (int i = 0; i < 3; i++) { ss << dis(gen); }
-    ss << "-";
-    for (int i = 0; i < 12; i++) { ss << dis(gen); }
-    
-    return ss.str();
-}
-
-static std::string get_openai_id() {
-    return "chatcmpl-" + generate_uuid_v4();
-}
-
-static std::string generate_openai_style_id() {
+static std::string get_openai_style_id() {
     const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     const size_t max_index = (sizeof(charset) - 1);
     
@@ -226,6 +176,8 @@ static std::string generate_openai_style_id() {
     }
     return id;
 }
+
+#pragma mark -
 
 static void parse_request(
                           const std::string &json,
@@ -323,141 +275,6 @@ static void parse_request(
     }
 }
 
-static std::string run_embedding(
-                                 Ort::Session* session,
-                                 OgaTokenizer* tokenizer,
-                                 const std::string& modelName,
-                                 const std::string& request_body
-                                 ) {
-    std::string input_text;
-    
-    // 1. Parse JSON Request
-    // We expect { "model": "...", "input": "text" }
-    Json::Value root;
-    Json::CharReaderBuilder reader;
-    std::string errs;
-    std::istringstream s(request_body);
-    if (!Json::parseFromStream(reader, s, &root, &errs)) {
-        throw std::runtime_error("Invalid JSON body");
-    }
-    
-    // Handle "input": supports string or array of strings (OpenAI spec)
-    // For simplicity here, we handle a single string.
-    if (root["input"].isString()) {
-        input_text = root["input"].asString();
-    } else if (root["input"].isArray() && root["input"].size() > 0) {
-        // Just take the first one for this example implementation
-        input_text = root["input"][0].asString();
-    } else {
-        throw std::runtime_error("Invalid 'input' field. String expected.");
-    }
-    
-    // 2. Tokenize (Using OgaTokenizer)
-    auto sequences = OgaSequences::Create();
-    tokenizer->Encode(input_text.c_str(), *sequences);
-    size_t seq_len = sequences->SequenceCount(0);
-    const int32_t* token_data = sequences->SequenceData(0);
-    
-    // 3. Prepare Inputs for ONNX Runtime
-    // Most BERT/Encoder models expect int64 for input_ids
-    std::vector<int64_t> input_ids(seq_len);
-    std::vector<int64_t> attention_mask(seq_len);
-    
-    for (size_t i = 0; i < seq_len; i++) {
-        input_ids[i] = static_cast<int64_t>(token_data[i]);
-        attention_mask[i] = 1; // All tokens attended to
-    }
-    
-    // Create Ort Tensors
-    
-    
-    Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-    std::vector<int64_t> input_shape = {1, (int64_t)seq_len}; // Batch size 1
-    
-    Ort::Value input_ids_tensor = Ort::Value::CreateTensor<int64_t>(
-                                                                    memory_info, input_ids.data(), input_ids.size(), input_shape.data(), input_shape.size());
-    
-    Ort::Value attention_mask_tensor = Ort::Value::CreateTensor<int64_t>(
-                                                                         memory_info, attention_mask.data(), attention_mask.size(), input_shape.data(), input_shape.size());
-    
-    // 4. Run Inference
-    // Standard names for transformer models. Check your specific ONNX model inputs via Netron.
-    const char* input_names[] = {"input_ids", "attention_mask"};
-    const char* output_names[] = {"last_hidden_state"}; // Or "embeddings", check your model
-    
-    Ort::Value inputs[] = { std::move(input_ids_tensor), std::move(attention_mask_tensor) };
-    
-    auto output_tensors = session->Run(
-                                       Ort::RunOptions{nullptr},
-                                       input_names,
-                                       inputs,
-                                       2,
-                                       output_names,
-                                       1
-                                       );
-    
-    // 5. Post-Process (Mean Pooling & Normalization)
-    float* floatarr = output_tensors[0].GetTensorMutableData<float>();
-    auto type_info = output_tensors[0].GetTensorTypeAndShapeInfo();
-    auto shape = type_info.GetShape(); // [Batch, SeqLen, HiddenSize]
-    
-    int64_t hidden_size = shape[2];
-    std::vector<float> embedding(hidden_size, 0.0f);
-    
-    // Mean Pooling: Sum vectors across sequence length
-    for (size_t i = 0; i < seq_len; i++) {
-        for (size_t h = 0; h < hidden_size; h++) {
-            embedding[h] += floatarr[i * hidden_size + h];
-        }
-    }
-    
-    // Divide by sequence length and calculate Norm
-    double norm = 0.0;
-    for (size_t h = 0; h < hidden_size; h++) {
-        embedding[h] /= (float)seq_len;
-        norm += embedding[h] * embedding[h];
-    }
-    
-    // L2 Normalize (OpenAI embeddings are unit length)
-    norm = std::sqrt(norm);
-    // Avoid division by zero
-    if (norm > 1e-12) {
-        for (size_t h = 0; h < hidden_size; h++) {
-            embedding[h] /= (float)norm;
-        }
-    }
-    
-    // 6. Build JSON Response
-    Json::Value rootNode(Json::objectValue);
-    
-    rootNode["object"] = "list";
-    rootNode["model"] = modelName;
-    
-    Json::Value dataArray(Json::arrayValue);
-    Json::Value dataItem(Json::objectValue);
-    
-    dataItem["object"] = "embedding";
-    dataItem["index"] = 0;
-    
-    Json::Value embeddingArray(Json::arrayValue);
-    for(float val : embedding) {
-        embeddingArray.append(val);
-    }
-    dataItem["embedding"] = embeddingArray;
-    
-    dataArray.append(dataItem);
-    rootNode["data"] = dataArray;
-    
-    Json::Value usageNode(Json::objectValue);
-    usageNode["prompt_tokens"] = (Json::Int)seq_len;
-    usageNode["total_tokens"] = (Json::Int)seq_len;
-    rootNode["usage"] = usageNode;
-    
-    Json::StreamWriterBuilder writer;
-    writer["indentation"] = "";
-    return Json::writeString(writer, rootNode);
-}
-
 static void before_run_inference(
                                  const std::string& request_body,
                                  std::string &prompt,
@@ -470,8 +287,6 @@ static void before_run_inference(
     
     parse_request(request_body, prompt, max_tokens, top_k, top_p, temperature, n, is_stream);
 }
-
-#pragma mark -
 
 static std::string run_inference(
                                  OgaModel* model,
@@ -554,7 +369,7 @@ static std::string run_inference(
             finish_reason = "length";
         }
         // Build Response JSON
-        rootNode["id"] = generate_openai_style_id();
+        rootNode["id"] = get_openai_style_id();
         rootNode["object"] = "chat.completion";
         rootNode["created"] = created;
         rootNode["model"] = modelName;
@@ -796,7 +611,6 @@ int main(int argc, OPTARG_T argv[]) {
     long long embedding_model_created = 0;
     std::string embedding_modelName;
     std::unique_ptr<Ort::Session> embeddings_session;
-    size_t max_seq_len = 384;
     
     if (model_path.length() != 0) {
         // 1.a Initialize Model and Tokenizer (Load once)
@@ -827,7 +641,6 @@ int main(int argc, OPTARG_T argv[]) {
             //            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
             Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
             embeddings_session = std::make_unique<Ort::Session>(env, embedding_model_path.c_str(), session_options);
-            GetMaxSeqLen(embeddings_session.get(), &max_seq_len);
             embedding_model_created = get_created_timestamp();
         } catch (const std::exception& e) {
             std::cerr << "Failed to load model: " << e.what() << std::endl;
@@ -1047,7 +860,7 @@ int main(int argc, OPTARG_T argv[]) {
                                      &is_stream);
                 
                 if(is_stream) {
-                    std::string req_id = generate_openai_style_id();
+                    std::string req_id = get_openai_style_id();
                     
                     // Corrected Lambda structure
                     res.set_chunked_content_provider("text/event-stream",
