@@ -72,4 +72,34 @@ extern "C" {
 #endif  /* _WINGETOPT_H_ */
 #endif
 
+#pragma mark -
+
+static std::string run_inference(
+                                 OgaModel* model,
+                                 OgaTokenizer* tokenizer,
+                                 const std::string& modelName,
+                                 const std::string& fingerprint,
+                                 long long created,
+                                 unsigned int max_tokens,
+                                 unsigned int top_k,
+                                 double top_p,
+                                 double temperature,
+                                 unsigned int n,
+                                 std::string prompt
+                                 );
+static void run_inference_stream(
+                                 OgaModel* model,
+                                 OgaTokenizer* tokenizer,
+                                 const std::string& modelName,
+                                 const std::string& fingerprint,
+                                 long long created,
+                                 unsigned int max_tokens,
+                                 unsigned int top_k,
+                                 double top_p,
+                                 double temperature,
+                                 unsigned int n,
+                                 std::string prompt,
+                                 std::function<bool(const std::string&)> on_token_generated
+                                 );
+
 #endif  /* __ONNX_GENAI_H__ */
