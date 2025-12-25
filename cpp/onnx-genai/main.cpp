@@ -6,7 +6,7 @@
 //
 
 #include "onnx-genai.h"
-    
+
 static void run_inference_stream(
                                  OgaModel* model,
                                  OgaTokenizer* tokenizer,
@@ -41,7 +41,7 @@ static void run_inference_stream(
     params->SetSearchOption("top_p", top_p);
     params->SetSearchOption("temperature", temperature);
     params->SetSearchOption("num_return_sequences", n);
- 
+    
     // Create Generator (Generator is stateful and must be created per request)
     auto generator = OgaGenerator::Create(*model, *params);
     generator->AppendTokenSequences(*input_sequences);
@@ -72,7 +72,7 @@ std::string create_stream_chunk(const std::string& id, const std::string& model,
     root["object"] = "chat.completion.chunk";
     root["created"] = (Json::UInt64)std::time(nullptr);
     root["model"] = model;
-
+    
     Json::Value choice;
     choice["index"] = 0;
     
@@ -93,7 +93,7 @@ std::string create_stream_chunk(const std::string& id, const std::string& model,
     }
     
     root["choices"].append(choice);
-
+    
     Json::StreamWriterBuilder writer;
     writer["indentation"] = ""; // Minify
     return "data: " + Json::writeString(writer, root) + "\n\n";
@@ -102,39 +102,39 @@ std::string create_stream_chunk(const std::string& id, const std::string& model,
 #ifdef WIN32
 static std::string wchar_to_utf8(const wchar_t* wstr) {
     if (!wstr) return std::string();
-
+    
     // Get required buffer size in bytes
     int size_needed = WideCharToMultiByte(
-        CP_UTF8,            // convert to UTF-8
-        0,                  // default flags
-        wstr,               // source wide string
-        -1,                 // null-terminated
-        nullptr, 0,         // no output buffer yet
-        nullptr, nullptr
-    );
-
+                                          CP_UTF8,            // convert to UTF-8
+                                          0,                  // default flags
+                                          wstr,               // source wide string
+                                          -1,                 // null-terminated
+                                          nullptr, 0,         // no output buffer yet
+                                          nullptr, nullptr
+                                          );
+    
     if (size_needed <= 0) return std::string();
-
+    
     // Allocate buffer
     std::string utf8str(size_needed, 0);
-
+    
     // Perform conversion
     WideCharToMultiByte(
-        CP_UTF8,
-        0,
-        wstr,
-        -1,
-        &utf8str[0],
-        size_needed,
-        nullptr,
-        nullptr
-    );
-
+                        CP_UTF8,
+                        0,
+                        wstr,
+                        -1,
+                        &utf8str[0],
+                        size_needed,
+                        nullptr,
+                        nullptr
+                        );
+    
     // Remove the extra null terminator added by WideCharToMultiByte
     if (!utf8str.empty() && utf8str.back() == '\0') {
         utf8str.pop_back();
     }
-
+    
     return utf8str;
 }
 #endif
@@ -184,14 +184,14 @@ int opterr = 1;
 int optind = 1;
 int optopt = 0;
 int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
-
+    
     static int sp = 1;
     register int c;
     register OPTARG_T cp;
     
     if(sp == 1)
         if(optind >= argc ||
-             argv[optind][0] != '-' || argv[optind][1] == '\0')
+           argv[optind][0] != '-' || argv[optind][1] == '\0')
             return(EOF);
         else if(wcscmp(argv[optind], L"--") == NULL) {
             optind++;
@@ -243,13 +243,13 @@ namespace fs = std::filesystem;
 static std::string get_model_name(std::string model_path) {
     // 1. Create a path object
     fs::path path(model_path);
-
+    
     // 2. Handle trailing slashes (e.g., "models/phi-3/")
     // If the path ends in a separator, filename() might return empty.
     if (path.filename().empty()) {
         path = path.parent_path();
     }
-
+    
     // 3. Return the folder/filename
     // .filename() returns "phi-3.onnx" (with extension)
     // .stem() returns "phi-3" (removes extension)
@@ -260,15 +260,15 @@ static std::string get_model_name(std::string model_path) {
 static std::string get_system_fingerprint(const std::string& model_path, const std::string& provider) {
     // 1. Combine identifying factors (Model + Engine)
     std::string identifier = model_path + "_" + provider;
-
+    
     // 2. Hash the string to get a unique number
     std::hash<std::string> hasher;
     size_t hash = hasher(identifier);
-
+    
     // 3. Format as hex (e.g., "fp_1a2b3c4d")
     std::stringstream ss;
     ss << "fp_" << std::hex << hash;
-
+    
     return ss.str();
 }
 
@@ -278,7 +278,7 @@ static std::string generate_uuid_v4() {
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, 15);
     std::uniform_int_distribution<> dis2(8, 11);
-
+    
     ss << std::hex;
     for (int i = 0; i < 8; i++) { ss << dis(gen); }
     ss << "-";
@@ -290,7 +290,7 @@ static std::string generate_uuid_v4() {
     for (int i = 0; i < 3; i++) { ss << dis(gen); }
     ss << "-";
     for (int i = 0; i < 12; i++) { ss << dis(gen); }
-
+    
     return ss.str();
 }
 
@@ -306,7 +306,7 @@ static std::string generate_openai_style_id() {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, max_index - 1);
-
+    
     for (int i = 0; i < 29; ++i) {
         id += charset[dis(gen)];
     }
@@ -366,7 +366,7 @@ static void parse_request(
                 }
                 if(prompt.length() != 0) prompt += "<|assistant|>";
             }
-
+            
             Json::Value top_p_node = root["top_p"];
             if(top_p_node.isNumeric())
             {
@@ -410,11 +410,11 @@ static void parse_request(
 }
 
 static std::string run_embedding(
-    Ort::Session* session,
-    OgaTokenizer* tokenizer,
-    const std::string& modelName,
-    const std::string& request_body
-) {
+                                 Ort::Session* session,
+                                 OgaTokenizer* tokenizer,
+                                 const std::string& modelName,
+                                 const std::string& request_body
+                                 ) {
     std::string input_text;
     
     // 1. Parse JSON Request
@@ -426,24 +426,24 @@ static std::string run_embedding(
     if (!Json::parseFromStream(reader, s, &root, &errs)) {
         throw std::runtime_error("Invalid JSON body");
     }
-
+    
     // Handle "input": supports string or array of strings (OpenAI spec)
     // For simplicity here, we handle a single string.
     if (root["input"].isString()) {
         input_text = root["input"].asString();
     } else if (root["input"].isArray() && root["input"].size() > 0) {
-         // Just take the first one for this example implementation
+        // Just take the first one for this example implementation
         input_text = root["input"][0].asString();
     } else {
         throw std::runtime_error("Invalid 'input' field. String expected.");
     }
-
+    
     // 2. Tokenize (Using OgaTokenizer)
     auto sequences = OgaSequences::Create();
     tokenizer->Encode(input_text.c_str(), *sequences);
     size_t seq_len = sequences->SequenceCount(0);
     const int32_t* token_data = sequences->SequenceData(0);
-
+    
     // 3. Prepare Inputs for ONNX Runtime
     // Most BERT/Encoder models expect int64 for input_ids
     std::vector<int64_t> input_ids(seq_len);
@@ -453,35 +453,35 @@ static std::string run_embedding(
         input_ids[i] = static_cast<int64_t>(token_data[i]);
         attention_mask[i] = 1; // All tokens attended to
     }
-
+    
     // Create Ort Tensors
     
     
     Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
     std::vector<int64_t> input_shape = {1, (int64_t)seq_len}; // Batch size 1
-
+    
     Ort::Value input_ids_tensor = Ort::Value::CreateTensor<int64_t>(
-        memory_info, input_ids.data(), input_ids.size(), input_shape.data(), input_shape.size());
-
+                                                                    memory_info, input_ids.data(), input_ids.size(), input_shape.data(), input_shape.size());
+    
     Ort::Value attention_mask_tensor = Ort::Value::CreateTensor<int64_t>(
-        memory_info, attention_mask.data(), attention_mask.size(), input_shape.data(), input_shape.size());
-
+                                                                         memory_info, attention_mask.data(), attention_mask.size(), input_shape.data(), input_shape.size());
+    
     // 4. Run Inference
     // Standard names for transformer models. Check your specific ONNX model inputs via Netron.
     const char* input_names[] = {"input_ids", "attention_mask"};
     const char* output_names[] = {"last_hidden_state"}; // Or "embeddings", check your model
-
+    
     Ort::Value inputs[] = { std::move(input_ids_tensor), std::move(attention_mask_tensor) };
     
     auto output_tensors = session->Run(
-        Ort::RunOptions{nullptr},
-        input_names,
-        inputs,
-        2,
-        output_names,
-        1
-    );
-
+                                       Ort::RunOptions{nullptr},
+                                       input_names,
+                                       inputs,
+                                       2,
+                                       output_names,
+                                       1
+                                       );
+    
     // 5. Post-Process (Mean Pooling & Normalization)
     float* floatarr = output_tensors[0].GetTensorMutableData<float>();
     auto type_info = output_tensors[0].GetTensorTypeAndShapeInfo();
@@ -489,14 +489,14 @@ static std::string run_embedding(
     
     int64_t hidden_size = shape[2];
     std::vector<float> embedding(hidden_size, 0.0f);
-
+    
     // Mean Pooling: Sum vectors across sequence length
     for (size_t i = 0; i < seq_len; i++) {
         for (size_t h = 0; h < hidden_size; h++) {
             embedding[h] += floatarr[i * hidden_size + h];
         }
     }
-
+    
     // Divide by sequence length and calculate Norm
     double norm = 0.0;
     for (size_t h = 0; h < hidden_size; h++) {
@@ -512,7 +512,7 @@ static std::string run_embedding(
             embedding[h] /= (float)norm;
         }
     }
-
+    
     // 6. Build JSON Response
     Json::Value rootNode(Json::objectValue);
     
@@ -533,12 +533,12 @@ static std::string run_embedding(
     
     dataArray.append(dataItem);
     rootNode["data"] = dataArray;
-
+    
     Json::Value usageNode(Json::objectValue);
     usageNode["prompt_tokens"] = (Json::Int)seq_len;
     usageNode["total_tokens"] = (Json::Int)seq_len;
     rootNode["usage"] = usageNode;
-
+    
     Json::StreamWriterBuilder writer;
     writer["indentation"] = "";
     return Json::writeString(writer, rootNode);
@@ -571,18 +571,18 @@ static std::string run_inference(
                                  bool is_stream,
                                  std::string prompt
                                  ) {
- 
+    
     std::string content;
     Json::Value rootNode(Json::objectValue);
     size_t completion_tokens = 0;
     size_t input_token_count = 0;
     std::string finish_reason = "stop";
     double max_length = 0;
-
+    
     try {
         // Create Tokenizer Stream
         auto tokenizer_stream = OgaTokenizerStream::Create(*tokenizer);
-
+        
         // Encode Prompt
         auto input_sequences = OgaSequences::Create();
         tokenizer->Encode(prompt.c_str(), *input_sequences);
@@ -596,11 +596,11 @@ static std::string run_inference(
         params->SetSearchOption("top_p", top_p);
         params->SetSearchOption("temperature", temperature);
         params->SetSearchOption("num_return_sequences", n);
-                
+        
         // Create Generator (Generator is stateful and must be created per request)
         auto generator = OgaGenerator::Create(*model, *params);
         generator->AppendTokenSequences(*input_sequences);
-
+        
         // Start Generating
         while (1) {
             generator->GenerateNextToken();
@@ -657,12 +657,12 @@ static std::string run_inference(
         usageNode["completion_tokens_details"] = usageDetailsNode;
         
         rootNode["usage"] = usageNode;
-
+        
     } catch (const std::exception& e) {
         // Rethrow to be handled by the caller (CLI or Server)
         throw;
     }
-
+    
     Json::StreamWriterBuilder writer;
     writer["indentation"] = "";
     return Json::writeString(writer, rootNode);
@@ -671,7 +671,7 @@ static std::string run_inference(
 // ------------------------------------------------
 
 int main(int argc, OPTARG_T argv[]) {
-        
+    
     std::string model_path;           // -m
     std::string embedding_model_path; // -e
     OPTARG_T input_path  = NULL;      // -i
@@ -681,11 +681,11 @@ int main(int argc, OPTARG_T argv[]) {
     bool server_mode = false;         // -s
     int port = 8080;                  // -p
     std::string host = "127.0.0.1";   // -h
-
+    
     std::vector<unsigned char> cli_request_json(0);
     
     int ch;
-
+    
     while ((ch = getopt(argc, argv, ARGS)) != -1) {
         switch (ch){
             case 'm':
@@ -730,19 +730,19 @@ int main(int argc, OPTARG_T argv[]) {
                     cli_request_json.insert(cli_request_json.end(), buf.begin(), buf.begin() + s);
                 }
             }
-            break;
+                break;
             default:
                 usage();
                 break;
         }
     }
-        
+    
     std::string fingerprint;
     long long model_created = 0;
     std::string modelName;
     std::unique_ptr<OgaModel> model;
     std::unique_ptr<OgaTokenizer> tokenizer;
-
+    
     std::string embedding_fingerprint;
     long long embedding_model_created = 0;
     std::string embedding_modelName;
@@ -769,13 +769,13 @@ int main(int argc, OPTARG_T argv[]) {
         std::cerr << "[Embedding] Loading from " << embedding_model_path << std::endl;
         embedding_fingerprint = get_system_fingerprint(embedding_model_path, "directml");
         Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "Embedding");
-
+        
         try {
             embedding_modelName = get_model_name(embedding_model_path);
             Ort::SessionOptions session_options;
             session_options.SetIntraOpNumThreads(1);
             session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-//            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
+            //            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
             Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
             embeddings_session = std::make_unique<Ort::Session>(env, embedding_model_path.c_str(), session_options);
             GetMaxSeqLen(embeddings_session.get(), &max_seq_len);
@@ -785,7 +785,7 @@ int main(int argc, OPTARG_T argv[]) {
             return 1;
         }
     }
-
+    
     size_t num_input_nodes = embeddings_session->GetInputCount();
     size_t num_output_nodes = embeddings_session->GetOutputCount();
     
@@ -812,12 +812,12 @@ int main(int argc, OPTARG_T argv[]) {
     for (const auto& name : input_node_names) {
         input_names_c_array.push_back(name.c_str());
     }
-
+    
     std::vector<const char*> output_names_c_array;
     for (const auto& name : output_node_names) {
         output_names_c_array.push_back(name.c_str());
     }
-
+    
     try {
         if(true) {
             
@@ -872,7 +872,7 @@ int main(int argc, OPTARG_T argv[]) {
                                                            );
                     std::cout << "Inference Successful!" << std::endl;
                     
-//                    auto _outputs = embeddings_session->GetOutputs();
+                    //                    auto _outputs = embeddings_session->GetOutputs();
                     
                     size_t dimensions = outputs.size();
                     auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
@@ -881,23 +881,23 @@ int main(int argc, OPTARG_T argv[]) {
                     // 2. Identify the Embedding Dimension
                     // If shape is [512], then dim is 512.
                     int64_t embedding_dim = shape[1];
-
+                    
                     float* floatarr = outputs[0].GetTensorMutableData<float>();
                     // 3. Create the std::vector
                     std::vector<float> embeddings(floatarr, floatarr + embedding_dim);
-
+                    
                     /*
                      
                      https://huggingface.co/SamLowe/universal-sentence-encoder-large-5-onnx
                      
                      It uses the ONNXRuntime Extensions to embed the tokenizer within the ONNX model, so no seperate tokenizer is needed, and text is fed directly into the ONNX model.
-
+                     
                      Post-processing (E.g. pooling, normalization) is also implemented within the ONNX model, so no separate processing is necessary.
                      */
-
+                    
                     std::cout << "Final Embedding: [ ";
-                                       for(int i = 0; i < embedding_dim; ++i) std::cout << embeddings[i] << " ";
-                                       std::cout << "... ]" << std::endl;
+                    for(int i = 0; i < embedding_dim; ++i) std::cout << embeddings[i] << " ";
+                    std::cout << "... ]" << std::endl;
                     
                     
                     if(false) {
@@ -917,42 +917,42 @@ int main(int argc, OPTARG_T argv[]) {
                         
                     }
                     
-                
-                    
-                    
-      
                     
                     
                     
                     
                     
                     
-//                    for (int i = 0; i < seq_len; i++) {
-//                        for (int j = 0; j < hidden_size; j++) {
-//                            // Safe access using dynamic seq_len
-//                            embedding[j] += float_data[i * hidden_size + j];
-//                        }
-//                    }
+                    
+                    
+                    
+                    
+                    //                    for (int i = 0; i < seq_len; i++) {
+                    //                        for (int j = 0; j < hidden_size; j++) {
+                    //                            // Safe access using dynamic seq_len
+                    //                            embedding[j] += float_data[i * hidden_size + j];
+                    //                        }
+                    //                    }
                     
                     // Average
-//                    if (seq_len > 0) {
-//                        for (float& val : embedding) val /= static_cast<float>(seq_len);
-//                    }
+                    //                    if (seq_len > 0) {
+                    //                        for (float& val : embedding) val /= static_cast<float>(seq_len);
+                    //                    }
                     
                     // 3. L2 Normalization (Optional, but recommended for cosine similarity)
-//                    float sum_squares = 0.0f;
-//                    for (float val : embedding) sum_squares += val * val;
-//                    float magnitude = std::sqrt(sum_squares);
-//                    
-//                    if (magnitude > 1e-9) {
-//                        for (float& val : embedding) val /= magnitude;
-//                    }
+                    //                    float sum_squares = 0.0f;
+                    //                    for (float val : embedding) sum_squares += val * val;
+                    //                    float magnitude = std::sqrt(sum_squares);
+                    //                    
+                    //                    if (magnitude > 1e-9) {
+                    //                        for (float& val : embedding) val /= magnitude;
+                    //                    }
                     
                     // 4. Print Result
-//                    std::cout << "Final Embedding: [ ";
-//                    for(int i=0; i<5; ++i) std::cout << embedding[i] << " ";
-//                    std::cout << "... ]" << std::endl;
-//                    
+                    //                    std::cout << "Final Embedding: [ ";
+                    //                    for(int i=0; i<5; ++i) std::cout << embedding[i] << " ";
+                    //                    std::cout << "... ]" << std::endl;
+                    //                    
                     
                     
                     
@@ -965,7 +965,7 @@ int main(int argc, OPTARG_T argv[]) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
     
-            
+    
     // ---------------------------------------------------------
     // SERVER MODE
     // ---------------------------------------------------------
@@ -976,9 +976,9 @@ int main(int argc, OPTARG_T argv[]) {
         svr.Post("/v1/chat/completions", [&](const httplib::Request& req, httplib::Response& res) {
             
             std::cout << "[Server] /v1/chat/completions request received." << std::endl;
-
+            
             try {
-
+                
                 std::string request_body;
                 std::string prompt;
                 unsigned int max_tokens = 2048;
@@ -1002,7 +1002,7 @@ int main(int argc, OPTARG_T argv[]) {
                     
                     // Corrected Lambda structure
                     res.set_chunked_content_provider("text/event-stream",
-                        [&, req_id, prompt, max_tokens, top_k, top_p, temperature, n ](size_t offset, httplib::DataSink &sink) {
+                                                     [&, req_id, prompt, max_tokens, top_k, top_p, temperature, n ](size_t offset, httplib::DataSink &sink) {
                         // 1. Send initial role packet (optional but good practice)
                         std::string role_chunk = create_stream_chunk(req_id, modelName, "");
                         sink.write(role_chunk.data(), role_chunk.size());
@@ -1039,7 +1039,7 @@ int main(int argc, OPTARG_T argv[]) {
                         sink.done(); // Close the connection
                         return true;
                     }
-                    );
+                                                     );
                     
                 }else{
                     // Run Inference
@@ -1073,13 +1073,13 @@ int main(int argc, OPTARG_T argv[]) {
                 Json::StreamWriterBuilder writer;
                 writer["indentation"] = "";
                 std::string error_str = Json::writeString(writer, rootNode);
-
+                
                 res.set_content(error_str, "application/json");
                 res.status = 400; // Bad Request as per requirement
                 std::cerr << "[Server] Error: " << e.what() << std::endl;
             }
         });
-
+        
         // Route: /v1/models
         svr.Get("/v1/models", [&](const httplib::Request& req, httplib::Response& res) {
             std::cout << "[Server] /v1/models request received." << std::endl;
@@ -1121,13 +1121,13 @@ int main(int argc, OPTARG_T argv[]) {
         svr.Post("/v1/embeddings", [&](const httplib::Request& req, httplib::Response& res) {
             
             std::cout << "[Server] /v1/embeddings request received." << std::endl;
-
+            
             try {
                 
-               
                 
                 
-//                res.set_content(response_json, "application/json");
+                
+                //                res.set_content(response_json, "application/json");
                 res.status = 200;
                 
             } catch (const std::exception& e) {
@@ -1143,7 +1143,7 @@ int main(int argc, OPTARG_T argv[]) {
                 Json::StreamWriterBuilder writer;
                 writer["indentation"] = "";
                 std::string error_str = Json::writeString(writer, rootNode);
-
+                
                 res.set_content(error_str, "application/json");
                 res.status = 400; // Bad Request as per requirement
                 std::cerr << "[Server] Error: " << e.what() << std::endl;
@@ -1180,10 +1180,10 @@ int main(int argc, OPTARG_T argv[]) {
             usage();
             return 1;
         }
-
+        
         std::string request_str((const char *)cli_request_json.data(), cli_request_json.size());
         std::string response;
-
+        
         try {
             
             std::string request_body;
@@ -1218,7 +1218,7 @@ int main(int argc, OPTARG_T argv[]) {
                                      is_stream,
                                      prompt
                                      );
-
+            
         } catch (const std::exception& e) {
             // CLI Error Format
             Json::Value rootNode(Json::objectValue);
@@ -1231,7 +1231,7 @@ int main(int argc, OPTARG_T argv[]) {
             writer["indentation"] = "";
             response = Json::writeString(writer, rootNode);
         }
-
+        
         // Output logic
         if(!output_path) {
             std::cout << response << std::endl;
@@ -1243,6 +1243,6 @@ int main(int argc, OPTARG_T argv[]) {
             }
         }
     }
-      
+    
     return 0;
 }
