@@ -885,9 +885,22 @@ int main(int argc, OPTARG_T argv[]) {
                     float* floatarr = outputs[0].GetTensorMutableData<float>();
                     // 3. Create the std::vector
                     std::vector<float> embeddings(floatarr, floatarr + embedding_dim);
-                    
 
-                    if(dimensions == 1) {
+                    /*
+                     
+                     https://huggingface.co/SamLowe/universal-sentence-encoder-large-5-onnx
+                     
+                     It uses the ONNXRuntime Extensions to embed the tokenizer within the ONNX model, so no seperate tokenizer is needed, and text is fed directly into the ONNX model.
+
+                     Post-processing (E.g. pooling, normalization) is also implemented within the ONNX model, so no separate processing is necessary.
+                     */
+
+                    std::cout << "Final Embedding: [ ";
+                                       for(int i = 0; i < embedding_dim; ++i) std::cout << embeddings[i] << " ";
+                                       std::cout << "... ]" << std::endl;
+                    
+                    
+                    if(false) {
                         float sum_squares = 0.0f;
                         for (float val : embeddings) {
                             sum_squares += val * val;
@@ -901,9 +914,7 @@ int main(int argc, OPTARG_T argv[]) {
                                 embeddings[i] /= norm;
                             }
                         }
-                        std::cout << "Final Embedding: [ ";
-                                           for(int i = 0; i < embedding_dim; ++i) std::cout << embeddings[i] << " ";
-                                           std::cout << "... ]" << std::endl;
+                        
                     }
                     
                 
