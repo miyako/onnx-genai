@@ -25,6 +25,8 @@
 #include <onnxruntime_extensions.h>
 #include <cmath>
 #include <numeric>
+#include <Eigen/Dense>
+#include <omp.h>
 
 #define BUFLEN 4096
 

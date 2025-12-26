@@ -12,6 +12,7 @@
 		D178B3E52EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = D178B3E32EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		D178B3E82EF9EC2E00F0F0A7 /* libonnxruntime.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D178B3E72EF9EC2E00F0F0A7 /* libonnxruntime.dylib */; };
 		D178B3E92EF9EC2E00F0F0A7 /* libonnxruntime.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = D178B3E72EF9EC2E00F0F0A7 /* libonnxruntime.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		D18C69672EFEEAC400A4774A /* libomp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C69662EFEEAC400A4774A /* libomp.a */; };
 		D1C53D672EFB5F750013E31F /* libortcustomops.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D1C53D662EFB5F630013E31F /* libortcustomops.a */; };
 		D1C53D682EFB5F750013E31F /* libnoexcep_operators.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D1C53D632EFB5F630013E31F /* libnoexcep_operators.a */; };
 		D1C53D692EFB5F750013E31F /* libocos_operators.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D1C53D652EFB5F630013E31F /* libocos_operators.a */; };
@@ -50,6 +51,7 @@
 		D164789E2E61216B00FC9914 /* onnx-genai.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "onnx-genai.xcconfig"; sourceTree = "<group>"; };
 		D178B3E32EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libonnxruntime-genai.dylib"; path = "macOS/libonnxruntime-genai.dylib"; sourceTree = "<group>"; };
 		D178B3E72EF9EC2E00F0F0A7 /* libonnxruntime.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libonnxruntime.dylib; path = macOS/libonnxruntime.dylib; sourceTree = "<group>"; };
+		D18C69662EFEEAC400A4774A /* libomp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libomp.a; path = a/libomp.a; sourceTree = "<group>"; };
 		D1C53D632EFB5F630013E31F /* libnoexcep_operators.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libnoexcep_operators.a; path = macOS/libnoexcep_operators.a; sourceTree = "<group>"; };
 		D1C53D642EFB5F630013E31F /* libortextensions.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libortextensions.dylib; path = macOS/libortextensions.dylib; sourceTree = "<group>"; };
 		D1C53D652EFB5F630013E31F /* libocos_operators.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libocos_operators.a; path = macOS/libocos_operators.a; sourceTree = "<group>"; };
@@ -69,6 +71,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D18C69672EFEEAC400A4774A /* libomp.a in Frameworks */,
 				D178B3E82EF9EC2E00F0F0A7 /* libonnxruntime.dylib in Frameworks */,
 				D1C53D6A2EFB5F750013E31F /* libortextensions.dylib in Frameworks */,
 				D1C53D692EFB5F750013E31F /* libocos_operators.a in Frameworks */,
@@ -85,6 +88,7 @@
 		D157F30B2E612DD500DF46D3 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				D18C69662EFEEAC400A4774A /* libomp.a */,
 				D1C53D632EFB5F630013E31F /* libnoexcep_operators.a */,
 				D1C53D652EFB5F630013E31F /* libocos_operators.a */,
 				D1C53D662EFB5F630013E31F /* libortcustomops.a */,
@@ -319,6 +323,10 @@
 					"$(PROJECT_DIR)/macOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
+				OTHER_CFLAGS = (
+					"-Xpreprocessor",
+					"-fopenmp",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					include,
@@ -335,12 +343,17 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Y69CWUC25B;
 				ENABLE_HARDENED_RUNTIME = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/a",
 					"$(PROJECT_DIR)/macOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
+				OTHER_CFLAGS = (
+					"-Xpreprocessor",
+					"-fopenmp",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					include,

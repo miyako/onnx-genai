@@ -47,6 +47,108 @@ static std::string wchar_to_utf8(const wchar_t* wstr) {
 }
 #endif
 
+// Improved signature: uses Eigen::Ref to avoid copies if passing blocks/maps
+Eigen::VectorXf mean_pool(
+    const Eigen::Ref<const Eigen::MatrixXf>& hidden,
+    const Eigen::Ref<const Eigen::VectorXi>& mask
+) {
+    // 1. Safety Check
+    if (hidden.rows() != mask.size()) {
+        throw std::invalid_argument("Hidden state sequence length does not match mask length.");
+    }
+
+    // 2. Convert mask to float for matrix multiplication
+    // Casting is usually very fast compared to the accumulation logic
+    Eigen::VectorXf mask_f = mask.cast<float>();
+
+    // 3. Calculate Count (Sum of mask)
+    float count = mask_f.sum();
+    
+    // Edge case: empty mask
+    if (count <= 0.0f) {
+        return Eigen::VectorXf::Zero(hidden.cols());
+    }
+
+    // 4. Matrix Multiplication approach (The main optimization)
+    // Formula: (1/N) * (mask^T * Hidden)
+    //
+    // mask_f             is [seq_len, 1]
+    // hidden             is [seq_len, hidden_dim]
+    // mask_f.transpose() is [1, seq_len]
+    // result             is [1, hidden_dim]
+    
+    // Note: We create a temporary row vector, then transpose it back
+    // to match the return type (VectorXf is a column vector).
+    Eigen::VectorXf pooled = (mask_f.transpose() * hidden).transpose();
+
+    return pooled / count;
+}
+
+Eigen::MatrixXf mean_pool_batch(
+    const std::vector<Eigen::MatrixXf>& hidden_batch,
+    const std::vector<Eigen::VectorXi>& mask_batch
+) {
+    // 1. Safety Checks
+    if (hidden_batch.empty()) {
+        return Eigen::MatrixXf(0, 0);
+    }
+    if (hidden_batch.size() != mask_batch.size()) {
+        throw std::invalid_argument("Batch size mismatch between hidden states and masks.");
+    }
+
+    long batch_size = hidden_batch.size();
+    long hidden_dim = hidden_batch[0].cols();
+
+    // Allocate the result matrix once
+    Eigen::MatrixXf out(batch_size, hidden_dim);
+
+    // 2. Parallel Processing (OpenMP)
+    // This distributes the rows across available CPU cores.
+    #pragma omp parallel for
+    for (int i = 0; i < batch_size; ++i) {
+        
+        // --- Step A: Optimized Mean Pooling (Inlined) ---
+        // We write directly into out.row(i) to avoid creating temporary VectorXf objects.
+        
+        const auto& hidden = hidden_batch[i];
+        const auto& mask = mask_batch[i];
+
+        // Convert mask to float for calculation
+        Eigen::VectorXf mask_f = mask.cast<float>();
+        float count = mask_f.sum();
+
+        if (count > 0.0f) {
+            // Matrix Mult: [1, seq] * [seq, dim] -> [1, dim]
+            // We assign this directly to the output row.
+            out.row(i) = mask_f.transpose() * hidden;
+            out.row(i) /= count;
+            
+            // --- Step B: Optimized L2 Normalize (In-Place) ---
+            // Calculate norm of the row we just wrote
+            float norm = out.row(i).norm();
+            
+            if (norm > 1e-12f) {
+                out.row(i) /= norm;
+            }
+        } else {
+            // Handle edge case: empty mask -> zero vector
+            out.row(i).setZero();
+        }
+    }
+
+    return out;
+}
+
+Eigen::VectorXf l2_normalize(const Eigen::Ref<const Eigen::VectorXf>& v) {
+    float norm = v.norm();
+    // Use a small epsilon to prevent division by near-zero values
+    // and ensure numerical stability.
+    if (norm > 1e-12f)
+        return v.normalized(); // Uses Eigen's optimized internal implementation
+    // If norm is effectively zero, return the original (zero) vector
+    return v;
+}
+
 #pragma mark -
 
 static void usage(void)
