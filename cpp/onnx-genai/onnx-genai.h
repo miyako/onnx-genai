@@ -18,6 +18,26 @@
 #include "httplib.h"
 #ifdef WIN32
 #include <windows.h>
+extern "C" {
+    // 1. 自前で strcat_s 相当の関数を実装する
+    // (依存ライブラリが期待するシグネチャに合わせる)
+    errno_t __cdecl my_shim_strcat_s(char* dest, size_t destsz, const char* src) {
+        if (!dest || !src) return EINVAL;
+
+        size_t dlen = strlen(dest);
+        size_t slen = strlen(src);
+
+        if (dlen + slen + 1 > destsz) return ERANGE; // バッファオーバーフロー防止
+
+        memcpy(dest + dlen, src, slen + 1);
+        return 0;
+    }
+
+    // 2. リンカーが探している "__imp_strcat_s" という変数を定義し、
+    //    上記関数のアドレスを入れておく。
+    //    これで依存ライブラリはこの変数を参照して関数を呼び出せるようになります。
+    void* __imp_strcat_s = (void*)my_shim_strcat_s;
+}
 #endif
 #include "json/json.h"
 
