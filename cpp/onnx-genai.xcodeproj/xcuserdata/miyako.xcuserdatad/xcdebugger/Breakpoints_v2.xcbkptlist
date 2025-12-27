@@ -18,36 +18,38 @@
             endingLineNumber = "837"
             landmarkName = "main(argc, argv)"
             landmarkType = "9">
-            <Locations>
-               <Location
-                  uuid = "A5421BD0-0A71-43E6-8233-53EF5BC7F118 - f3122bac5805c4e0"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "main"
-                  moduleName = "onnx-genai"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/miyako/Documents/GitHub/onnx-genai/cpp/onnx-genai/main.cpp"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "829"
-                  endingLineNumber = "829">
-               </Location>
-               <Location
-                  uuid = "A5421BD0-0A71-43E6-8233-53EF5BC7F118 - f3122bac5805c3e8"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "main"
-                  moduleName = "onnx-genai"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/miyako/Documents/GitHub/onnx-genai/cpp/onnx-genai/main.cpp"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "837"
-                  endingLineNumber = "837">
-               </Location>
-            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "0A7EAADB-2139-4C70-863E-8E834FD2C34C"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "onnx-genai/main.cpp"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "870"
+            endingLineNumber = "870"
+            landmarkName = "main(argc, argv)"
+            landmarkType = "9">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "66325149-42EA-452B-8DDC-27681606568F"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "onnx-genai/main.cpp"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "865"
+            endingLineNumber = "865"
+            landmarkName = "main(argc, argv)"
+            landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

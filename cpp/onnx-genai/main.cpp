@@ -882,10 +882,13 @@ int main(int argc, OPTARG_T argv[]) {
             for (const auto& name : input_node_names) {
                 input_names_c_array.push_back(name.c_str());
             }
-
             for (const auto& name : output_node_names) {
                 output_names_c_array.push_back(name.c_str());
             }
+            std::string hf_tokenizer_filename = "tokenizer.json";
+            fs::path adjacent_path = embedding_model_path.parent_path() / target_filename;
+            
+            
             embedding_model_created = get_created_timestamp();
         } catch (const std::exception& e) {
             std::cerr << "Failed to load model: " << e.what() << std::endl;
