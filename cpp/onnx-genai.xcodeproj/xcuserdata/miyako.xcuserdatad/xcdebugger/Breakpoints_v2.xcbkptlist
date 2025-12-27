@@ -14,8 +14,8 @@
             filePath = "onnx-genai/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1077"
-            endingLineNumber = "1077"
+            startingLineNumber = "1076"
+            endingLineNumber = "1076"
             landmarkName = "main(argc, argv)"
             landmarkType = "9">
          </BreakpointContent>
@@ -30,8 +30,8 @@
             filePath = "onnx-genai/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1302"
-            endingLineNumber = "1302"
+            startingLineNumber = "1301"
+            endingLineNumber = "1301"
             landmarkName = "main(argc, argv)"
             landmarkType = "9">
          </BreakpointContent>
@@ -46,8 +46,8 @@
             filePath = "onnx-genai/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1134"
-            endingLineNumber = "1134"
+            startingLineNumber = "1133"
+            endingLineNumber = "1133"
             landmarkName = "main(argc, argv)"
             landmarkType = "9">
          </BreakpointContent>
@@ -62,8 +62,8 @@
             filePath = "onnx-genai/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "861"
-            endingLineNumber = "861"
+            startingLineNumber = "860"
+            endingLineNumber = "860"
             landmarkName = "run_embeddings(session, ids, input_names_c_array, num_input_nodes, output_names_c_array, num_output_nodes)"
             landmarkType = "9">
          </BreakpointContent>
@@ -78,8 +78,8 @@
             filePath = "onnx-genai/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "852"
-            endingLineNumber = "852"
+            startingLineNumber = "851"
+            endingLineNumber = "851"
             landmarkName = "run_embeddings(session, ids, input_names_c_array, num_input_nodes, output_names_c_array, num_output_nodes)"
             landmarkType = "9">
          </BreakpointContent>
@@ -94,40 +94,8 @@
             filePath = "onnx-genai/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "830"
-            endingLineNumber = "830"
-            landmarkName = "run_embeddings(session, ids, input_names_c_array, num_input_nodes, output_names_c_array, num_output_nodes)"
-            landmarkType = "9">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "545F94B6-DCC9-4FB4-A467-62590DF6DDB8"
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "onnx-genai/main.cpp"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "838"
-            endingLineNumber = "838"
-            landmarkName = "run_embeddings(session, ids, input_names_c_array, num_input_nodes, output_names_c_array, num_output_nodes)"
-            landmarkType = "9">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "7FA3FF91-98F8-4953-8F40-2A34D2CBEC28"
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "onnx-genai/main.cpp"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "845"
-            endingLineNumber = "845"
+            startingLineNumber = "826"
+            endingLineNumber = "826"
             landmarkName = "run_embeddings(session, ids, input_names_c_array, num_input_nodes, output_names_c_array, num_output_nodes)"
             landmarkType = "9">
          </BreakpointContent>
@@ -158,8 +126,8 @@
             filePath = "onnx-genai/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "899"
-            endingLineNumber = "899"
+            startingLineNumber = "898"
+            endingLineNumber = "898"
             landmarkName = "run_embeddings(session, ids, input_names_c_array, num_input_nodes, output_names_c_array, num_output_nodes)"
             landmarkType = "9">
          </BreakpointContent>
@@ -174,8 +142,8 @@
             filePath = "onnx-genai/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "901"
-            endingLineNumber = "901"
+            startingLineNumber = "900"
+            endingLineNumber = "900"
             landmarkName = "run_embeddings(session, ids, input_names_c_array, num_input_nodes, output_names_c_array, num_output_nodes)"
             landmarkType = "9">
          </BreakpointContent>

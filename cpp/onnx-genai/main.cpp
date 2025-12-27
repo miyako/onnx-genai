@@ -815,39 +815,38 @@ static std::string run_embeddings(
 
         // Define Shapes
         std::vector<int64_t> input_dims = {batch_size, seq_len};
-              
-        
-        
         // Create Attention Mask (1 for real tokens)
         std::vector<int64_t> attention_mask(seq_len, 1);
         // Create the Missing Vector (All Zeros)
         std::vector<int64_t> token_type_ids(seq_len, 0);
-        
-        // 3. Create Inputs Vector
+        // Create Inputs Vector
         std::vector<Ort::Value> input_tensors;
         
-        // A. Input IDs
+        // Mistral / Llama / Qwen: only need input_ids
         input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
                                                                   memory_info,
                                                                   input_ids.data(),
                                                                   input_ids.size(),
                                                                   input_dims.data(),
                                                                   input_dims.size()));
-        
-        // B. Attention Mask
-        input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-                                                                  memory_info,
-                                                                  attention_mask.data(),
-                                                                  attention_mask.size(),
-                                                                  input_dims.data(),
-                                                                  input_dims.size()));
-        // C. Token Type IDs (The Fix)
-        input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-                                                                  memory_info,
-                                                                  token_type_ids.data(),
-                                                                  token_type_ids.size(),
-                                                                  input_dims.data(),
-                                                                  input_dims.size()));
+        if (num_input_nodes >1) {
+            // DistilBERT: only needs input_ids and attention_mask.
+            input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                                                                      memory_info,
+                                                                      attention_mask.data(),
+                                                                      attention_mask.size(),
+                                                                      input_dims.data(),
+                                                                      input_dims.size()));
+        }
+        if (num_input_nodes >2) {
+            // BERT / RoBERTa / MiniLM: ALWAYS require token_type_ids
+            input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                                                                      memory_info,
+                                                                      token_type_ids.data(),
+                                                                      token_type_ids.size(),
+                                                                      input_dims.data(),
+                                                                      input_dims.size()));
+        }
 
         auto outputs = session->Run(
                                     Ort::RunOptions{nullptr},
@@ -1315,6 +1314,11 @@ int main(int argc, OPTARG_T argv[]) {
                 std::string response_json;
 
                 if((tokenizer_u != NULL) &&(num_input_nodes > 2)) {
+                    /*
+                     standard encoder-only model
+                     input: input_ids, attention_mask, token_type_ids
+                     output: last_hidden_state or logits
+                     */
                     std::vector<int> ids = tokenizer_u->Encode(input);
                     response_json = run_embeddings(
                                                    embeddings_session.get(),
