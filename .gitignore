@@ -37,3 +37,4 @@ cpp/onnx-genai/x64/Release/main.obj
 cpp/onnx-genai/x64/Release/onnx-genai.tlog/*
 eigen/eigen_lapack_static.lib
 eigen/eigen_blas_static.lib
+models/*

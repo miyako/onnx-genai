@@ -825,6 +825,14 @@ int main(int argc, OPTARG_T argv[]) {
     long long embedding_model_created = 0;
     std::string embedding_modelName;
     std::unique_ptr<Ort::Session> embeddings_session;
+    size_t num_input_nodes = 0;
+    size_t num_output_nodes = 0;
+    std::vector<std::string> input_node_names;
+    std::vector<std::string> output_node_names;
+    Ort::AllocatorWithDefaultOptions allocator;
+    std::vector<int64_t> input_shape = {1}; // Batch size 1
+    std::vector<const char*> input_names_c_array;
+    std::vector<const char*> output_names_c_array;
     
     if (model_path.length() != 0) {
         // 1.a Initialize Model and Tokenizer (Load once)
@@ -859,6 +867,25 @@ int main(int argc, OPTARG_T argv[]) {
 #else
             embeddings_session = std::make_unique<Ort::Session>(env, embedding_model_path.c_str(), session_options);
 #endif
+            num_input_nodes = embeddings_session->GetInputCount();
+            num_output_nodes = embeddings_session->GetOutputCount();
+            for (size_t i = 0; i < num_input_nodes; i++) {
+                auto input_name_ptr = embeddings_session->GetInputNameAllocated(i, allocator);
+                input_node_names.push_back(input_name_ptr.get());
+        //        std::cout << "Input " << i << " Name: " << input_name_ptr.get() << std::endl;
+            }
+            for (size_t i = 0; i < num_output_nodes; i++) {
+                auto output_name_ptr = embeddings_session->GetOutputNameAllocated(i, allocator);
+                output_node_names.push_back(output_name_ptr.get());
+        //        std::cout << "Input " << i << " Name: " << output_name_ptr.get() << std::endl;
+            }
+            for (const auto& name : input_node_names) {
+                input_names_c_array.push_back(name.c_str());
+            }
+
+            for (const auto& name : output_node_names) {
+                output_names_c_array.push_back(name.c_str());
+            }
             embedding_model_created = get_created_timestamp();
         } catch (const std::exception& e) {
             std::cerr << "Failed to load model: " << e.what() << std::endl;
@@ -866,33 +893,6 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
-    size_t num_input_nodes = embeddings_session->GetInputCount();
-    size_t num_output_nodes = embeddings_session->GetOutputCount();
-    std::vector<std::string> input_node_names;
-    std::vector<std::string> output_node_names;
-    
-    Ort::AllocatorWithDefaultOptions allocator;
-    std::vector<int64_t> input_shape = {1}; // Batch size 1
-    
-    for (size_t i = 0; i < num_input_nodes; i++) {
-        auto input_name_ptr = embeddings_session->GetInputNameAllocated(i, allocator);
-        input_node_names.push_back(input_name_ptr.get());
-//        std::cout << "Input " << i << " Name: " << input_name_ptr.get() << std::endl;
-    }
-    for (size_t i = 0; i < num_output_nodes; i++) {
-        auto output_name_ptr = embeddings_session->GetOutputNameAllocated(i, allocator);
-        output_node_names.push_back(output_name_ptr.get());
-//        std::cout << "Input " << i << " Name: " << output_name_ptr.get() << std::endl;
-    }
-    // Convert std::string names to const char* array
-    std::vector<const char*> input_names_c_array;
-    for (const auto& name : input_node_names) {
-        input_names_c_array.push_back(name.c_str());
-    }
-    std::vector<const char*> output_names_c_array;
-    for (const auto& name : output_node_names) {
-        output_names_c_array.push_back(name.c_str());
-    }
     // ---------------------------------------------------------
     // SERVER MODE
     // ---------------------------------------------------------
