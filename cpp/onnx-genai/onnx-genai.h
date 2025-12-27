@@ -27,6 +27,8 @@
 #include <numeric>
 #include <Eigen/Dense>
 #include <omp.h>
+#include <fstream>
+#include "tokenizers_cpp.h"
 
 #define BUFLEN 4096
 

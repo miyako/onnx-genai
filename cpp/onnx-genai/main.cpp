@@ -7,6 +7,49 @@
 
 #include "onnx-genai.h"
 
+namespace fs = std::filesystem;
+using namespace tokenizers; // mlc-ai namespace
+
+static // Helper: Read entire file into a string (Blob)
+std::string LoadBytesFromFile(const std::string& path) {
+    std::ifstream fs(path, std::ios::in | std::ios::binary);
+    if (!fs) throw std::runtime_error("Could not open file: " + path);
+    
+    std::string data((std::istreambuf_iterator<char>(fs)), std::istreambuf_iterator<char>());
+    return data;
+}
+
+static // Unified Loader
+std::unique_ptr<Tokenizer> LoadTokenizer(const std::string& model_path) {
+    fs::path path(model_path);
+    
+    // 1. Check if the path points to a directory or a specific file
+    fs::path json_path = path;
+    fs::path model_file_path = path;
+
+    if (fs::is_directory(path)) {
+        // If user gave a folder, look for standard names
+        json_path = path / "tokenizer.json";
+        model_file_path = path / "tokenizer.model";
+    }
+
+    // 2. Try to load Hugging Face JSON first (preferred for modern models)
+    if (fs::exists(json_path) && json_path.extension() == ".json") {
+        std::cout << "Loading HF Tokenizer from: " << json_path << std::endl;
+        std::string blob = LoadBytesFromFile(json_path.string());
+        return Tokenizer::FromBlobJSON(blob);
+    }
+    
+    // 3. Fallback to SentencePiece
+    if (fs::exists(model_file_path) && model_file_path.extension() == ".model") {
+        std::cout << "Loading SentencePiece from: " << model_file_path << std::endl;
+        std::string blob = LoadBytesFromFile(model_file_path.string());
+        return Tokenizer::FromBlobSentencePiece(blob);
+    }
+
+    return 0;
+}
+
 #ifdef WIN32
 static std::string wchar_to_utf8(const wchar_t* wstr) {
     if (!wstr) return std::string();
@@ -668,7 +711,199 @@ static void run_inference_stream(
     }
 }
 
+static // Helper to convert int32 -> int64
+std::vector<int64_t> ConvertToInt64(const std::vector<int>& input_ids) {
+    std::vector<int64_t> output(input_ids.size());
+    std::transform(input_ids.begin(), input_ids.end(), output.begin(),
+                   [](int i) { return static_cast<int64_t>(i); });
+    return output;
+}
+
+static // --- The Processor Code ---
+void ProcessOutput(
+    Ort::Value& output_tensor,              // From session.Run()
+    const std::vector<int64_t>& input_mask, // The flat mask you sent to ONNX
+    int64_t batch_size,
+    int64_t seq_len
+) {
+    // 1. Get Output Data Info
+    // Shape is typically [BatchSize, SeqLen, HiddenSize]
+    auto type_info = output_tensor.GetTensorTypeAndShapeInfo();
+    auto shape = type_info.GetShape();
+    int64_t hidden_size = shape[2];
+    
+    // Get pointer to the raw float array containing all batches
+    float* raw_data = output_tensor.GetTensorMutableData<float>();
+
+    // 2. Prepare Containers for your function
+    std::vector<Eigen::MatrixXf> hidden_batch_vec;
+    std::vector<Eigen::VectorXi> mask_batch_vec;
+
+    hidden_batch_vec.reserve(batch_size);
+    mask_batch_vec.reserve(batch_size);
+
+    // 3. Loop over Batch to slice data
+    for (int i = 0; i < batch_size; ++i) {
+        // --- A. Extract Hidden States ---
+        // Calculate offset for this specific batch item
+        float* batch_ptr = raw_data + (i * seq_len * hidden_size);
+
+        // Map raw memory to Eigen.
+        // IMPORTANT: ONNX is RowMajor, Eigen Default is ColMajor.
+        // We Map as RowMajor, then assign to MatrixXf (which copies/converts to ColMajor).
+        Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+            mapped_matrix(batch_ptr, seq_len, hidden_size);
+        
+        hidden_batch_vec.push_back(mapped_matrix);
+
+        // --- B. Extract/Convert Mask ---
+        // Input mask was flat [Batch * Seq]. We slice it for this batch.
+        std::vector<int> current_mask_int;
+        current_mask_int.reserve(seq_len);
+        
+        for(int j = 0; j < seq_len; ++j) {
+            // Convert int64_t -> int (Eigen::VectorXi is int)
+            current_mask_int.push_back(static_cast<int>(input_mask[i * seq_len + j]));
+        }
+        
+        // Map std::vector to Eigen::VectorXi
+        mask_batch_vec.push_back(
+            Eigen::Map<Eigen::VectorXi>(current_mask_int.data(), seq_len)
+        );
+    }
+
+    // 4. Perform Mean Pooling
+    // Result is likely [BatchSize, HiddenSize] (depending on your implementation)
+    Eigen::MatrixXf pooled_embeddings = mean_pool_batch(hidden_batch_vec, mask_batch_vec);
+
+    // 5. Perform L2 Normalization
+    // We iterate through the rows (or cols) of the pooled result
+    // Assuming pooled_embeddings is [BatchSize, HiddenSize] (Row per embedding)
+    for (int i = 0; i < pooled_embeddings.rows(); ++i) {
+        // Extract the row as a vector
+        Eigen::VectorXf emb = pooled_embeddings.row(i);
+        
+        // Normalize
+        Eigen::VectorXf normalized_emb = l2_normalize(emb);
+        
+        // (Optional) Store it back or print it
+        std::cout << "Normalized Embedding " << i << ":\n"
+                  << normalized_emb.head(5) // Print first 5 dims
+                  << "...\n" << std::endl;
+    }
+}
+
 static std::string run_embeddings(
+                                  Ort::Session *session,
+                                  std::vector<int>& ids,
+                                  std::vector<const char*>&  input_names_c_array,
+                                  size_t num_input_nodes,
+                                  std::vector<const char*>&   output_names_c_array,
+                                      size_t num_output_nodes) {
+
+    int batch_size = 1;
+    std::vector<int64_t> input_ids = ConvertToInt64(ids);
+    int seq_len = (int)ids.size();
+    
+    Json::Value rootNode(Json::objectValue);
+    
+    try {
+        
+        std::vector<int64_t> input_node_dims = {batch_size, (int64_t)input_ids.size()};
+        Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(
+                OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
+
+        // Define Shapes
+        std::vector<int64_t> input_dims = {batch_size, seq_len};
+              
+        
+        
+        // Create Attention Mask (1 for real tokens)
+        std::vector<int64_t> attention_mask(seq_len, 1);
+        // Create the Missing Vector (All Zeros)
+        std::vector<int64_t> token_type_ids(seq_len, 0);
+        
+        // 3. Create Inputs Vector
+        std::vector<Ort::Value> input_tensors;
+        
+        // A. Input IDs
+        input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                                                                  memory_info,
+                                                                  input_ids.data(),
+                                                                  input_ids.size(),
+                                                                  input_dims.data(),
+                                                                  input_dims.size()));
+        
+        // B. Attention Mask
+        input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                                                                  memory_info,
+                                                                  attention_mask.data(),
+                                                                  attention_mask.size(),
+                                                                  input_dims.data(),
+                                                                  input_dims.size()));
+        // C. Token Type IDs (The Fix)
+        input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                                                                  memory_info,
+                                                                  token_type_ids.data(),
+                                                                  token_type_ids.size(),
+                                                                  input_dims.data(),
+                                                                  input_dims.size()));
+
+        auto outputs = session->Run(
+                                    Ort::RunOptions{nullptr},
+                                    input_names_c_array.data(),
+                                    input_tensors.data(),
+                                    num_input_nodes,
+                                    output_names_c_array.data(),
+                                    num_output_nodes
+                                    );
+        
+        size_t dimensions = outputs.size();
+        if(dimensions > 0) {
+            
+            auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
+            float* floatarr = outputs[0].GetTensorMutableData<float>();
+            
+            auto shape = output_info.GetShape();// [Batch, Seq, Hidden]
+            if(shape.size() > 2) {
+                int64_t hidden_size = shape[2];
+                // 2. Prepare Batches
+                std::vector<Eigen::MatrixXf> hidden_batch_vec;
+                std::vector<Eigen::VectorXi> mask_batch_vec;
+                // (Since batch=1, loop runs once)
+                // Map raw data: ONNX (RowMajor) -> Eigen Map
+                Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+                mapped_hidden(floatarr, seq_len, hidden_size);
+                // Deep copy into MatrixXf (converts to ColMajor for Eigen internal efficiency)
+                hidden_batch_vec.push_back(mapped_hidden);
+                // Convert mask to Eigen::VectorXi
+                Eigen::VectorXi mask_vec(seq_len);
+                for(int i=0; i<seq_len; ++i) mask_vec(i) = (int)attention_mask[i];
+                mask_batch_vec.push_back(mask_vec);
+                // 1. Mean Pool
+                Eigen::MatrixXf pooled = mean_pool_batch(hidden_batch_vec, mask_batch_vec); // Returns [1, Hidden]
+                // 2. Normalize
+                Eigen::VectorXf final_embedding = l2_normalize(pooled.row(0));
+                // Create the std::vector
+                std::vector<float> embeddings(final_embedding.data(), final_embedding.data() + final_embedding.size());
+                rootNode["object"] = "embedding";
+                Json::Value embeddingsNode(Json::arrayValue);
+                for (float val : embeddings) {
+                    embeddingsNode.append(val);
+                }
+                rootNode["embedding"] = embeddingsNode;
+                rootNode["index"] = 0;
+            }
+        }
+    } catch (const std::exception& e) {
+        throw;
+    }
+    Json::StreamWriterBuilder writer;
+    writer["indentation"] = "";
+    return Json::writeString(writer, rootNode);
+}
+
+static std::string run_embeddings_e2e(
                                   Ort::Session *session,
                                   std::string& input,
                                   std::vector<const char*>&  input_names_c_array,
@@ -718,18 +953,20 @@ static std::string run_embeddings(
                                     );
         size_t dimensions = outputs.size();
         if(dimensions > 0) {
+            
             auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
-            auto shape = output_info.GetShape();
-            // Identify the Embedding Dimension
-            // If shape is [512], then dim is 512.
-            int64_t embedding_dim = shape[1];
-            float* floatarr = outputs[0].GetTensorMutableData<float>();
-            // Create the std::vector
-            std::vector<float> embeddings(floatarr, floatarr + embedding_dim);
-            rootNode["object"] = "embedding";
+            float* floatarr  = outputs[0].GetTensorMutableData<float>();
+            
             Json::Value embeddingsNode(Json::arrayValue);
-            for (float val : embeddings) {
-                embeddingsNode.append(val);
+            auto shape = output_info.GetShape();
+            if(shape.size() > 0) {
+                int64_t embedding_dim = shape[1];
+                // Create the std::vector
+                std::vector<float> embeddings(floatarr, floatarr + embedding_dim);
+                rootNode["object"] = "embedding";
+                for (float val : embeddings) {
+                    embeddingsNode.append(val);
+                }
             }
             rootNode["embedding"] = embeddingsNode;
             rootNode["index"] = 0;
@@ -833,66 +1070,74 @@ int main(int argc, OPTARG_T argv[]) {
     std::vector<int64_t> input_shape = {1}; // Batch size 1
     std::vector<const char*> input_names_c_array;
     std::vector<const char*> output_names_c_array;
+//    TokenizerHandle hf_tokenizer;
+//    sentencepiece::SentencePieceProcessor processor;
+    std::unique_ptr<Tokenizer> tokenizer_u;
     
     if (model_path.length() != 0) {
-        // 1.a Initialize Model and Tokenizer (Load once)
-        std::cerr << "[Chat] Loading from " << model_path << std::endl;
-        fingerprint = get_system_fingerprint(model_path, "directml");
-        modelName = get_model_name(model_path);
-        try {
-            model = OgaModel::Create(model_path.c_str());
-            tokenizer = OgaTokenizer::Create(*model);
-            model_created = get_created_timestamp();
-        } catch (const std::exception& e) {
-            std::cerr << "Failed to load model: " << e.what() << std::endl;
-            return 1;
+        if (fs::exists(model_path)) {
+            if (fs::is_directory(model_path)) {
+                // 1.a Initialize Model and Tokenizer (Load once)
+                std::cerr << "[Chat] Loading from " << model_path << std::endl;
+                fingerprint = get_system_fingerprint(model_path, "directml");
+                modelName = get_model_name(model_path);
+                try {
+                    model = OgaModel::Create(model_path.c_str());
+                    tokenizer = OgaTokenizer::Create(*model);
+                    model_created = get_created_timestamp();
+                } catch (const std::exception& e) {
+                    std::cerr << "Failed to load model: " << e.what() << std::endl;
+                    return 1;
+                }
+            }
         }
     }
     
     if (embedding_model_path.length() != 0) {
-        // 1.b Initialize Embedding and Session (Load once)
-        std::cerr << "[Embedding] Loading from " << embedding_model_path << std::endl;
-        embedding_fingerprint = get_system_fingerprint(embedding_model_path, "directml");
-        Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "Embedding");
-        
-        try {
-            embedding_modelName = get_model_name(embedding_model_path);
-            Ort::SessionOptions session_options;
-            session_options.SetIntraOpNumThreads(1);
-            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-            //            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
-            Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
-#if WIN32
-            embeddings_session = std::make_unique<Ort::Session>(env, embedding_model_path_u16.c_str(), session_options);
-#else
-            embeddings_session = std::make_unique<Ort::Session>(env, embedding_model_path.c_str(), session_options);
-#endif
-            num_input_nodes = embeddings_session->GetInputCount();
-            num_output_nodes = embeddings_session->GetOutputCount();
-            for (size_t i = 0; i < num_input_nodes; i++) {
-                auto input_name_ptr = embeddings_session->GetInputNameAllocated(i, allocator);
-                input_node_names.push_back(input_name_ptr.get());
-        //        std::cout << "Input " << i << " Name: " << input_name_ptr.get() << std::endl;
+        if (fs::exists(embedding_model_path)) {
+            if (fs::is_regular_file(embedding_model_path)) {
+                // 1.b Initialize Embedding and Session (Load once)
+                std::cerr << "[Embedding] Loading from " << embedding_model_path << std::endl;
+                embedding_fingerprint = get_system_fingerprint(embedding_model_path, "directml");
+                Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "Embedding");
+                
+                try {
+                    embedding_modelName = get_model_name(embedding_model_path);
+                    Ort::SessionOptions session_options;
+                    session_options.SetIntraOpNumThreads(1);
+                    session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+                    //            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
+                    Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
+        #if WIN32
+                    embeddings_session = std::make_unique<Ort::Session>(env, embedding_model_path_u16.c_str(), session_options);
+        #else
+                    embeddings_session = std::make_unique<Ort::Session>(env, embedding_model_path.c_str(), session_options);
+        #endif
+                    num_input_nodes = embeddings_session->GetInputCount();
+                    num_output_nodes = embeddings_session->GetOutputCount();
+                    for (size_t i = 0; i < num_input_nodes; i++) {
+                        auto input_name_ptr = embeddings_session->GetInputNameAllocated(i, allocator);
+                        input_node_names.push_back(input_name_ptr.get());
+                //        std::cout << "Input " << i << " Name: " << input_name_ptr.get() << std::endl;
+                    }
+                    for (size_t i = 0; i < num_output_nodes; i++) {
+                        auto output_name_ptr = embeddings_session->GetOutputNameAllocated(i, allocator);
+                        output_node_names.push_back(output_name_ptr.get());
+                //        std::cout << "Input " << i << " Name: " << output_name_ptr.get() << std::endl;
+                    }
+                    for (const auto& name : input_node_names) {
+                        input_names_c_array.push_back(name.c_str());
+                    }
+                    for (const auto& name : output_node_names) {
+                        output_names_c_array.push_back(name.c_str());
+                    }
+                    tokenizer_u = LoadTokenizer(fs::path(embedding_model_path).parent_path());
+                    embedding_model_created = get_created_timestamp();
+                } catch (const std::exception& e) {
+                    std::cerr << "Failed to load model: " << e.what() << std::endl;
+                    return 1;
+                }
             }
-            for (size_t i = 0; i < num_output_nodes; i++) {
-                auto output_name_ptr = embeddings_session->GetOutputNameAllocated(i, allocator);
-                output_node_names.push_back(output_name_ptr.get());
-        //        std::cout << "Input " << i << " Name: " << output_name_ptr.get() << std::endl;
-            }
-            for (const auto& name : input_node_names) {
-                input_names_c_array.push_back(name.c_str());
-            }
-            for (const auto& name : output_node_names) {
-                output_names_c_array.push_back(name.c_str());
-            }
-            std::string hf_tokenizer_filename = "tokenizer.json";
-            fs::path adjacent_path = embedding_model_path.parent_path() / target_filename;
-            
-            
-            embedding_model_created = get_created_timestamp();
-        } catch (const std::exception& e) {
-            std::cerr << "Failed to load model: " << e.what() << std::endl;
-            return 1;
         }
     }
     
@@ -1063,17 +1308,28 @@ int main(int argc, OPTARG_T argv[]) {
                 if(embedding_model_created == 0) {
                     throw std::invalid_argument("[Embedding] Model not loaded.");
                 }
-
+               
                 std::string input;
                 before_run_embeddings(req.body, input);
-                // Run Embeddings
-                std::string response_json = run_embeddings(
-                                                           embeddings_session.get(),
-                                                           input, input_names_c_array,
-                                                           num_input_nodes,
-                                                           output_names_c_array,
-                                                           num_output_nodes);
                 
+                std::string response_json;
+
+                if((tokenizer_u != NULL) &&(num_input_nodes > 2)) {
+                    std::vector<int> ids = tokenizer_u->Encode(input);
+                    response_json = run_embeddings(
+                                                   embeddings_session.get(),
+                                                   ids, input_names_c_array,
+                                                   num_input_nodes,
+                                                   output_names_c_array,
+                                                   num_output_nodes);
+                }else{
+                    response_json = run_embeddings_e2e(
+                                                       embeddings_session.get(),
+                                                       input, input_names_c_array,
+                                                       num_input_nodes,
+                                                       output_names_c_array,
+                                                       num_output_nodes);
+                }
                 res.set_content(response_json, "application/json");
                 res.status = 200;
             } catch (const std::exception& e) {

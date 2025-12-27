@@ -50,6 +50,12 @@ curl -X 'POST' \
   }'
 ```
 
+```
+curl -X POST http://127.0.0.1:8080/v1/embeddings \
+     -H "Content-Type: application/json" \
+     -d '{"input":"Rain won’t stop me. Wind won’t stop me. Neither will driving snow. Sweltering summer heat<2028>will only raise my determination. With a body built for endurance, a heart free of greed, I’ll never lose my temper, trying always to keep a quiet smile on my face."}'
+```
+
 Or, use AI Kit:
 
 ```4d
@@ -133,10 +139,14 @@ while read -r file; do
 
 #### Embeddings Model
 
-Alternatively you can use an "End-to-End" (E2E) model like [**universal-sentence-encoder-large-5-onnx**](https://huggingface.co/SamLowe/universal-sentence-encoder-large-5-onnx/) that takes raw string as input and returns vectors as output. 
+You need to place a `tokenizer.model` file for old Google models (T5, ALBERT) or a `tokenizer.json` file for model Hugging Face models (Qwen, GPT, BERT) next to the ONNX file.
+
+The runtime will use this file to tokenise the input, run ONNX inference, mean pool, L2 noemalise the embeddings.
+
+Alternatively you can use an "End-to-End" (E2E) model like [**universal-sentence-encoder-large-5-onnx**](https://huggingface.co/SamLowe/universal-sentence-encoder-large-5-onnx/) that takes raw string as input and returns vectors as output. In this scenario, pre-processing and post processing are both included in the ONNX inference.
 
 > At its core, ONNX is a frameworks for maths, not text. An E2E model typically uses 
-`**onnxruntime-extensions**` to handle string. However, the text processing is not as powerful as specialised tokenisers. It is normally better to use ONNx for the vector maths and handle string externally.
+`**onnxruntime-extensions**` to handle string. However, the text processing is not as powerful as specialised tokenisers. It is normally better to use ONNX for the vector maths and handle string manipulation outside of ONNX.
 
 Use [`**tf2onnx**`](https://github.com/onnx/tensorflow-onnx) to convert a **TensorFlow** to an ONNX E2E model:
 
