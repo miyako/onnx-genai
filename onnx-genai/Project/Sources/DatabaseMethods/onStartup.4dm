@@ -25,16 +25,20 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$event.onResponse:=Formula:C1597(LOG EVENT:C667(Into 4D debug message:K38:5; "download complete"))
 	$event.onTerminate:=Formula:C1597(LOG EVENT:C667(Into 4D debug message:K38:5; (["process"; $1.pid; "terminated!"].join(" "))))
 	
-/*
-embeddings
-*/
-	
-	$file:=$homeFolder.file("nomic-embed-text-v1.Q8_0.gguf")
-	$URL:="https://huggingface.co/nomic-ai/nomic-embed-text-v1-GGUF/resolve/main/nomic-embed-text-v1.Q8_0.gguf"
 	$port:=8080
-	$onnx:=cs:C1710.onnx.new($port; $file; $URL; {\
-		model: ""; \
-		embedding_model: ""\
-		}; $event)
+	
+	$folder:=$homeFolder.file("Phi-3.5-mini-instruct")
+	$URL:="https://huggingface.co/microsoft/Phi-3.5-mini-instruct"
+	$chat:=cs:C1710.event.huggingface.new($folder; $URL; "chat.completion")
+	
+	$folder:=$homeFolder.file("all-MiniLM-L6-v2")
+	$URL:="https://huggingface.co/onnx-models/all-MiniLM-L6-v2-onnx/"
+	$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; "embedding")
+	
+	$options:={}
+	var $huggingfaces : cs:C1710.event.huggingfaces
+	$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
+	
+	$onnx:=cs:C1710.onnx.new($port; $huggingfaces; $options; $event)
 	
 End if 
