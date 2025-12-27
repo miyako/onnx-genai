@@ -1,8 +1,8 @@
-Class extends _onnx
+Class extends _ONNX
 
 Class constructor($controller : 4D:C1709.Class)
 	
-	Super:C1705("onnx-genai"; $controller)
+	Super:C1705("ONNX-genai"; $controller)
 	
 Function start($option : Object) : 4D:C1709.SystemWorker
 	

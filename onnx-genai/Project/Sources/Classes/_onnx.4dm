@@ -1,40 +1,25 @@
-property port : Integer
-property onData : 4D:C1709.Function
-property onDataError : 4D:C1709.Function
-property onTerminate : 4D:C1709.Function
+Class extends _interface
 
-Class extends _CLI
-
-Class constructor($command : Text; $class : 4D:C1709.Class)
+Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; $options : Object; $event : cs:C1710.event.event)
 	
-	var $controller : 4D:C1709.Class
-	var $superclass : 4D:C1709.Class
-	$superclass:=$class.superclass
-	$controller:=cs:C1710._onnx_Controller
+	Super:C1705()
 	
-	While ($superclass#Null:C1517)
-		If ($superclass.name=$controller.name)
-			$controller:=$class
-			break
+	var $ONNX : cs:C1710.workers.worker
+	$ONNX:=cs:C1710.workers.worker.new(cs:C1710._server)
+	
+	If (Not:C34($ONNX.isRunning($port)))
+		
+		var $homeFolder : 4D:C1709.Folder
+		$homeFolder:=Folder:C1567(fk home folder:K87:24).folder(".ONNX")
+		
+		If ($port=0) || ($port<0) || ($port>65535)
+			$port:=8080
 		End if 
-		$superclass:=$superclass.superclass
-	End while 
+		
+		This:C1470._main($port; $huggingfaces; $options; $event)
+		
+	End if 
 	
-	Super:C1705($command; $controller)
+Function _main($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; $options : Object; $event : cs:C1710.event.event)
 	
-Function bind($option : Object; $properties : Collection) : cs:C1710._CLI
-	
-	var $property : Text
-	For each ($property; $properties)
-		This:C1470[$property]:=$option[$property]
-	End for each 
-	
-	return This:C1470
-	
-Function get worker() : 4D:C1709.SystemWorker
-	
-	return This:C1470.controller.worker
-	
-Function terminate()
-	
-	This:C1470.controller.terminate()
+	main({port: $port; huggingfaces: $huggingfaces; options: $options; event: $event}; This:C1470._onTCP)

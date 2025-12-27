@@ -1,10 +1,10 @@
-var $onnx : cs:C1710.onnx
+var $ONNX : cs:C1710.ONNX
 
 If (False:C215)
-	$onnx:=cs:C1710.onnx.new()  //default
+	$ONNX:=cs:C1710.ONNX.new()  //default
 Else 
 	var $homeFolder : 4D:C1709.Folder
-	$homeFolder:=Folder:C1567(fk home folder:K87:24).folder(".onnx")
+	$homeFolder:=Folder:C1567(fk home folder:K87:24).folder(".ONNX")
 	var $file : 4D:C1709.File
 	var $URL : Text
 	var $port : Integer
@@ -32,13 +32,13 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$chat:=cs:C1710.event.huggingface.new($folder; $URL; "chat.completion")
 	
 	$folder:=$homeFolder.file("all-MiniLM-L6-v2")
-	$URL:="https://huggingface.co/onnx-models/all-MiniLM-L6-v2-onnx/"
+	$URL:="https://huggingface.co/ONNX-models/all-MiniLM-L6-v2-ONNX/"
 	$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; "embedding")
 	
 	$options:={}
 	var $huggingfaces : cs:C1710.event.huggingfaces
 	$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
 	
-	$onnx:=cs:C1710.onnx.new($port; $huggingfaces; $options; $event)
+	$ONNX:=cs:C1710.ONNX.new($port; $huggingfaces; $options; $event)
 	
 End if 
