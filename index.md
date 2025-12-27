@@ -11,7 +11,9 @@ layout: default
 
 #### Abstract
 
-[**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. Unlike the GGUF format which requires an inference engine designed for every model architecture and hardware optimisation engineered for every chip architecture, ONNX is **framework agnostic** because the model file contains the **computation graph of the neural network**.
+[**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. It allows models trained in one framework (e.g. PyTorch) to be used in another framework (e.g. TensorFlow) with native hardware accelaration (NVIDIA, AMD, Intel, Apple Silicon, Qualcomm).
+
+The ONNX Runtime does not need to be updated in order to understand and support new model architectures. The architecture is effectively encoded in the ONNX graph itself (you do need to design an exporter for each new model architecture). 
 
 #### Usage
 
@@ -81,41 +83,19 @@ If ($ChatCompletionsResult.success)
 End if 
 ```
 
-#### Chat Completions Model
+Finally to terminate the server:
 
-The ONNX format is based on **Protocol Buffers**, which has a hard limit of `2GB` for a single file. ONNX splits the model into a `.onnx` file (the graph) and a `.data` file (the weights).
-
-Use [optimum-cli](https://github.com/huggingface/optimum) to convert a specific model to ONNX:
-
-```sh
-optimum-cli export onnx --model BAAI/bge-base-en-v1.5 onnx_output_dir/
+```4d
+var $onnx : cs.onnx
+$onnx:=cs.onnx.new()
+$onnx.terminate()
 ```
 
-To download a specific file, Hugging Face uses the /resolve/ endpoint. The URL structure is:
-https://huggingface.co/[REPO_ID]/resolve/[BRANCH]/[FILE_PATH]
+#### Chat Completions Model
 
-curl -L -O https://huggingface.co/SamLowe/universal-sentence-encoder-large-5-onnx/resolve/main/model.onnx
+As mentioned earlier, the model needs to be converted to ONNX. 
 
-curl -s https://huggingface.co/api/models/SamLowe/universal-sentence-encoder-large-5-onnx/tree/main?recursive=true
-
-REPO="SamLowe/universal-sentence-encoder-large-5-onnx"
-# 1. Get file list -> 2. Filter for files -> 3. Download each using curl
-curl -s "https://huggingface.co/api/models/$REPO/tree/main?recursive=true" | \
-jq -r '.[] | select(.type=="file") | .path' | \
-while read -r file; do
-    echo "Downloading $file..."
-    # --create-dirs ensures subfolders are built locally
-    curl -L --create-dirs -o "$file" "https://huggingface.co/$REPO/resolve/main/$file"
-done
-
-
-TOKEN="your_hf_token_here"
-curl -H "Authorization: Bearer $TOKEN" -L -O [URL]
-
-
-
-
-Or, downloaded a converted ONNX model:
+Downloaded a converted ONNX model:
 
 ```
 hf download microsoft/Phi-3.5-mini-instruct-onnx \
@@ -123,12 +103,32 @@ hf download microsoft/Phi-3.5-mini-instruct-onnx \
   --local-dir .
 ```
 
-Finally to terminate the server:
+Or, convert one yourself with [optimum-cli](https://github.com/huggingface/optimum):
 
-```4d
-var $onnx : cs.onnx
-$onnx:=cs.onnx.new()
-$onnx.terminate()
+
+```sh
+optimum-cli export onnx --model BAAI/bge-base-en-v1.5 onnx_output_dir/
+```
+
+The ONNX format is based on **Protocol Buffers**, which has a hard limit of `2GB` for a single file. ONNX splits the model into a `.onnx` file (the graph) and a `.data` file (the weights).
+
+To download a specific file, Hugging Face uses the /resolve/ endpoint. The URL structure is:
+
+```
+https://huggingface.co/[REPO_ID]/resolve/[BRANCH]/[FILE_PATH]
+```
+
+Example:
+
+```
+TOKEN="your_hf_token_here"
+curl -H "Authorization: Bearer $TOKEN" -L -O [URL]
+curl -L -O https://huggingface.co/SamLowe/universal-sentence-encoder-large-5-onnx/resolve/main/model.onnx
+curl -s "https://huggingface.co/api/models/$REPO/tree/main?recursive=true" | \
+jq -r '.[] | select(.type=="file") | .path' | \
+while read -r file; do
+    echo "Downloading $file..."
+    curl -L --create-dirs -o "$file" "https://huggingface.co/$REPO/resolve/main/$file"
 ```
 
 #### Embeddings Model
