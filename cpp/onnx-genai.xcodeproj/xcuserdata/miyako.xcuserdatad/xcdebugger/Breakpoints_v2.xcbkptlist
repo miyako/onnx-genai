@@ -3,4 +3,52 @@
    uuid = "EE87662C-721A-43D9-8F2E-AC3DAB7166E7"
    type = "1"
    version = "2.0">
+   <Breakpoints>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "A5421BD0-0A71-43E6-8233-53EF5BC7F118"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "onnx-genai/main.cpp"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "837"
+            endingLineNumber = "837"
+            landmarkName = "main(argc, argv)"
+            landmarkType = "9">
+            <Locations>
+               <Location
+                  uuid = "A5421BD0-0A71-43E6-8233-53EF5BC7F118 - f3122bac5805c4e0"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "main"
+                  moduleName = "onnx-genai"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/miyako/Documents/GitHub/onnx-genai/cpp/onnx-genai/main.cpp"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "829"
+                  endingLineNumber = "829">
+               </Location>
+               <Location
+                  uuid = "A5421BD0-0A71-43E6-8233-53EF5BC7F118 - f3122bac5805c3e8"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "main"
+                  moduleName = "onnx-genai"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/miyako/Documents/GitHub/onnx-genai/cpp/onnx-genai/main.cpp"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "837"
+                  endingLineNumber = "837">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+   </Breakpoints>
 </Bucket>
