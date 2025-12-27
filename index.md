@@ -13,7 +13,7 @@ layout: default
 
 [**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. It allows models trained in one framework (e.g. PyTorch) to be used in another framework (e.g. TensorFlow) with native hardware accelaration (NVIDIA, AMD, Intel, Apple Silicon, Qualcomm).
 
-The ONNX Runtime does not need to be updated in order to understand and support new model architectures. The architecture is effectively encoded in the ONNX graph itself (you do need to design an exporter for each new model architecture). 
+The ONNX inference engine does not need to be updated for it to be able to support new model architectures. Standard neural network mathematical operations such as matrix multiplications, convolutions, and activations are alraedy encoded in the ONNX model.
 
 #### Usage
 
