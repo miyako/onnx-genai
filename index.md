@@ -133,13 +133,12 @@ $onnx.terminate()
 
 #### Embeddings Model
 
-Usw an "End-to-End" (E2E) model where the input is a raw string and the output is the vector embedding:
+Alternatively you can use an "End-to-End" (E2E) model like [**universal-sentence-encoder-large-5-onnx**](https://huggingface.co/SamLowe/universal-sentence-encoder-large-5-onnx/) that takes raw string as input and returns vectors as output. 
 
-> An E2E model uses `onnxruntime-extensions` to embed **pre-processing** like **tokenisation** as well as **post-processing** such as **mean-pooling** and **L2 normalization** within the model. 
+> At its core, ONNX is a frameworks for maths, not text. An E2E model typically uses 
+`**onnxruntime-extensions**` to handle string. However, the text processing is not as powerful as specialised tokenisers. It is normally better to use ONNx for the vector maths and handle string externally.
 
-[SamLowe/universal-sentence-encoder-large-5-onnx](https://huggingface.co/SamLowe/universal-sentence-encoder-large-5-onnx/)
-
-Use [`**tf2onnx**`](https://github.com/onnx/tensorflow-onnx) to convert a **TensorFlow** to an ONNX "end-to-end" model:
+Use [`**tf2onnx**`](https://github.com/onnx/tensorflow-onnx) to convert a **TensorFlow** to an ONNX E2E model:
 
 ```bash
 pip install tf2onnx onnxruntime-extensions tensorflow-hub
