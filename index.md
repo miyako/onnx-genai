@@ -20,7 +20,50 @@ The ONNX inference engine does not need to be updated for it to be able to suppo
 Instantiate `cs.onnx.onnx` in your *On Startup* database method:
 
 ```4d
-//T.B.D.
+var $ONNX : cs.ONNX
+
+If (False)
+    $ONNX:=cs.ONNX.new()  //default
+Else 
+    var $homeFolder : 4D.Folder
+    $homeFolder:=Folder(fk home folder).folder(".ONNX")
+    var $file : 4D.File
+    var $URL : Text
+    var $port : Integer
+    
+    var $event : cs.event.event
+    $event:=cs.event.event.new()
+    /*
+        Function onError($params : Object; $error : cs.event.error)
+        Function onSuccess($params : Object; $models : cs.event.models)
+        Function onData($request : 4D.HTTPRequest; $event : Object)
+        Function onResponse($request : 4D.HTTPRequest; $event : Object)
+        Function onTerminate($worker : 4D.SystemWorker; $params : Object)
+    */
+    
+    $event.onError:=Formula(ALERT($2.message))
+    $event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" loaded!"))
+    $event.onData:=Formula(LOG EVENT(Into 4D debug message; "download:"+String((This.range.end/This.range.length)*100; "###.00%")))
+    $event.onResponse:=Formula(LOG EVENT(Into 4D debug message; "download complete"))
+    $event.onTerminate:=Formula(LOG EVENT(Into 4D debug message; (["process"; $1.pid; "terminated!"].join(" "))))
+    
+    $port:=8080
+    
+    $folder:=$homeFolder.file("Phi-3.5-mini-instruct")
+    $URL:="https://huggingface.co/microsoft/Phi-3.5-mini-instruct"
+    $chat:=cs.event.huggingface.new($folder; $URL; "chat.completion")
+    
+    $folder:=$homeFolder.file("all-MiniLM-L6-v2")
+    $URL:="https://huggingface.co/ONNX-models/all-MiniLM-L6-v2-ONNX/"
+    $embeddings:=cs.event.huggingface.new($folder; $URL; "embedding")
+    
+    $options:={}
+    var $huggingfaces : cs.event.huggingfaces
+    $huggingfaces:=cs.event.huggingfaces.new([$chat; $embeddings])
+    
+    $ONNX:=cs.ONNX.new($port; $huggingfaces; $options; $event)
+    
+End if 
 ```
 
 Unless the server is already running (in which case the costructor does nothing), the following procedure runs in the background:
