@@ -51,6 +51,42 @@ std::unique_ptr<Tokenizer> LoadTokenizer(const std::string& model_path) {
 }
 
 #ifdef WIN32
+static std::wstring utf8_to_wstring(const std::string& str) {
+    if (str.empty()) return std::wstring();
+
+    // Get required buffer size in characters (including null terminator)
+    int size_needed = MultiByteToWideChar(
+        CP_UTF8,       // Source is UTF-8
+        0,             // Default flags
+        str.c_str(),   // Source string
+        -1,            // Null-terminated
+        nullptr,       // No output buffer yet
+        0              // Requesting size
+    );
+
+    if (size_needed <= 0) return std::wstring();
+
+    // Allocate buffer
+    std::wstring wstr(size_needed, 0);
+
+    // Perform conversion
+    MultiByteToWideChar(
+        CP_UTF8,
+        0,
+        str.c_str(),
+        -1,
+        &wstr[0],
+        size_needed
+    );
+
+    // Remove the extra null terminator added by MultiByteToWideChar
+    if (!wstr.empty() && wstr.back() == '\0') {
+        wstr.pop_back();
+    }
+
+    return wstr;
+}
+
 static std::string wchar_to_utf8(const wchar_t* wstr) {
     if (!wstr) return std::string();
     
@@ -1130,7 +1166,11 @@ int main(int argc, OPTARG_T argv[]) {
                     for (const auto& name : output_node_names) {
                         output_names_c_array.push_back(name.c_str());
                     }
+#if WIN32
+                    tokenizer_u = LoadTokenizer(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
+#else
                     tokenizer_u = LoadTokenizer(fs::path(embedding_model_path).parent_path());
+#endif
                     embedding_model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
                     std::cerr << "Failed to load model: " << e.what() << std::endl;

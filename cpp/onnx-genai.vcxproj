@@ -156,7 +156,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>lib\windows64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>onnxruntime-genai.lib;onnxruntime.lib;ortextensions.lib;ortcustomops.lib;onnxruntime_providers_shared.lib;ocos_operators.lib;noexcep_operators.lib;jsoncpp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Userenv.lib;tokenizers_cpp.lib;sentencepiece.lib;tokenizers_c.lib;onnxruntime-genai.lib;onnxruntime.lib;ortextensions.lib;ortcustomops.lib;onnxruntime_providers_shared.lib;ocos_operators.lib;noexcep_operators.lib;jsoncpp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
