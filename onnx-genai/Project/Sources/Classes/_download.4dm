@@ -1,4 +1,8 @@
+//=====
+property folder : 4D:C1709.Folder
 property file : 4D:C1709.File
+property URL : Text
+//=====
 property options : Object
 property _onResponse : 4D:C1709.Function
 property _fileHandle : 4D:C1709.FileHandle

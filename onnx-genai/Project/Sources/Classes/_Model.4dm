@@ -1,11 +1,20 @@
 Class extends _download
 
-property URL : Text
-
 Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; $options : Object; $formula : 4D:C1709.Function; $event : cs:C1710.event.event)
 	
 	Super:C1705($options; $formula; $event)
 	
+/*
+plan
+	
+set $huggingfaces to collection
+repeat by unshifting 
+for each item
+get catalog
+for each folder/file
+recursively download file 
+	
+*/
 	
 	
 	
