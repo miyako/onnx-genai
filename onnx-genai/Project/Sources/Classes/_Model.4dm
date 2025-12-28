@@ -39,9 +39,6 @@ Function onDownload($oid : Text)
 	
 Function start()
 	
-	
-	
-	
 	var $ONNX : cs:C1710.workers.worker
 	$ONNX:=cs:C1710.workers.worker.new(cs:C1710._server)
 	$ONNX.start(This:C1470.options.port; This:C1470.options)
