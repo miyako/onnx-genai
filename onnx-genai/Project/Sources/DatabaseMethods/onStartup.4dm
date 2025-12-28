@@ -22,21 +22,22 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$event.onError:=Formula:C1597(ALERT:C41($2.message))
 	$event.onSuccess:=Formula:C1597(ALERT:C41($2.models.extract("name").join(",")+" loaded!"))
 	$event.onData:=Formula:C1597(LOG EVENT:C667(Into 4D debug message:K38:5; This:C1470.file.fullName+":"+String:C10((This:C1470.range.end/This:C1470.range.length)*100; "###.00%")))
-	$event.onData:=Formula(MESSAGE(This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
+	$event.onData:=Formula:C1597(MESSAGE:C88(This:C1470.file.fullName+":"+String:C10((This:C1470.range.end/This:C1470.range.length)*100; "###.00%")))
 	$event.onResponse:=Formula:C1597(LOG EVENT:C667(Into 4D debug message:K38:5; This:C1470.file.fullName+":download complete"))
-	$event.onResponse:=Formula(MESSAGE(This.file.fullName+":download complete"))
+	$event.onResponse:=Formula:C1597(MESSAGE:C88(This:C1470.file.fullName+":download complete"))
 	$event.onTerminate:=Formula:C1597(LOG EVENT:C667(Into 4D debug message:K38:5; (["process"; $1.pid; "terminated!"].join(" "))))
 	
-	$port:=8080
+	$port:=8081
 	
-	$folder:=$homeFolder.folder("Phi-3.5-mini-instruct")
-	$URL:="microsoft/Phi-3.5-mini-instruct"
-	$chat:=cs:C1710.event.huggingface.new($folder; $URL; "chat.completion")
+	$folder:=$homeFolder.folder("microsoft/Phi-3.5-mini-instruct")
+	$path:="cpu_and_mobile/cpu-int4-awq-block-128-acc-level-4"
+	$URL:="https://huggingface.co/microsoft/Phi-3.5-mini-instruct-onnx/tree/main/cpu_and_mobile/cpu-int4-awq-block-128-acc-level-4"
+	$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 	
 	$folder:=$homeFolder.folder("all-MiniLM-L6-v2")
+	$path:=""
 	$URL:="ONNX-models/all-MiniLM-L6-v2-ONNX"
-	$URL:="https://huggingface.co/ONNX-models/all-MiniLM-L6-v2-ONNX/main"
-	$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; "embedding")
+	$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding")
 	
 	$options:={}
 	var $huggingfaces : cs:C1710.event.huggingfaces

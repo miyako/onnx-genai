@@ -1092,23 +1092,7 @@ int main(int argc, OPTARG_T argv[]) {
     std::string modelName;
     std::unique_ptr<OgaModel> model;
     std::unique_ptr<OgaTokenizer> tokenizer;
-    
-    std::string embedding_fingerprint;
-    long long embedding_model_created = 0;
-    std::string embedding_modelName;
-    std::unique_ptr<Ort::Session> embeddings_session;
-    size_t num_input_nodes = 0;
-    size_t num_output_nodes = 0;
-    std::vector<std::string> input_node_names;
-    std::vector<std::string> output_node_names;
-    Ort::AllocatorWithDefaultOptions allocator;
-    std::vector<int64_t> input_shape = {1}; // Batch size 1
-    std::vector<const char*> input_names_c_array;
-    std::vector<const char*> output_names_c_array;
-//    TokenizerHandle hf_tokenizer;
-//    sentencepiece::SentencePieceProcessor processor;
-    std::unique_ptr<Tokenizer> tokenizer_u;
-    
+        
     if (model_path.length() != 0) {
         if (fs::exists(model_path)) {
             if (fs::is_directory(model_path)) {
@@ -1128,25 +1112,38 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
+    std::string embedding_fingerprint;
+    long long embedding_model_created = 0;
+    std::string embedding_modelName;
+    std::unique_ptr<Ort::Session> embeddings_session;
+    std::unique_ptr<Ort::Env> embeddings_env;
+    size_t num_input_nodes = 0;
+    size_t num_output_nodes = 0;
+    std::vector<std::string> input_node_names;
+    std::vector<std::string> output_node_names;
+    Ort::AllocatorWithDefaultOptions allocator;
+    std::vector<int64_t> input_shape = {1}; // Batch size 1
+    std::vector<const char*> input_names_c_array;
+    std::vector<const char*> output_names_c_array;
+    std::unique_ptr<Tokenizer> embeddings_tokenizer;
+    
     if (embedding_model_path.length() != 0) {
         if (fs::exists(embedding_model_path)) {
             if (fs::is_regular_file(embedding_model_path)) {
                 // 1.b Initialize Embedding and Session (Load once)
                 std::cerr << "[Embedding] Loading from " << embedding_model_path << std::endl;
                 embedding_fingerprint = get_system_fingerprint(embedding_model_path, "directml");
-                Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "Embedding");
-                
                 try {
+                    embeddings_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "Embeddings");
                     embedding_modelName = get_model_name(embedding_model_path);
                     Ort::SessionOptions session_options;
                     session_options.SetIntraOpNumThreads(1);
                     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-                    //            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
                     Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
         #if WIN32
-                    embeddings_session = std::make_unique<Ort::Session>(env, embedding_model_path_u16.c_str(), session_options);
+                    embeddings_session = std::make_unique<Ort::Session>(*embeddings_env, embedding_model_path_u16.c_str(), session_options);
         #else
-                    embeddings_session = std::make_unique<Ort::Session>(env, embedding_model_path.c_str(), session_options);
+                    embeddings_session = std::make_unique<Ort::Session>(*embeddings_env, embedding_model_path.c_str(), session_options);
         #endif
                     num_input_nodes = embeddings_session->GetInputCount();
                     num_output_nodes = embeddings_session->GetOutputCount();
@@ -1167,9 +1164,9 @@ int main(int argc, OPTARG_T argv[]) {
                         output_names_c_array.push_back(name.c_str());
                     }
 #if WIN32
-                    tokenizer_u = LoadTokenizer(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
+                    embeddings_tokenizer = LoadTokenizer(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
 #else
-                    tokenizer_u = LoadTokenizer(fs::path(embedding_model_path).parent_path());
+                    embeddings_tokenizer = LoadTokenizer(fs::path(embedding_model_path).parent_path());
 #endif
                     embedding_model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
@@ -1353,13 +1350,13 @@ int main(int argc, OPTARG_T argv[]) {
                 
                 std::string response_json;
 
-                if((tokenizer_u != NULL) &&(num_input_nodes > 2)) {
+                if((embeddings_tokenizer != NULL) &&(num_input_nodes > 2)) {
                     /*
                      standard encoder-only model
                      input: input_ids, attention_mask, token_type_ids
                      output: last_hidden_state or logits
                      */
-                    std::vector<int> ids = tokenizer_u->Encode(input);
+                    std::vector<int> ids = embeddings_tokenizer->Encode(input);
                     response_json = run_embeddings(
                                                    embeddings_session.get(),
                                                    ids, input_names_c_array,

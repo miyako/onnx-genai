@@ -4,10 +4,10 @@ Function _onTCP($status : Object; $options : Object)
 	
 	If ($status.success)
 		
-		var $className : Text
-		$className:=Split string:C1554(Current method name:C684; "."; sk trim spaces:K86:2).first()
+		$name:=$options.name
+		OB REMOVE:C1226($options; "name")
 		
-		CALL WORKER:C1389($className; Formula:C1597(start); $options; Formula:C1597(onModel))
+		CALL WORKER:C1389($name; Formula:C1597(start); $options; Formula:C1597(onModel))
 		
 	Else 
 		

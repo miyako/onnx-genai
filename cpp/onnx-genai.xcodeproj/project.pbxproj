@@ -16,9 +16,6 @@
 		D18C69692EFFE31600A4774A /* libtokenizers_c.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C69682EFFE31600A4774A /* libtokenizers_c.a */; };
 		D18C696B2EFFE32E00A4774A /* libsentencepiece.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C696A2EFFE32E00A4774A /* libsentencepiece.a */; };
 		D18C696D2EFFE33600A4774A /* libtokenizers_cpp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C696C2EFFE33600A4774A /* libtokenizers_cpp.a */; };
-		D1C53D672EFB5F750013E31F /* libortcustomops.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D1C53D662EFB5F630013E31F /* libortcustomops.a */; };
-		D1C53D682EFB5F750013E31F /* libnoexcep_operators.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D1C53D632EFB5F630013E31F /* libnoexcep_operators.a */; };
-		D1C53D692EFB5F750013E31F /* libocos_operators.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D1C53D652EFB5F630013E31F /* libocos_operators.a */; };
 		D1C53D6A2EFB5F750013E31F /* libortextensions.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D1C53D642EFB5F630013E31F /* libortextensions.dylib */; };
 		D1C53D6B2EFB5F750013E31F /* libortextensions.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = D1C53D642EFB5F630013E31F /* libortextensions.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -58,10 +55,7 @@
 		D18C69682EFFE31600A4774A /* libtokenizers_c.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtokenizers_c.a; path = a/libtokenizers_c.a; sourceTree = "<group>"; };
 		D18C696A2EFFE32E00A4774A /* libsentencepiece.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libsentencepiece.a; path = a/libsentencepiece.a; sourceTree = "<group>"; };
 		D18C696C2EFFE33600A4774A /* libtokenizers_cpp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtokenizers_cpp.a; path = a/libtokenizers_cpp.a; sourceTree = "<group>"; };
-		D1C53D632EFB5F630013E31F /* libnoexcep_operators.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libnoexcep_operators.a; path = macOS/libnoexcep_operators.a; sourceTree = "<group>"; };
 		D1C53D642EFB5F630013E31F /* libortextensions.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libortextensions.dylib; path = macOS/libortextensions.dylib; sourceTree = "<group>"; };
-		D1C53D652EFB5F630013E31F /* libocos_operators.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libocos_operators.a; path = macOS/libocos_operators.a; sourceTree = "<group>"; };
-		D1C53D662EFB5F630013E31F /* libortcustomops.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libortcustomops.a; path = macOS/libortcustomops.a; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -83,10 +77,7 @@
 				D18C69672EFEEAC400A4774A /* libomp.a in Frameworks */,
 				D178B3E82EF9EC2E00F0F0A7 /* libonnxruntime.dylib in Frameworks */,
 				D1C53D6A2EFB5F750013E31F /* libortextensions.dylib in Frameworks */,
-				D1C53D692EFB5F750013E31F /* libocos_operators.a in Frameworks */,
-				D1C53D672EFB5F750013E31F /* libortcustomops.a in Frameworks */,
 				D157F3122E612DD500DF46D3 /* libjsoncpp.a in Frameworks */,
-				D1C53D682EFB5F750013E31F /* libnoexcep_operators.a in Frameworks */,
 				D178B3E42EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -101,9 +92,6 @@
 				D18C696A2EFFE32E00A4774A /* libsentencepiece.a */,
 				D18C69682EFFE31600A4774A /* libtokenizers_c.a */,
 				D18C69662EFEEAC400A4774A /* libomp.a */,
-				D1C53D632EFB5F630013E31F /* libnoexcep_operators.a */,
-				D1C53D652EFB5F630013E31F /* libocos_operators.a */,
-				D1C53D662EFB5F630013E31F /* libortcustomops.a */,
 				D1C53D642EFB5F630013E31F /* libortextensions.dylib */,
 				D178B3E72EF9EC2E00F0F0A7 /* libonnxruntime.dylib */,
 				D178B3E32EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib */,

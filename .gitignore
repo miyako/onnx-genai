@@ -42,3 +42,6 @@ cpp/lib/windows64/eigen_blas_static.lib
 cpp/lib/windows64/eigen_lapack_static.lib
 onnx-genai/Resources/en.lproj/syntaxEN.json
 onnx-genai/Libraries/lib4d-arm64.dylib
+cpp/macOS/onnx-genai.dSYM/Contents/Info.plist
+cpp/macOS/onnx-genai.dSYM/Contents/Resources/Relocations/x86_64/onnx-genai.yml
+cpp/macOS/onnx-genai.dSYM/Contents/Resources/DWARF/onnx-genai

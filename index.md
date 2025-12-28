@@ -42,9 +42,9 @@ Else
     $event.onError:=Formula(ALERT($2.message))
     $event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" loaded!"))
     $event.onData:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
-      //$event.onData:=Formula(MESSAGE(This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
+    $event.onData:=Formula(MESSAGE(This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
     $event.onResponse:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":download complete"))
-      //$event.onResponse:=Formula(MESSAGE(This.file.fullName+":download complete"))
+    $event.onResponse:=Formula(MESSAGE(This.file.fullName+":download complete"))
     $event.onTerminate:=Formula(LOG EVENT(Into 4D debug message; (["process"; $1.pid; "terminated!"].join(" "))))
     
     $port:=8080
@@ -55,7 +55,6 @@ Else
     
     $folder:=$homeFolder.folder("all-MiniLM-L6-v2")
     $URL:="ONNX-models/all-MiniLM-L6-v2-ONNX"
-    $URL:="https://huggingface.co/ONNX-models/all-MiniLM-L6-v2-ONNX/main"
     $embeddings:=cs.event.huggingface.new($folder; $URL; "embedding")
     
     $options:={}
