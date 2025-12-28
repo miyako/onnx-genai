@@ -40,3 +40,5 @@ eigen/eigen_blas_static.lib
 models/*
 cpp/lib/windows64/eigen_blas_static.lib
 cpp/lib/windows64/eigen_lapack_static.lib
+onnx-genai/Resources/en.lproj/syntaxEN.json
+onnx-genai/Libraries/lib4d-arm64.dylib
