@@ -27,7 +27,7 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$event.onResponse:=Formula:C1597(MESSAGE:C88(This:C1470.file.fullName+":download complete"))
 	$event.onTerminate:=Formula:C1597(LOG EVENT:C667(Into 4D debug message:K38:5; (["process"; $1.pid; "terminated!"].join(" "))))
 	
-	$port:=8081
+	$port:=8080
 	
 	$folder:=$homeFolder.folder("microsoft/Phi-3.5-mini-instruct")
 	$path:="cpu_and_mobile/cpu-int4-awq-block-128-acc-level-4"

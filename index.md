@@ -11,7 +11,7 @@ layout: default
 
 #### Abstract
 
-[**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. It allows models trained in one framework (e.g. PyTorch) to be used in another framework (e.g. TensorFlow) with native hardware accelaration (NVIDIA, AMD, Intel, Apple Silicon, Qualcomm). Standard neural network mathematical operations such as matrix multiplications, convolutions, and activations are encoded in the ONNX model.
+[**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. It allows models trained in one framework (e.g. PyTorch) to be used in another framework (e.g. TensorFlow) with native hardware acceleration (NVIDIA, AMD, Intel, Apple Silicon, Qualcomm). Standard neural network mathematical operations such as matrix multiplications, convolutions, and activations are encoded in the model.
 
 #### Usage
 
@@ -187,9 +187,9 @@ The runtime will use this file to tokenise the input, run ONNX inference, mean p
 Alternatively you can use an "End-to-End" (E2E) model like [**universal-sentence-encoder-large-5-onnx**](https://huggingface.co/SamLowe/universal-sentence-encoder-large-5-onnx/) that takes raw string as input and returns vectors as output. In this scenario, pre-processing and post processing are both included in the ONNX inference.
 
 > At its core, ONNX is a frameworks for maths, not text. An E2E model typically uses 
-`**onnxruntime-extensions**` to handle string. However, the text processing is not as powerful as specialised tokenisers. It is normally better to use ONNX for the vector maths and handle string manipulation outside of ONNX.
+**`onnxruntime-extensions`** to handle string. However, the text processing is not as powerful as specialised tokenisers. It is normally better to use ONNX for the vector maths and handle string manipulation outside of ONNX.
 
-Use [`**tf2onnx**`](https://github.com/onnx/tensorflow-onnx) to convert a **TensorFlow** to an ONNX E2E model:
+Use [**`tf2onnx`**](https://github.com/onnx/tensorflow-onnx) to convert a **TensorFlow** to an ONNX E2E model:
 
 ```bash
 pip install tf2onnx onnxruntime-extensions tensorflow-hub
