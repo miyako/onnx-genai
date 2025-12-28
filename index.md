@@ -11,19 +11,17 @@ layout: default
 
 #### Abstract
 
-[**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. It allows models trained in one framework (e.g. PyTorch) to be used in another framework (e.g. TensorFlow) with native hardware accelaration (NVIDIA, AMD, Intel, Apple Silicon, Qualcomm).
-
-The ONNX inference engine does not need to be updated for it to be able to support new model architectures. Standard neural network mathematical operations such as matrix multiplications, convolutions, and activations are alraedy encoded in the ONNX model.
+[**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. It allows models trained in one framework (e.g. PyTorch) to be used in another framework (e.g. TensorFlow) with native hardware accelaration (NVIDIA, AMD, Intel, Apple Silicon, Qualcomm). Standard neural network mathematical operations such as matrix multiplications, convolutions, and activations are encoded in the ONNX model.
 
 #### Usage
 
-Instantiate `cs.onnx.onnx` in your *On Startup* database method:
+Instantiate `cs.ONNX.ONNX` in your *On Startup* database method:
 
 ```4d
-var $ONNX : cs.ONNX
+var $ONNX : cs.ONNX.ONNX
 
 If (False)
-    $ONNX:=cs.ONNX.new()  //default
+    $ONNX:=cs.ONNX.ONNX.new()  //default
 Else 
     var $homeFolder : 4D.Folder
     $homeFolder:=Folder(fk home folder).folder(".ONNX")
@@ -43,25 +41,28 @@ Else
     
     $event.onError:=Formula(ALERT($2.message))
     $event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" loaded!"))
-    $event.onData:=Formula(LOG EVENT(Into 4D debug message; "download:"+String((This.range.end/This.range.length)*100; "###.00%")))
-    $event.onResponse:=Formula(LOG EVENT(Into 4D debug message; "download complete"))
+    $event.onData:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
+      //$event.onData:=Formula(MESSAGE(This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
+    $event.onResponse:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":download complete"))
+      //$event.onResponse:=Formula(MESSAGE(This.file.fullName+":download complete"))
     $event.onTerminate:=Formula(LOG EVENT(Into 4D debug message; (["process"; $1.pid; "terminated!"].join(" "))))
     
     $port:=8080
     
-    $folder:=$homeFolder.file("Phi-3.5-mini-instruct")
-    $URL:="https://huggingface.co/microsoft/Phi-3.5-mini-instruct"
+    $folder:=$homeFolder.folder("Phi-3.5-mini-instruct")
+    $URL:="microsoft/Phi-3.5-mini-instruct"
     $chat:=cs.event.huggingface.new($folder; $URL; "chat.completion")
     
-    $folder:=$homeFolder.file("all-MiniLM-L6-v2")
-    $URL:="https://huggingface.co/ONNX-models/all-MiniLM-L6-v2-ONNX/"
+    $folder:=$homeFolder.folder("all-MiniLM-L6-v2")
+    $URL:="ONNX-models/all-MiniLM-L6-v2-ONNX"
+    $URL:="https://huggingface.co/ONNX-models/all-MiniLM-L6-v2-ONNX/main"
     $embeddings:=cs.event.huggingface.new($folder; $URL; "embedding")
     
     $options:={}
     var $huggingfaces : cs.event.huggingfaces
     $huggingfaces:=cs.event.huggingfaces.new([$chat; $embeddings])
     
-    $ONNX:=cs.ONNX.new($port; $huggingfaces; $options; $event)
+    $ONNX:=cs.ONNX.ONNX.new($port; $huggingfaces; $options; $event)
     
 End if 
 ```
@@ -135,16 +136,14 @@ End if
 Finally to terminate the server:
 
 ```4d
-var $onnx : cs.onnx
-$onnx:=cs.onnx.new()
+var $onnx : cs.ONNX.ONNX
+$onnx:=cs.ONNX.ONNX.new()
 $onnx.terminate()
 ```
 
 #### Chat Completions Model
 
-As mentioned earlier, the model needs to be converted to ONNX. 
-
-Downloaded a converted ONNX model:
+Downloaded a ONNX model:
 
 ```
 hf download microsoft/Phi-3.5-mini-instruct-onnx \
@@ -152,7 +151,7 @@ hf download microsoft/Phi-3.5-mini-instruct-onnx \
   --local-dir .
 ```
 
-Or, convert one yourself with [optimum-cli](https://github.com/huggingface/optimum):
+Or, convert a model yourself with [optimum-cli](https://github.com/huggingface/optimum):
 
 
 ```sh
