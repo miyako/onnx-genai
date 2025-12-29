@@ -142,7 +142,7 @@ $onnx.terminate()
 
 #### Chat Completions Model
 
-Downloaded a ONNX model:
+Downloaded an ONNX model:
 
 ```
 hf download microsoft/Phi-3.5-mini-instruct-onnx \
