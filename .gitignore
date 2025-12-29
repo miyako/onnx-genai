@@ -45,5 +45,4 @@ onnx-genai/Libraries/lib4d-arm64.dylib
 cpp/macOS/onnx-genai.dSYM/Contents/Info.plist
 cpp/macOS/onnx-genai.dSYM/Contents/Resources/Relocations/x86_64/onnx-genai.yml
 cpp/macOS/onnx-genai.dSYM/Contents/Resources/DWARF/onnx-genai
-cpp/x64/Release/onnx-genai.lib
-cpp/x64/Release/onnx-genai.exp
+cpp/x64/*

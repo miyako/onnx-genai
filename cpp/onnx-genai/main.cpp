@@ -1018,7 +1018,8 @@ static std::string run_embeddings_e2e(
 
 int main(int argc, OPTARG_T argv[]) {
     
-#if WIN32
+#ifdef WIN32
+    std::wstring model_path_u16;
     std::wstring embedding_model_path_u16;
 #endif
     std::string model_path;           // -m
@@ -1038,16 +1039,17 @@ int main(int argc, OPTARG_T argv[]) {
     while ((ch = getopt(argc, argv, ARGS)) != -1) {
         switch (ch){
             case 'm':
-#if WIN32
-                embedding_model_path_u16 = optarg;
-                model_path = wchar_to_utf8(embedding_model_path_u16.c_str());
+#ifdef WIN32
+                model_path_u16 = optarg;
+                model_path = wchar_to_utf8(model_path_u16.c_str());
 #else
                 model_path = optarg;
 #endif
                 break;
             case 'e':
-#if WIN32
-                embedding_model_path = wchar_to_utf8(optarg);
+#ifdef WIN32
+                embedding_model_path_u16 = optarg;
+                embedding_model_path = wchar_to_utf8(embedding_model_path_u16.c_str());
 #else
                 embedding_model_path = optarg;
 #endif
@@ -1065,7 +1067,7 @@ int main(int argc, OPTARG_T argv[]) {
                 port = std::stoi(optarg);
                 break;
             case 'h':
-#if WIN32
+#ifdef WIN32
                 host = wchar_to_utf8(optarg);
 #else
                 host = optarg;
@@ -1140,7 +1142,7 @@ int main(int argc, OPTARG_T argv[]) {
                     session_options.SetIntraOpNumThreads(1);
                     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
                     Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
-        #if WIN32
+        #ifdef WIN32
                     embeddings_session = std::make_unique<Ort::Session>(*embeddings_env, embedding_model_path_u16.c_str(), session_options);
         #else
                     embeddings_session = std::make_unique<Ort::Session>(*embeddings_env, embedding_model_path.c_str(), session_options);
@@ -1163,7 +1165,7 @@ int main(int argc, OPTARG_T argv[]) {
                     for (const auto& name : output_node_names) {
                         output_names_c_array.push_back(name.c_str());
                     }
-#if WIN32
+#ifdef WIN32
                     embeddings_tokenizer = LoadTokenizer(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
 #else
                     embeddings_tokenizer = LoadTokenizer(fs::path(embedding_model_path).parent_path());
