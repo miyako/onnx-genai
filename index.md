@@ -25,6 +25,7 @@ If (False)
 Else 
     var $homeFolder : 4D.Folder
     $homeFolder:=Folder(fk home folder).folder(".ONNX")
+    var $file : 4D.File
     var $URL : Text
     var $port : Integer
     
@@ -48,19 +49,21 @@ Else
     
     $port:=8080
     
-    $folder:=$homeFolder.folder("Phi-3.5-mini-instruct")
-    $URL:="microsoft/Phi-3.5-mini-instruct"
-    $chat:=cs.event.huggingface.new($folder; $URL; "chat.completion")
+    $folder:=$homeFolder.folder("microsoft/Phi-3.5-mini-instruct")
+    $path:="cpu_and_mobile/cpu-int4-awq-block-128-acc-level-4"
+    $URL:="https://huggingface.co/microsoft/Phi-3.5-mini-instruct-onnx/tree/main/cpu_and_mobile/cpu-int4-awq-block-128-acc-level-4"
+    $chat:=cs.event.huggingface.new($folder; $URL; $path; "chat.completion")
     
     $folder:=$homeFolder.folder("all-MiniLM-L6-v2")
+    $path:=""
     $URL:="ONNX-models/all-MiniLM-L6-v2-ONNX"
-    $embeddings:=cs.event.huggingface.new($folder; $URL; "embedding")
+    $embeddings:=cs.event.huggingface.new($folder; $URL; $path; "embedding")
     
     $options:={}
     var $huggingfaces : cs.event.huggingfaces
     $huggingfaces:=cs.event.huggingfaces.new([$chat; $embeddings])
     
-    $ONNX:=cs.ONNX.ONNX.new($port; $huggingfaces; $options; $event)
+    $ONNX:=cs.ONNX.ONNX.new($port; $huggingfaces; $homeFolder; $options; $event)
     
 End if 
 ```

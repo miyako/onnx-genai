@@ -1,6 +1,6 @@
 Class extends _interface
 
-Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; $options : Object; $event : cs:C1710.event.event)
+Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; $HOME : 4D:C1709.Folder; $options : Object; $event : cs:C1710.event.event)
 	
 	Super:C1705()
 	
@@ -9,14 +9,15 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 	
 	If (Not:C34($ONNX.isRunning($port)))
 		
-		var $homeFolder : 4D:C1709.Folder
-		$homeFolder:=Folder:C1567(fk home folder:K87:24).folder(".ONNX")
+		If (Not:C34(OB Instance of:C1731($HOME; 4D:C1709.Folder))) || (Not:C34($HOME.exists))
+			$HOME:=Folder:C1567(fk home folder:K87:24).folder(".TEI")
+		End if 
 		
 		If ($huggingfaces=Null:C1517) || (Not:C34(OB Instance of:C1731($huggingfaces; cs:C1710.event.huggingfaces))) || ($huggingfaces.huggingfaces.length=0)
-			$folder:=$homeFolder.folder("Phi-3.5-mini-instruct")
+			$folder:=$HOME.folder("Phi-3.5-mini-instruct")
 			$URL:="microsoft/Phi-3.5-mini-instruct"
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; "chat.completion")
-			$folder:=$homeFolder.folder("all-MiniLM-L6-v2")
+			$folder:=$HOME.folder("all-MiniLM-L6-v2")
 			$URL:="ONNX-models/all-MiniLM-L6-v2-ONNX"
 			$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; "embedding")
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
@@ -26,10 +27,10 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 			$port:=8080
 		End if 
 		
-		This:C1470._main($port; $huggingfaces; $options; $event)
+		This:C1470._main($port; $huggingfaces; $HOME; $options; $event)
 		
 	End if 
 	
-Function _main($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; $options : Object; $event : cs:C1710.event.event)
+Function _main($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; $HOME : 4D:C1709.Folder; $options : Object; $event : cs:C1710.event.event)
 	
-	main({name: Split string:C1554(Current method name:C684; "."; sk trim spaces:K86:2).first(); port: $port; huggingfaces: $huggingfaces; options: $options; event: $event}; This:C1470._onTCP)
+	main({name: Split string:C1554(Current method name:C684; "."; sk trim spaces:K86:2).first(); port: $port; huggingfaces: $huggingfaces; HOME: $HOME; options: $options; event: $event}; This:C1470._onTCP)

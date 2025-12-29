@@ -7,7 +7,9 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 	
 	Super:C1705($port; $huggingfaces; $options; $formula; $event)
 	
-	This:C1470.download()
+	If (Not:C34(This:C1470.offline))
+		This:C1470.download()
+	End if 
 	
 Function models() : cs:C1710.event.models
 	

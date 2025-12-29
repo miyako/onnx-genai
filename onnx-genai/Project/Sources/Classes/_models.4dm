@@ -4,6 +4,7 @@ property _models : Collection
 property options : Object
 property event : cs:C1710.event.event
 property _onResponse : 4D:C1709.Function
+property offline : Boolean
 
 Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; $options : Object; $formula : 4D:C1709.Function; $event : cs:C1710.event.event)
 	
@@ -15,6 +16,7 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 	This:C1470.options.onStdErr:=This:C1470.event.onStdErr
 	This:C1470.options.onStdOut:=This:C1470.event.onStdOut
 	This:C1470.options.port:=$port
+	This:C1470.offline:=False:C215
 	
 	This:C1470.files:=[]
 	This:C1470._models:=[]
@@ -48,6 +50,12 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 		
 		var $request : 4D:C1709.HTTPRequest
 		$request:=4D:C1709.HTTPRequest.new($API).wait()
+		If ($request.response.status=Null:C1517)
+			This:C1470._models.push([$USER; $REPO].join("/"))
+			This:C1470.options.embedding_model:=$huggingface.folder
+			This:C1470.offline:=True:C214
+			continue
+		End if 
 		If ($request.response.status=200)
 			If (Value type:C1509($request.response)=Is object:K8:27)
 				$resources:=$request.response.body.map(Formula:C1597($1.result:={\
@@ -64,7 +72,6 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 				This:C1470._models.push([$USER; $REPO].join("/"))
 			End if 
 		End if 
-		
 	End while 
 	
 Function download()

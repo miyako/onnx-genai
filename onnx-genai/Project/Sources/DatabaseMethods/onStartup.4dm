@@ -43,6 +43,6 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	var $huggingfaces : cs:C1710.event.huggingfaces
 	$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
 	
-	$ONNX:=cs:C1710.ONNX.new($port; $huggingfaces; $options; $event)
+	$ONNX:=cs:C1710.ONNX.new($port; $huggingfaces; $homeFolder; $options; $event)
 	
 End if 
