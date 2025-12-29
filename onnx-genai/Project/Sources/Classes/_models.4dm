@@ -74,7 +74,7 @@ Function download()
 			This:C1470.onDownload($file.oid)
 			continue
 		End if 
-		cs:C1710._download.new(\
+		cs:C1710.event.download.new(\
 			This:C1470; \
 			$file.folder.file($file.path); \
 			$file.folder; \
