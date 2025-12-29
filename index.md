@@ -25,7 +25,6 @@ If (False)
 Else 
     var $homeFolder : 4D.Folder
     $homeFolder:=Folder(fk home folder).folder(".ONNX")
-    var $file : 4D.File
     var $URL : Text
     var $port : Integer
     
