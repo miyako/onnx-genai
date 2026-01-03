@@ -1008,6 +1008,7 @@ int main(int argc, OPTARG_T argv[]) {
 #ifdef WIN32
     std::wstring model_path_u16;
     std::wstring embedding_model_path_u16;
+    std::wstring chat_template_name_u16;
 #endif
     std::string model_path;           // -m
     std::string embedding_model_path; // -e
@@ -1049,7 +1050,12 @@ int main(int argc, OPTARG_T argv[]) {
                 output_path = optarg;
                 break;
             case 'c':
+#ifdef WIN32
+                chat_template_name_u16 = optarg;
+                chat_template_name = wchar_to_utf8(chat_template_name_u16.c_str());
+#else
                 chat_template_name = optarg;
+#endif
                 break;
             case 's':
                 server_mode = true;
