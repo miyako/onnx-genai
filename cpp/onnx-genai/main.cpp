@@ -636,8 +636,8 @@ static std::string run_inference(
 static std::string create_stream_chunk(int n,
                                        const std::string& id,
                                        const std::string& model,
-                                       const std::string& content,
                                        const std::string& fingerprint,
+                                       const std::string& content,
                                        bool finish) {
     Json::Value root;
     root["id"] = id;
