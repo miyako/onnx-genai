@@ -29,19 +29,30 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	
 	$port:=8080
 	
-	$folder:=$homeFolder.folder("microsoft/Phi-3.5-mini-instruct")
-	$path:="cpu_and_mobile/cpu-int4-awq-block-128-acc-level-4"
-	$URL:="https://huggingface.co/microsoft/Phi-3.5-mini-instruct-onnx/tree/main/cpu_and_mobile/cpu-int4-awq-block-128-acc-level-4"
-	$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
-	
-	$folder:=$homeFolder.folder("all-MiniLM-L6-v2")
-	$path:=""
-	$URL:="ONNX-models/all-MiniLM-L6-v2-ONNX"
-	$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding")
-	
 	$options:={}
 	var $huggingfaces : cs:C1710.event.huggingfaces
-	$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
+	
+	Case of 
+		: (True:C214)
+			$folder:=$homeFolder.folder("Baguettotron")
+			$path:="keisuke-miyako/Baguettotron-onnx"
+			$URL:="keisuke-miyako/Baguettotron-onnx"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+		: (False:C215)
+			$folder:=$homeFolder.folder("microsoft/Phi-3.5-mini-instruct")
+			$path:="cpu_and_mobile/cpu-int4-awq-block-128-acc-level-4"
+			$URL:="https://huggingface.co/microsoft/Phi-3.5-mini-instruct-onnx/tree/main/cpu_and_mobile/cpu-int4-awq-block-128-acc-level-4"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			
+			$folder:=$homeFolder.folder("all-MiniLM-L6-v2")
+			$path:=""
+			$URL:="ONNX-models/all-MiniLM-L6-v2-ONNX"
+			$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding")
+			
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
+	End case 
 	
 	$ONNX:=cs:C1710.ONNX.new($port; $huggingfaces; $homeFolder; $options; $event)
 	

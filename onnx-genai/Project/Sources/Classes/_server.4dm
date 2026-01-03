@@ -66,4 +66,6 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	//SET TEXT TO PASTEBOARD($command)
 	
+	ALERT:C41($command)
+	
 	return This:C1470.controller.execute($command).worker

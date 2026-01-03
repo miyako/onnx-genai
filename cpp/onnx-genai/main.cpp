@@ -236,6 +236,7 @@ static void usage(void)
     fprintf(stderr, "onnx-genai\n\n");
     fprintf(stderr, " -%c path     : %s\n", 'm' , "model");
     fprintf(stderr, " -%c path     : %s\n", 'e' , "embedding model");
+    fprintf(stderr, " -%c template : %s\n", 'c' , "chat template");
     //
     fprintf(stderr, " -%c path     : %s\n", 'i' , "input");
     fprintf(stderr, " %c           : %s\n", '-' , "use stdin for input");
@@ -294,11 +295,11 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:e:i:o:sp:-h"
+#define ARGS (OPTARG_T)L"m:e:i:o:sp:c:-h"
 #define _atoi _wtoi
 #define _atof _wtof
 #else
-#define ARGS "m:e:i:o:sp:-h"
+#define ARGS "m:e:i:o:sp:c:-h"
 #define _atoi atoi
 #define _atof atof
 #endif
@@ -395,7 +396,9 @@ static void parse_request(
                           double *top_p,
                           double *temperature,
                           unsigned int *n,
-                          bool *is_stream) {
+                          bool *is_stream,
+                          OgaTokenizer* tokenizer,
+                          std::string& chat_template) {
     
     Json::Value root;
     Json::CharReaderBuilder builder;
@@ -407,7 +410,7 @@ static void parse_request(
                                &root,
                                &errors);
     delete reader;
-    
+        
     if(parse)
     {
         if(root.isObject())
@@ -415,32 +418,12 @@ static void parse_request(
             Json::Value messages_node = root["messages"];
             if(messages_node.isArray())
             {
-                prompt = "";
-                for(Json::Value::const_iterator it = messages_node.begin() ; it != messages_node.end() ; it++)
-                {
-                    if(it->isObject())
-                    {
-                        Json::Value defaultValue = "";
-                        Json::Value role = it->get("role", defaultValue);
-                        Json::Value content = it->get("content", defaultValue);
-                        if ((role.isString()) && (content.isString()))
-                        {
-                            std::string role_str = role.asString();
-                            std::string content_str = content.asString();
-                            if ((role_str.length() != 0) && (content_str.length() != 0))
-                            {
-                                prompt += "<|";
-                                prompt += role_str;
-                                prompt += "|>";
-                                prompt += content_str;
-                                prompt += "<|end|>";
-                            }
-                        }
-                    }
-                }
-                if(prompt.length() != 0) prompt += "<|assistant|>";
+                Json::StreamWriterBuilder writer;
+                writer["indentation"] = "";
+                std::string messages_json = Json::writeString(writer, messages_node);
+
+                prompt = tokenizer->ApplyChatTemplate(chat_template.c_str(), messages_json.c_str(), nullptr, true);
             }
-            
             Json::Value top_p_node = root["top_p"];
             if(top_p_node.isNumeric())
             {
@@ -498,9 +481,11 @@ static void before_run_inference(
                                  double *top_p,
                                  double *temperature,
                                  unsigned int *n,
-                                 bool *is_stream) {
+                                 bool *is_stream,
+                                 OgaTokenizer* tokenizer,
+                                 std::string& chat_template) {
     
-    parse_request(request_body, prompt, max_tokens, top_k, top_p, temperature, n, is_stream);
+    parse_request(request_body, prompt, max_tokens, top_k, top_p, temperature, n, is_stream, tokenizer, chat_template);
 }
 
 static std::string run_inference(
@@ -1024,6 +1009,7 @@ int main(int argc, OPTARG_T argv[]) {
 #endif
     std::string model_path;           // -m
     std::string embedding_model_path; // -e
+    std::string chat_template_name;   // -c
     OPTARG_T input_path  = NULL;      // -i
     OPTARG_T output_path = NULL;      // -o
     
@@ -1060,6 +1046,9 @@ int main(int argc, OPTARG_T argv[]) {
             case 'o':
                 output_path = optarg;
                 break;
+            case 'c':
+                chat_template_name = optarg;
+                break;
             case 's':
                 server_mode = true;
                 break;
@@ -1087,6 +1076,86 @@ int main(int argc, OPTARG_T argv[]) {
                 usage();
                 break;
         }
+    }
+    
+    std::string chat_template;
+    
+    //default:
+    chat_template = R"(
+    {% for message in messages %}
+    {{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}
+    {% endfor %}
+    {% if add_generation_prompt %}
+    {{'<|im_start|>assistant\n'}}
+    {% endif %}
+    )";
+    
+    if(chat_template_name == "llama3") {
+        chat_template = R"(
+        {% for message in messages %}
+        {{'<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n' + message['content'] + '<|eot_id|>'}}
+        {% endfor %}
+        {% if add_generation_prompt %}
+        {{'<|start_header_id|>assistant<|end_header_id|>\n\n'}}
+        {% endif %}
+        )";
+    }
+    
+    if (chat_template_name == "phi3") {
+        chat_template = R"(
+        {% for message in messages %}
+        {{'<|' + message['role'] + '|>\n' + message['content'] + '<|end|>\n'}}
+        {% endfor %}
+        {% if add_generation_prompt %}
+        {{'<|assistant|>\n'}}
+        {% endif %}
+        )";
+    }
+    
+    if (chat_template_name == "gemma") {
+        chat_template = R"(
+        {% for message in messages %}
+        {{'<start_of_turn>' + ('model' if message['role'] == 'assistant' else message['role']) + '\n' + message['content'] + '<end_of_turn>\n'}}
+        {% endfor %}
+        {% if add_generation_prompt %}
+        {{'<start_of_turn>model\n'}}
+        {% endif %}
+        )";
+    }
+    
+    if (chat_template_name == "mistral") {
+        chat_template = R"(
+        {{'<s>'}}
+        {% for message in messages %}
+        {% if message['role'] == 'user' %}
+        {{'[INST] ' + message['content'] + ' [/INST]'}}
+        {% elif message['role'] == 'system' %}
+        {{'[INST] ' + message['content'] + ' [/INST]'}}
+        {% else %}
+        {{' ' + message['content'] + '</s>'}}
+        {% endif %}
+        {% endfor %}
+        )";
+    }
+    
+    if (chat_template_name == "cohere") {
+        chat_template = R"(
+        {{'<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>'}}
+        {% for message in messages %}
+        {% if message['role'] == 'system' %}
+        {{ message['content'] }}
+        {% endif %}
+        {% endfor %}
+        {{'<|END_OF_TURN_TOKEN|>'}}
+        {% for message in messages %}
+        {% if message['role'] != 'system' %}
+        {{'<|START_OF_TURN_TOKEN|><|' + message['role'].upper() + '_TOKEN|>' + message['content'] + '<|END_OF_TURN_TOKEN|>'}}
+        {% endif %}
+        {% endfor %}
+        {% if add_generation_prompt %}
+        {{'<|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>'}}
+        {% endif %}
+        )";
     }
     
     std::string fingerprint;
@@ -1211,7 +1280,9 @@ int main(int argc, OPTARG_T argv[]) {
                                      &top_p,
                                      &temperature,
                                      &n,
-                                     &is_stream);
+                                     &is_stream,
+                                     tokenizer.get(),
+                                     chat_template);
                 
                 if(is_stream) {
                     std::string req_id = get_openai_style_id();
@@ -1446,7 +1517,9 @@ int main(int argc, OPTARG_T argv[]) {
                                  &top_p,
                                  &temperature,
                                  &n,
-                                 &is_stream);
+                                 &is_stream,
+                                 tokenizer.get(),
+                                 chat_template);
             
             response = run_inference(
                                      model.get(),

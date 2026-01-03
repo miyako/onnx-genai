@@ -31,7 +31,7 @@
       shouldAutocreateTestPlan = "YES">
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Release"
+      buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
@@ -54,19 +54,23 @@
       <CommandLineArguments>
          <CommandLineArgument
             argument = "-m"
-            isEnabled = "NO">
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/Documents/GitHub/onnx-genai/models/chat/phi-3.5-mini-instruct"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-e"
+            argument = "/Users/miyako/.onnx/Baguettotron"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
+            argument = "-e"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
             argument = "/Users/miyako/Documents/GitHub/onnx-genai/models/embeddings/all-MiniLM-L6-v2/model.onnx"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-i"
@@ -78,6 +82,14 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-s"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-c"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "qwen"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

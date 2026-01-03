@@ -57,7 +57,7 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 			continue
 		End if 
 		If ($request.response.status=200)
-			If (Value type:C1509($request.response)=Is object:K8:27)
+			If (Value type:C1509($request.response)=Is object:K8:27) && (Value type:C1509($request.response.body)=Is collection:K8:32)
 				$resources:=$request.response.body.map(Formula:C1597($1.result:={\
 					USER: $2; \
 					REPO: $3; \
