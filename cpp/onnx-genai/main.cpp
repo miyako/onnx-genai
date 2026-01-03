@@ -720,6 +720,19 @@ static void run_inference_stream(
             size_t seq_len = generator->GetSequenceCount(i);
             // Safety check to ensure we have data
             if (seq_len == 0) continue;
+            // Skip chat end tokens
+            if (
+                strcmp(token_str, "<|im_end|>") == 0 ||
+                strcmp(token_str, "</s>") == 0 ||
+                strcmp(token_str, "<|eot_id|>") == 0 ||
+                strcmp(token_str, "<</SYS>>") == 0 ||
+                strcmp(token_str, "[/INST]") == 0 ||
+                strcmp(token_str, "END_OF_TURN_TOKEN") == 0 ||
+                strcmp(token_str, "<end_of_turn>") == 0
+                ) {
+                    continue;
+                }
+            
             // Get the most recently generated token
             int32_t new_token = seq_data[seq_len - 1];
             // Decode using the specific stream for this sequence
