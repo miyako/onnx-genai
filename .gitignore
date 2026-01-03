@@ -46,3 +46,4 @@ cpp/macOS/onnx-genai.dSYM/Contents/Info.plist
 cpp/macOS/onnx-genai.dSYM/Contents/Resources/Relocations/x86_64/onnx-genai.yml
 cpp/macOS/onnx-genai.dSYM/Contents/Resources/DWARF/onnx-genai
 cpp/x64/*
+cpp/macOS/onnx-genai.dmg
