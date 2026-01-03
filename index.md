@@ -152,11 +152,11 @@ hf download microsoft/Phi-3.5-mini-instruct-onnx \
   --local-dir .
 ```
 
-Or, convert a model yourself with [optimum-cli](https://github.com/huggingface/optimum):
+Or,
 
-
-```sh
-optimum-cli export onnx --model BAAI/bge-base-en-v1.5 onnx_output_dir/
+```
+hf download PleIAs/Baguettotron --local-dir ~/.onnx/baguettotron 
+python -m onnxruntime_genai.models.builder -m ~/.onnx/baguettotron -o ~/.onnx/baguettotron-onnx -p int4 -e cpu
 ```
 
 The ONNX format is based on **Protocol Buffers**, which has a hard limit of `2GB` for a single file. ONNX splits the model into a `.onnx` file (the graph) and a `.data` file (the weights).
@@ -191,6 +191,23 @@ Alternatively you can use an "End-to-End" (E2E) model like [**universal-sentence
 > At its core, ONNX is a frameworks for maths, not text. An E2E model typically uses 
 **`onnxruntime-extensions`** to handle string. However, the text processing is not as powerful as specialised tokenisers. It is normally better to use ONNX for the vector maths and handle string manipulation outside of ONNX.
 
+Download and convert a model yourself with [optimum-cli](https://github.com/huggingface/optimum):
+
+
+```sh
+optimum-cli onnx export \
+  --model BAAI/bge-small-en-v1.5 \
+  --task feature-extraction \
+  ~/.onnx/bge-small-en-v1.5-fp32
+
+optimum-cli onnx quantize \
+  --model /.onnx/bge-small-en-v1.5-fp32 \
+  --output ~/.onnx/bge-small-en-v1.5
+    
+```
+
+Or, 
+
 Use [**`tf2onnx`**](https://github.com/onnx/tensorflow-onnx) to convert a **TensorFlow** to an ONNX E2E model:
 
 ```bash
@@ -202,6 +219,14 @@ python -m tf2onnx.convert \
     --extra_opset ai.onnx.contrib:1 \
     --tag serve
 ```
+
+#### Frontier Models
+
+||Model|Parameters(B)|Size(GB)|Contect&nbsp;Length|Vocabulary|Languages|
+|-|-|-:|-|-|-|-|
+|🇨🇳|[Qwen 3](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-onnx-int4-cpu)|`1.7`|2.35`|`32768`|`151669`|`119`| 
+|🇺🇸|Phi 3.5|`3.8`|`1.44`|`128000`|`32064`|`20`|
+|🇫🇷|[Baguettotron](https://huggingface.co/keisuke-miyako/Baguettotron-onnx-int4-cpu)|`0.3`|`1.79`|`32768`|`151643`|`European`
 
 #### AI Kit compatibility
 
