@@ -222,10 +222,10 @@ python -m tf2onnx.convert \
 
 #### Frontier Models
 
-||Model|Parameters(B)|Size(GB)|Contect&nbsp;Length|Vocabulary|Languages|
-|-|-|-:|-|-|-|-|
-|🇨🇳|[Qwen 3](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-onnx-int4-cpu)|`1.7`|2.35`|`32768`|`151669`|`119`| 
-|🇺🇸|Phi 3.5|`3.8`|`1.44`|`128000`|`32064`|`20`|
+||Model|Parameters(B)|Size(GB)|Context&nbsp;Length|Vocabulary|Languages|
+|-|-|-:|-:|-:|-:|:-:|
+|🇨🇳|[Qwen 3](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-onnx-int4-cpu)|`1.7`|`2.35`|`32768`|`151669`|`119`| 
+|🇺🇸|Phi 3.5 Mini|`3.8`|`1.44`|`128000`|`32064`|`20`|
 |🇫🇷|[Baguettotron](https://huggingface.co/keisuke-miyako/Baguettotron-onnx-int4-cpu)|`0.3`|`1.79`|`32768`|`151643`|`European`
 
 #### AI Kit compatibility
