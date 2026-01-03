@@ -55,6 +55,8 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding")
 			
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
+			
+			$options:={c: "phi"}
 	End case 
 	
 	$ONNX:=cs:C1710.ONNX.new($port; $huggingfaces; $homeFolder; $options; $event)
