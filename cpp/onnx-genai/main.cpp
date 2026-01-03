@@ -421,10 +421,7 @@ static void parse_request(
                 Json::StreamWriterBuilder writer;
                 writer["indentation"] = "";
                 std::string messages_json = Json::writeString(writer, messages_node);
-
                 prompt = tokenizer->ApplyChatTemplate(chat_template.c_str(), messages_json.c_str(), nullptr, true);
-                
-                std::cout << prompt << std::endl;
             }
             Json::Value top_p_node = root["top_p"];
             if(top_p_node.isNumeric())
