@@ -40,6 +40,9 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 			
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			
+			$options:={c: "qwen"}
+			
 		: (False:C215)
 			$folder:=$homeFolder.folder("microsoft/Phi-3.5-mini-instruct")
 			$path:="cpu_and_mobile/cpu-int4-awq-block-128-acc-level-4"

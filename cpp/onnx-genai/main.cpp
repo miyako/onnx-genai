@@ -423,6 +423,8 @@ static void parse_request(
                 std::string messages_json = Json::writeString(writer, messages_node);
 
                 prompt = tokenizer->ApplyChatTemplate(chat_template.c_str(), messages_json.c_str(), nullptr, true);
+                
+                std::cout << prompt << std::endl;
             }
             Json::Value top_p_node = root["top_p"];
             if(top_p_node.isNumeric())
@@ -1082,80 +1084,81 @@ int main(int argc, OPTARG_T argv[]) {
     
     //default:
     chat_template = R"(
-    {% for message in messages %}
-    {{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}
-    {% endfor %}
-    {% if add_generation_prompt %}
-    {{'<|im_start|>assistant\n'}}
-    {% endif %}
-    )";
+{% for message in messages %}
+{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}
+{% endfor %}
+{% if add_generation_prompt %}
+{{'<|im_start|>assistant\n'}}
+{{'<think>'}}
+{% endif %}
+)";
     
     if(chat_template_name == "llama3") {
         chat_template = R"(
-        {% for message in messages %}
-        {{'<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n' + message['content'] + '<|eot_id|>'}}
-        {% endfor %}
-        {% if add_generation_prompt %}
-        {{'<|start_header_id|>assistant<|end_header_id|>\n\n'}}
-        {% endif %}
-        )";
+{% for message in messages %}
+{{'<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n' + message['content'] + '<|eot_id|>'}}
+{% endfor %}
+{% if add_generation_prompt %}
+{{'<|start_header_id|>assistant<|end_header_id|>\n\n'}}
+{% endif %}
+)";
     }
     
     if (chat_template_name == "phi3") {
         chat_template = R"(
-        {% for message in messages %}
-        {{'<|' + message['role'] + '|>\n' + message['content'] + '<|end|>\n'}}
-        {% endfor %}
-        {% if add_generation_prompt %}
-        {{'<|assistant|>\n'}}
-        {% endif %}
-        )";
+{% for message in messages %}
+{{'<|' + message['role'] + '|>\n' + message['content'] + '<|end|>\n'}}
+{% endfor %}
+{% if add_generation_prompt %}
+{{'<|assistant|>\n'}}
+{% endif %}
+)";
     }
     
     if (chat_template_name == "gemma") {
         chat_template = R"(
-        {% for message in messages %}
-        {{'<start_of_turn>' + ('model' if message['role'] == 'assistant' else message['role']) + '\n' + message['content'] + '<end_of_turn>\n'}}
-        {% endfor %}
-        {% if add_generation_prompt %}
-        {{'<start_of_turn>model\n'}}
-        {% endif %}
-        )";
+{% for message in messages %}
+{{'<start_of_turn>' + ('model' if message['role'] == 'assistant' else message['role']) + '\n' + message['content'] + '<end_of_turn>\n'}}
+{% endfor %}
+{% if add_generation_prompt %}
+{{'<start_of_turn>model\n'}}
+{% endif %}
+)";
     }
     
     if (chat_template_name == "mistral") {
         chat_template = R"(
-        {{'<s>'}}
-        {% for message in messages %}
-        {% if message['role'] == 'user' %}
-        {{'[INST] ' + message['content'] + ' [/INST]'}}
-        {% elif message['role'] == 'system' %}
-        {{'[INST] ' + message['content'] + ' [/INST]'}}
-        {% else %}
-        {{' ' + message['content'] + '</s>'}}
-        {% endif %}
-        {% endfor %}
-        )";
+{{'<s>'}}
+{% for message in messages %}
+{% if message['role'] == 'user' %}
+{{'[INST] ' + message['content'] + ' [/INST]'}}
+{% elif message['role'] == 'system' %}
+{{'[INST] ' + message['content'] + ' [/INST]'}}
+{% else %}
+{{' ' + message['content'] + '</s>'}}
+{% endif %}
+{% endfor %}
+)";
     }
     
     if (chat_template_name == "cohere") {
         chat_template = R"(
-        {{'<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>'}}
-        {% for message in messages %}
-        {% if message['role'] == 'system' %}
-        {{ message['content'] }}
-        {% endif %}
-        {% endfor %}
-        {{'<|END_OF_TURN_TOKEN|>'}}
-        {% for message in messages %}
-        {% if message['role'] != 'system' %}
-        {{'<|START_OF_TURN_TOKEN|><|' + message['role'].upper() + '_TOKEN|>' + message['content'] + '<|END_OF_TURN_TOKEN|>'}}
-        {% endif %}
-        {% endfor %}
-        {% if add_generation_prompt %}
-        {{'<|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>'}}
-        {% endif %}
-        )";
+{{'<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>'}}
+{% for message in messages %}
+{% if message['role'] == 'system' %}
+{{ message['content'] }}
+{% endif %}
+{% endfor %}
+{{'<|END_OF_TURN_TOKEN|>'}}
+{% for message in messages %}
+{% if message['role'] != 'system' %}
+{{'<|START_OF_TURN_TOKEN|><|' + message['role'].upper() + '_TOKEN|>' + message['content'] + '<|END_OF_TURN_TOKEN|>'}}
+{% endif %}
+{% endfor %}
+{% if add_generation_prompt %}
+{{'<|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>'}}
+{% endif %}
+)";
     }
     
     std::string fingerprint;
