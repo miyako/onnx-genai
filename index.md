@@ -195,13 +195,13 @@ Download and convert a model yourself with [optimum-cli](https://github.com/hugg
 
 
 ```sh
-optimum-cli onnx export \
+optimum-cli export onnx \
   --model BAAI/bge-small-en-v1.5 \
   --task feature-extraction \
   ~/.onnx/bge-small-en-v1.5-fp32
 
-optimum-cli onnx quantize \
-  --model /.onnx/bge-small-en-v1.5-fp32 \
+optimum-cli onnxruntime quantize \
+  --onnx_model /.onnx/bge-small-en-v1.5-fp32 \
   --output ~/.onnx/bge-small-en-v1.5
     
 ```
@@ -226,6 +226,7 @@ python -m tf2onnx.convert \
 |-|-|-:|-:|-:|-:|:-:|
 |🇨🇳|[Qwen 3](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-onnx-int4-cpu)|`1.7`|`2.35`|`32768`|`151669`|`119`| 
 |🇺🇸|Phi 3.5 Mini|`3.8`|`1.44`|`128000`|`32064`|`20`|
+|🇺🇸|[Llama 3.2](https://huggingface.co/onnx-community/Llama-3.2-1B-Instruct-ONNX)|`1.23`|`|`128000`|`128256`|`8`|
 |🇫🇷|[Baguettotron](https://huggingface.co/keisuke-miyako/Baguettotron-onnx-int4-cpu)|`0.3`|`1.79`|`32768`|`151643`|`European`
 
 #### AI Kit compatibility
