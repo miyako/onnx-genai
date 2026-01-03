@@ -557,18 +557,6 @@ static std::string run_inference(
                 // Decode using the specific stream for this sequence
                 const char* token_str = streams[i]->Decode(new_token);
                 if (token_str) {
-                    // Skip chat end tokens
-                    if (
-                        strcmp(token_str, "<|im_end|>") == 0 ||
-                        strcmp(token_str, "</s>") == 0 ||
-                        strcmp(token_str, "<|eot_id|>") == 0 ||
-                        strcmp(token_str, "<</SYS>>") == 0 ||
-                        strcmp(token_str, "[/INST]") == 0 ||
-                        strcmp(token_str, "END_OF_TURN_TOKEN") == 0 ||
-                        strcmp(token_str, "<end_of_turn>") == 0
-                        ) {
-                            continue;
-                        }
                     generated_responses[i] += token_str;
                     completion_tokens++;
                 }
@@ -734,18 +722,6 @@ static void run_inference_stream(
             // Decode using the specific stream for this sequence
             const char* token_str = streams[i]->Decode(new_token);
             if (token_str) {
-                // Skip chat end tokens
-                if (
-                    strcmp(token_str, "<|im_end|>") == 0 ||
-                    strcmp(token_str, "</s>") == 0 ||
-                    strcmp(token_str, "<|eot_id|>") == 0 ||
-                    strcmp(token_str, "<</SYS>>") == 0 ||
-                    strcmp(token_str, "[/INST]") == 0 ||
-                    strcmp(token_str, "END_OF_TURN_TOKEN") == 0 ||
-                    strcmp(token_str, "<end_of_turn>") == 0
-                    ) {
-                        continue;
-                    }
                 if (!on_token_generated(token_str, i)) {
                     // If callback returns false, client disconnected
                     break;
