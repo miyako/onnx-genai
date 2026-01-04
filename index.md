@@ -234,7 +234,7 @@ python -m tf2onnx.convert \
 |🇪🇺|[EuroLLM&nbsp;1.7B](https://huggingface.co/keisuke-miyako/EuroLLM-1.7B-Instruct-onnx-int4-cpu)|`1.7`|`1.94`|`4096`|`128000`|`European`|
 |🇺🇸|[SmolLM2&nbsp;1.7B](https://huggingface.co/keisuke-miyako/SmolLM2-1.7B-onnx-int4-cpu)|`1.7`|`1.48`|`8192`|`49152`|`6`
 
-**Fastest**: `Qwen&nbsp;2.5&nbsp;1.5B` and `Llama&nbsp;3.2&nbsp;1B`
+**Fastest**: `Qwen 2.5 1.5B` and `Llama3.2 1B`
 
 #### Not Compatible
 
