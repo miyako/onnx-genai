@@ -26,8 +26,6 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$event.onResponse:=Formula:C1597(LOG EVENT:C667(Into 4D debug message:K38:5; This:C1470.file.fullName+":download complete"))
 	$event.onResponse:=Formula:C1597(MESSAGE:C88(This:C1470.file.fullName+":download complete"))
 	$event.onTerminate:=Formula:C1597(LOG EVENT:C667(Into 4D debug message:K38:5; (["process"; $1.pid; "terminated!"].join(" "))))
-	$event.onTerminate:=Formula:C1597(ALERT:C41(["process"; $1.pid; "terminated!"].join(" ")))
-	$event.onTerminate:=Formula:C1597(ALERT:C41(JSON Stringify:C1217($1)))
 	
 	$port:=8080
 	
@@ -83,6 +81,15 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 			$options:={chat_template: $chat_template}
+		: (True:C214)
+			$chat_template:=File:C1566("/RESOURCES/jinja/EuroLLM.jinja").getText()
+			$folder:=$homeFolder.folder("EuroLLM-1.7B-Instruct-onnx-int4-cpu")
+			$path:="keisuke-miyako/EuroLLM-1.7B-Instruct-onnx-int4-cpu"
+			$URL:="keisuke-miyako/EuroLLM-1.7B-Instruct-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
+			//make sure to set max_tokens<2048 in request 
 		: (True:C214)
 			$chat_template:=File:C1566("/RESOURCES/jinja/Llama-3.2.jinja").getText()
 			$folder:=$homeFolder.folder("Llama-3.2-1B-Instruct-onnx-int4-cpu")
