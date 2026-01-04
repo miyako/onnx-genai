@@ -39,13 +39,25 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		$command+=" "
 	End if 
 	
+	var $chat_template : Text
+	If (Value type:C1509($option.chat_template)=Is text:K8:3) && ($option.chat_template#"")
+		$command+=" -j "
+		$chat_template:=$option.chat_template
+	End if 
+	
+	If (Value type:C1509($option.chat_template_name)=Is text:K8:3) && ($option.chat_template_name#"")
+		$command+=" -c "
+		$command+=This:C1470.escape($option.chat_template_name)
+		$command+=" "
+	End if 
+	
 	var $arg : Object
 	var $valueType : Integer
 	var $key : Text
 	
 	For each ($arg; OB Entries:C1720($option))
 		Case of 
-			: (["m"; "e"; "h"; "p"; "i"; "o"; "port"].includes($arg.key))
+			: (["m"; "e"; "i"; "o"; "h"; "host"; "p"; "port"; "j"; "chat_template"; "c"; "chat_template_name"].includes($arg.key))
 				continue
 		End case 
 		$valueType:=Value type:C1509($arg.value)
@@ -70,4 +82,4 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	ALERT:C41($command)
 	
-	return This:C1470.controller.execute($command).worker
+	return This:C1470.controller.execute($command; $chat_template#"" ? $chat_template : Null:C1517).worker

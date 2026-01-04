@@ -14,8 +14,8 @@
             filePath = "onnx-genai/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1028"
-            endingLineNumber = "1028"
+            startingLineNumber = "1030"
+            endingLineNumber = "1030"
             landmarkName = "main(argc, argv)"
             landmarkType = "9">
          </BreakpointContent>
@@ -30,8 +30,8 @@
             filePath = "onnx-genai/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1343"
-            endingLineNumber = "1343"
+            startingLineNumber = "1341"
+            endingLineNumber = "1341"
             landmarkName = "main(argc, argv)"
             landmarkType = "9">
          </BreakpointContent>
@@ -87,16 +87,16 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "54A4A939-7B6A-4EAD-9DB8-03B071712700"
-            shouldBeEnabled = "No"
+            uuid = "600A04E6-82EF-4EDD-9BEA-8D9FD77D9C6C"
+            shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "onnx-genai/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1285"
-            endingLineNumber = "1285"
-            landmarkName = "main(argc, argv)"
+            startingLineNumber = "533"
+            endingLineNumber = "533"
+            landmarkName = "run_inference(model, tokenizer, modelName, fingerprint, created, max_tokens, top_k, top_p, temperature, n, prompt)"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>

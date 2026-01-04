@@ -237,7 +237,7 @@ static void usage(void)
     fprintf(stderr, " -%c path     : %s\n", 'm' , "model");
     fprintf(stderr, " -%c path     : %s\n", 'e' , "embedding model");
     fprintf(stderr, " -%c template : %s\n", 'c' , "chat template name");
-    fprintf(stderr, " -%c template : %s\n", 'j' , "chat template");
+    fprintf(stderr, " -%c          : %s\n", 'j' , "chat template from stdin");
     fprintf(stderr, " -%c path     : %s\n", 'i' , "input");
     fprintf(stderr, " %c           : %s\n", '-' , "use stdin for input");
     fprintf(stderr, " -%c path     : %s\n", 'o' , "output (default=stdout)");
@@ -295,11 +295,11 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:e:i:o:sp:c:j:-h"
+#define ARGS (OPTARG_T)L"m:e:i:o:sp:c:j-h"
 #define _atoi _wtoi
 #define _atof _wtof
 #else
-#define ARGS "m:e:i:o:sp:c:j:-h"
+#define ARGS "m:e:i:o:sp:c:j-h"
 #define _atoi atoi
 #define _atof atof
 #endif
@@ -325,7 +325,7 @@ static std::string get_model_name(std::string model_path) {
     // 3. Return the folder/filename
     // .filename() returns "phi-3.onnx" (with extension)
     // .stem() returns "phi-3" (removes extension)
-    return path.stem().string();
+    return path.filename().string();
 }
 
 // Generate a fingerprint based on model identity and hardware
@@ -1015,6 +1015,8 @@ int main(int argc, OPTARG_T argv[]) {
     OPTARG_T input_path  = NULL;      // -i
     OPTARG_T output_path = NULL;      // -o
     
+    chat_template_name = "phi3";
+    
     // Server mode flags
     bool server_mode = false;         // -s
     int port = 8080;                  // -p
@@ -1056,14 +1058,6 @@ int main(int argc, OPTARG_T argv[]) {
                 chat_template_name = optarg;
 #endif
                 break;
-            case 'j':
-#ifdef WIN32
-                chat_template_u16 = optarg;
-                chat_template = wchar_to_utf8(chat_template_u16.c_str());
-#else
-                chat_template = optarg;
-#endif
-                break;
             case 's':
                 server_mode = true;
                 break;
@@ -1077,6 +1071,7 @@ int main(int argc, OPTARG_T argv[]) {
                 host = optarg;
 #endif
                 break;
+            case 'j':
             case '-':
             {
                 // Only relevant for CLI mode
@@ -1084,6 +1079,9 @@ int main(int argc, OPTARG_T argv[]) {
                 size_t s;
                 while ((s = fread(buf.data(), 1, buf.size(), stdin)) > 0) {
                     cli_request_json.insert(cli_request_json.end(), buf.begin(), buf.begin() + s);
+                }
+                if(ch == 'j') {
+                    chat_template = std::string((const char *)cli_request_json.data(), cli_request_json.size());
                 }
             }
                 break;
