@@ -224,7 +224,8 @@ python -m tf2onnx.convert \
 
 ||Model|Parameters(B)|Size(GB)|Context&nbsp;Length|Vocabulary|Languages|
 |-|-|-:|-:|-:|-:|:-:|
-|🇨🇳|[Qwen 3&nbsp;1.7B](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-onnx-int4-cpu)|`1.7`|`2.35`|`32768`|`151669`|`119`| 
+|🇨🇳|[Qwen 2.5&nbsp;1.5B](https://huggingface.co/keisuke-miyako/Qwen2.5-1.5B-onnx-int4-cpu)|`1.5`|`1.94`|`128000`|`151936`|`29`| 
+|🇨🇳|[Qwen 3&nbsp;1.7B](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-onnx-int4-cpu)|`1.7`|`2.35`|`32768`|`151936`|`119`| 
 |🇫🇷|[Baguettotron](https://huggingface.co/keisuke-miyako/Baguettotron-onnx-int4-cpu)|`0.3`|`1.79`|`32768`|`151643`|`European`
 |🇺🇸|[Phi 3.5 Mini](https://huggingface.co/microsoft/Phi-3.5-mini-instruct-onnx)|`3.8`|`2.78`|`128000`|`32064`|`20`|
 |🇺🇸|[Phi 4 Mini](https://huggingface.co/microsoft/Phi-4-mini-instruct-onnx)|`1.25`|`4.93`|`128000`|`128256`|`24`|
