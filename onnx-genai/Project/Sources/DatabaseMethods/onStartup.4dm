@@ -33,6 +33,14 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	var $huggingfaces : cs:C1710.event.huggingfaces
 	
 	Case of 
+		: (False:C215)
+			$chat_template:=File:C1566("/RESOURCES/jinja/SmolLM.jinja").getText()
+			$folder:=$homeFolder.folder("SmolLM2-1.7B-onnx-int4-cpu")
+			$path:="keisuke-miyako/SmolLM2-1.7B-onnx-int4-cpu"
+			$URL:="keisuke-miyako/SmolLM2-1.7B-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
 		: (False:C215)  //not working
 			$chat_template:=File:C1566("/RESOURCES/jinja/gemma3.jinja").getText()
 			$folder:=$homeFolder.folder("gemma-3-1b-it-onnx-int4-cpu")
@@ -81,7 +89,7 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 			$options:={chat_template: $chat_template}
-		: (True:C214)
+		: (False:C215)
 			$chat_template:=File:C1566("/RESOURCES/jinja/EuroLLM.jinja").getText()
 			$folder:=$homeFolder.folder("EuroLLM-1.7B-Instruct-onnx-int4-cpu")
 			$path:="keisuke-miyako/EuroLLM-1.7B-Instruct-onnx-int4-cpu"
