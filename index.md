@@ -231,8 +231,8 @@ python -m tf2onnx.convert \
 |🇺🇸|[Phi&nbsp;3.5&nbsp;Mini](https://huggingface.co/microsoft/Phi-3.5-mini-instruct-onnx)|`3.8`|`2.78`|`128000`|`32064`|`20`|
 |🇺🇸|[Phi&nbsp;4&nbsp;Mini](https://huggingface.co/microsoft/Phi-4-mini-instruct-onnx)|`1.2`|`4.93`|`128000`|`100352`|`24`|
 |🇺🇸|[Llama&nbsp;3.2&nbsp;1B](https://huggingface.co/keisuke-miyako/Llama-3.2-1B-Instruct-onnx-int4-cpu)|`1.2`|`1.87`|`128000`|`128256`|`8`
-|🇺🇸|[Gemma&nbsp;2](https://huggingface.co/EmbeddedLLM/gemma-2b-it-onnx)|`2.61`|`2.15`|`8192`|`256128`|`English`|
-|🇺🇸|[Gemma&nbsp;3](https://huggingface.co/onnx-community/gemma-3-1b-it-ONNX)|`1.00`|`1.41`|`32768`|`262144`|`English`|
+|🇺🇸|[Gemma&nbsp;2](https://huggingface.co/EmbeddedLLM/gemma-2b-it-onnx)|`2.6`|`2.15`|`8192`|`256128`|`English`|
+|🇺🇸|[Gemma&nbsp;3](https://huggingface.co/onnx-community/gemma-3-1b-it-ONNX)|`1.0`|`1.41`|`32768`|`262144`|`English`|
 
 #### AI Kit compatibility
 
