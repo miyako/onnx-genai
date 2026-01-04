@@ -225,18 +225,23 @@ python -m tf2onnx.convert \
 ||Model|Parameters|Size|Context&nbsp;Length|Vocabulary|Languages|
 |-|-|-:|-:|-:|-:|:-:|
 |🇺🇸|[Llama&nbsp;3.2&nbsp;1B](https://huggingface.co/keisuke-miyako/Llama-3.2-1B-Instruct-onnx-int4-cpu)|`1.2`|`1.87`|`128000`|`128256`|`8`
-|⚠️|[Gemma&nbsp;3](https://huggingface.co/onnx-community/gemma-3-1b-it-ONNX)|`1.0`|`1.41`|`32768`|`262144`|`140`|
 |🇺🇸|[Gemma&nbsp;2](https://huggingface.co/keisuke-miyako/gemma-2-2b-it-onnx-int4-cpu)|`2.6`|`4.04`|`8192`|`256128`|`English`|
 |🇺🇸|[Phi&nbsp;4&nbsp;Mini](https://huggingface.co/microsoft/Phi-4-mini-instruct-onnx)|`1.2`|`4.93`|`128000`|`100352`|`24`|
 |🇺🇸|[Phi&nbsp;3.5&nbsp;Mini](https://huggingface.co/microsoft/Phi-3.5-mini-instruct-onnx)|`3.8`|`2.78`|`128000`|`32064`|`20`|
 |🇫🇷|[Baguettotron](https://huggingface.co/keisuke-miyako/Baguettotron-onnx-int4-cpu)|`0.3`|`1.79`|`8192`|`65000`|`European`
-|⚠️|[Ministral&nbsp;3B](https://huggingface.co/mistralai/Ministral-3-3B-Instruct-2512-ONNX)|`3.4`|`2.29`|`256000`|`131072`|`European`
 |🇨🇳|[Qwen&nbsp;3&nbsp;1.7B](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-onnx-int4-cpu)|`1.7`|`2.35`|`32768`|`151936`|`119`| 
 |🇨🇳|[Qwen&nbsp;2.5&nbsp;1.5B](https://huggingface.co/keisuke-miyako/Qwen2.5-1.5B-onnx-int4-cpu)|`1.5`|`1.94`|`128000`|`151936`|`29`| 
 |🇪🇺|[EuroLLM&nbsp;1.7B](https://huggingface.co/keisuke-miyako/EuroLLM-1.7B-Instruct-onnx-int4-cpu)|`1.7`|`1.94`|`4096`|`128000`|`European`|
-|🇺🇸|[SmolLM2 1.7B](https://huggingface.co/keisuke-miyako/SmolLM2-1.7B-onnx-int4-cpu)|`1.7`|`1.48`|`8192`|`49152`|`6`
+|🇺🇸|[SmolLM2&nbsp;1.7B](https://huggingface.co/keisuke-miyako/SmolLM2-1.7B-onnx-int4-cpu)|`1.7`|`1.48`|`8192`|`49152`|`6`
 
 **Fastest**: `Qwen&nbsp;2.5&nbsp;1.5B` and `Llama&nbsp;3.2&nbsp;1B`
+
+#### Under Investigation
+
+||Model|Parameters|Size|Context&nbsp;Length|Vocabulary|Languages|
+|-|-|-:|-:|-:|-:|:-:|
+|⚠️|[Ministral&nbsp;3B](https://huggingface.co/mistralai/Ministral-3-3B-Instruct-2512-ONNX)|`3.4`|`2.29`|`256000`|`131072`|`European`
+|⚠️|[Gemma&nbsp;3](https://huggingface.co/onnx-community/gemma-3-1b-it-ONNX)|`1.0`|`1.41`|`32768`|`262144`|`140`|
 
 #### AI Kit compatibility
 
