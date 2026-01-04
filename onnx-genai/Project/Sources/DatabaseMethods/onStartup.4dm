@@ -26,6 +26,8 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$event.onResponse:=Formula:C1597(LOG EVENT:C667(Into 4D debug message:K38:5; This:C1470.file.fullName+":download complete"))
 	$event.onResponse:=Formula:C1597(MESSAGE:C88(This:C1470.file.fullName+":download complete"))
 	$event.onTerminate:=Formula:C1597(LOG EVENT:C667(Into 4D debug message:K38:5; (["process"; $1.pid; "terminated!"].join(" "))))
+	$event.onTerminate:=Formula:C1597(ALERT:C41(["process"; $1.pid; "terminated!"].join(" ")))
+	$event.onTerminate:=Formula:C1597(ALERT:C41(JSON Stringify:C1217($1)))
 	
 	$port:=8080
 	
@@ -33,30 +35,68 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	var $huggingfaces : cs:C1710.event.huggingfaces
 	
 	Case of 
-		: (True:C214)
-			$folder:=$homeFolder.folder("Baguettotron")
-			$path:="keisuke-miyako/Baguettotron-onnx"
-			$URL:="keisuke-miyako/Baguettotron-onnx"
+		: (False:C215)  //not working
+			$chat_template:=File:C1566("/RESOURCES/jinja/gemma3.jinja").getText()
+			$folder:=$homeFolder.folder("gemma-3-1b-it-onnx-int4-cpu")
+			$path:="keisuke-miyako/gemma-3-1b-it-onnx-int4-cpu"
+			$URL:="keisuke-miyako/gemma-3-1b-it-onnx-int4-cpu"
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
-			
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
-			
-			$options:={c: "qwen"}
-			
+			$options:={chat_template: $chat_template}
+		: (False:C215)  //not working
+			$chat_template:=File:C1566("/RESOURCES/jinja/Ministral-3-3B-Instruct-2512.jinja").getText()
+			$folder:=$homeFolder.folder("Ministral-3.3B-onnx-int4-cpu")
+			$path:="keisuke-miyako/Ministral-3.3B-onnx-int4-cpu"
+			$URL:="keisuke-miyako/Ministral-3.3B-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
 		: (False:C215)
-			$folder:=$homeFolder.folder("microsoft/Phi-3.5-mini-instruct")
-			$path:="cpu_and_mobile/cpu-int4-awq-block-128-acc-level-4"
-			$URL:="https://huggingface.co/microsoft/Phi-3.5-mini-instruct-onnx/tree/main/cpu_and_mobile/cpu-int4-awq-block-128-acc-level-4"
+			$chat_template:=File:C1566("/RESOURCES/jinja/gemma2.jinja").getText()
+			$folder:=$homeFolder.folder("gemma-2-2b-it-onnx-int4-cpu")
+			$path:="keisuke-miyako/gemma-2-2b-it-onnx-int4-cpu"
+			$URL:="keisuke-miyako/gemma-2-2b-it-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
+		: (False:C215)
+			$chat_template:=File:C1566("/RESOURCES/jinja/Qwen3.jinja").getText()
+			$folder:=$homeFolder.folder("Qwen3-1.7B-onnx-int4-cpu")
+			$path:="keisuke-miyako/Qwen3-1.7B-onnx-int4-cpu"
+			$URL:="keisuke-miyako/Qwen3-1.7B-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
+		: (False:C215)
+			$chat_template:=File:C1566("/RESOURCES/jinja/Qwen2.5.jinja").getText()
+			$folder:=$homeFolder.folder("Qwen2.5-1.5B-onnx-int4-cpu")
+			$path:="keisuke-miyako/Qwen2.5-1.5B-onnx-int4-cpu"
+			$URL:="keisuke-miyako/Qwen2.5-1.5B-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
+		: (False:C215)
+			$chat_template:=File:C1566("/RESOURCES/jinja/Baguettotron.jinja").getText()
+			$folder:=$homeFolder.folder("Baguettotron-onnx-int4-cpu")
+			$path:="keisuke-miyako/Baguettotron-onnx-int4-cpu"
+			$URL:="keisuke-miyako/Baguettotron-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
+		: (True:C214)
+			$chat_template:=File:C1566("/RESOURCES/jinja/Llama-3.2.jinja").getText()
+			$folder:=$homeFolder.folder("Llama-3.2-1B-Instruct-onnx-int4-cpu")
+			$path:="keisuke-miyako/Llama-3.2-1B-Instruct-onnx-int4-cpu"
+			$URL:="keisuke-miyako/Llama-3.2-1B-Instruct-onnx-int4-cpu"
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 			
-			$folder:=$homeFolder.folder("all-MiniLM-L6-v2")
-			$path:=""
-			$URL:="ONNX-models/all-MiniLM-L6-v2-ONNX"
+			$folder:=$homeFolder.folder("bge-small-en-v1.5-onnx")
+			$path:="keisuke-miyako/bge-small-en-v1.5-onnx"
+			$URL:="keisuke-miyako/bge-small-en-v1.5-onnx"
 			$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding")
 			
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
-			
-			$options:={c: "phi"}
+			$options:={chat_template: $chat_template}
 	End case 
 	
 	$ONNX:=cs:C1710.ONNX.new($port; $huggingfaces; $homeFolder; $options; $event)

@@ -220,7 +220,7 @@ python -m tf2onnx.convert \
     --tag serve
 ```
 
-#### Frontier Models (small)
+#### Frontier Models
 
 ||Model|Parameters|Size|Context&nbsp;Length|Vocabulary|Languages|
 |-|-|-:|-:|-:|-:|:-:|
@@ -229,12 +229,17 @@ python -m tf2onnx.convert \
 |🇺🇸|[Gemma&nbsp;2](https://huggingface.co/keisuke-miyako/gemma-2-2b-it-onnx-int4-cpu)|`2.6`|`4.04`|`8192`|`256128`|`English`|
 |🇺🇸|[Phi&nbsp;4&nbsp;Mini](https://huggingface.co/microsoft/Phi-4-mini-instruct-onnx)|`1.2`|`4.93`|`128000`|`100352`|`24`|
 |🇺🇸|[Phi&nbsp;3.5&nbsp;Mini](https://huggingface.co/microsoft/Phi-3.5-mini-instruct-onnx)|`3.8`|`2.78`|`128000`|`32064`|`20`|
-|🇫🇷|[Ministral&nbsp;3B](https://huggingface.co/mistralai/Ministral-3-3B-Instruct-2512-ONNX)|`3.4`|`2.29`|`256000`|`131072`|`European`
 |🇫🇷|[Baguettotron](https://huggingface.co/keisuke-miyako/Baguettotron-onnx-int4-cpu)|`0.3`|`1.79`|`8192`|`65000`|`European`
 |🇨🇳|[Qwen&nbsp;3&nbsp;1.7B](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-onnx-int4-cpu)|`1.7`|`2.35`|`32768`|`151936`|`119`| 
 |🇨🇳|[Qwen&nbsp;2.5&nbsp;1.5B](https://huggingface.co/keisuke-miyako/Qwen2.5-1.5B-onnx-int4-cpu)|`1.5`|`1.94`|`128000`|`151936`|`29`| 
 
 **Fastest**: `Qwen&nbsp;2.5&nbsp;1.5B` and `Llama&nbsp;3.2&nbsp;1B`
+
+#### Frontier Models (not working right now)
+
+||Model|Parameters|Size|Context&nbsp;Length|Vocabulary|Languages|
+|-|-|-:|-:|-:|-:|:-:|
+|🇫🇷|[Ministral&nbsp;3B](https://huggingface.co/mistralai/Ministral-3-3B-Instruct-2512-ONNX)|`3.4`|`2.29`|`256000`|`131072`|`European`
 
 #### AI Kit compatibility
 
