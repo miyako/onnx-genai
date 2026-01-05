@@ -57,7 +57,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/miyako/.onnx/Ministral-3.3B-onnx-int4-cpu"
+            argument = "/Users/miyako/.onnx/SmolLM2-1.7B-onnx-int4-cpu/model.onnx"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
@@ -89,7 +89,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "mistral"
+            argument = "qwen"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
