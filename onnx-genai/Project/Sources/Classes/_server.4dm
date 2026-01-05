@@ -25,7 +25,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		 && (OB Instance of:C1731($option.embeggings_model; 4D:C1709.Folder))\
 		 && ($option.embeggings_model.exists)
 		$command+=" -e "
-		$command+=This:C1470.escape(This:C1470.expand($option.embeggings_model).file("model.onnx").path)
+		$command+=This:C1470.escape(This:C1470.expand($option.embeggings_model).file($option.embeggings_model_name).path)
 		$command+=" "
 	End if 
 	
@@ -57,7 +57,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	For each ($arg; OB Entries:C1720($option))
 		Case of 
-			: (["m"; "e"; "i"; "o"; "h"; "host"; "p"; "port"; "j"; "chat_template"; "c"; "chat_template_name"].includes($arg.key))
+			: (["m"; "e"; "i"; "o"; "h"; "host"; "p"; "port"; "j"; "chat_template"; "c"; "chat_template_name"; "embeggings_model_name"].includes($arg.key))
 				continue
 		End case 
 		$valueType:=Value type:C1509($arg.value)
@@ -79,5 +79,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	End for each 
 	
 	//SET TEXT TO PASTEBOARD($command)
+	
+	ALERT:C41($command)
 	
 	return This:C1470.controller.execute($command; $chat_template#"" ? $chat_template : Null:C1517).worker
