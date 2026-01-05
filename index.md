@@ -225,7 +225,6 @@ python -m tf2onnx.convert \
 ||Model|Parameters|Size|Context&nbsp;Length|Vocabulary|Languages|
 |-|-|-:|-:|-:|-:|:-:|
 |🇺🇸|[Llama&nbsp;3.2&nbsp;1B](https://huggingface.co/keisuke-miyako/Llama-3.2-1B-Instruct-onnx-int4-cpu)|`1.2`|`1.87`|`128000`|`128256`|`8`
-|🇺🇸|[Gemma&nbsp;2](https://huggingface.co/keisuke-miyako/gemma-2-2b-it-onnx-int4-cpu)|`2.6`|`4.04`|`8192`|`256128`|`English`|
 |🇺🇸|[Phi&nbsp;4&nbsp;Mini](https://huggingface.co/keisuke-miyako/Phi-4-mini-instruct-onnx-int4-cpu)|`1.2`|`4.93`|`128000`|`100352`|`24`|
 |🇺🇸|[Phi&nbsp;3.5&nbsp;Mini](https://huggingface.co/keisuke-miyako/Phi-3.5-mini-instruct-onnx-int4-cpu)|`3.8`|`2.78`|`128000`|`32064`|`20`|
 |🇫🇷|[Baguettotron](https://huggingface.co/keisuke-miyako/Baguettotron-onnx-int4-cpu)|`0.3`|`1.79`|`8192`|`65000`|`European`
@@ -234,8 +233,6 @@ python -m tf2onnx.convert \
 |🇪🇺|[EuroLLM&nbsp;1.7B](https://huggingface.co/keisuke-miyako/EuroLLM-1.7B-Instruct-onnx-int4-cpu)|`1.7`|`1.94`|`4096`|`128000`|`European`|
 |🇺🇸|[SmolLM2&nbsp;1.7B](https://huggingface.co/keisuke-miyako/SmolLM2-1.7B-onnx-int4-cpu)|`1.7`|`1.48`|`8192`|`49152`|`6`
 
-**Fastest**: `Qwen 2.5 1.5B` and `Llama3.2 1B`
-
 #### Not Compatible
 
 ||Model|Parameters|Size|Context&nbsp;Length|Vocabulary|Languages|
@@ -243,6 +240,8 @@ python -m tf2onnx.convert \
 |⚠️|[Ministral&nbsp;3B](https://huggingface.co/mistralai/Ministral-3-3B-Instruct-2512-ONNX)|`3.4`|`2.29`|`256000`|`131072`|`European`
 |⚠️|[Gemma&nbsp;3](https://huggingface.co/onnx-community/gemma-3-1b-it-ONNX)|`1.0`|`1.41`|`32768`|`262144`|`140`|
 |⚠️|[CroissantLLMChat](https://huggingface.co/croissantllm/CroissantLLMChat-v0.1)|`1.3`|`1.07`|`2048`|`32000`|`French` 
+|⚠️|[Gemma&nbsp;2](https://huggingface.co/keisuke-miyako/gemma-2-2b-it-onnx-f16-cpu)|`2.6`|`5.27`|`8192`|`256128`|`English`|
+|⚠️|[Gemma&nbsp;2](https://huggingface.co/keisuke-miyako/gemma-2-2b-it-onnx-int4-cpu)|`2.6`|`4.04`|`8192`|`256128`|`English`|
 
 #### AI Kit compatibility
 
