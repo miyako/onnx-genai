@@ -33,8 +33,23 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	var $huggingfaces : cs:C1710.event.huggingfaces
 	
 	Case of 
-		: (False:C215)
-			$chat_template:="{%- for message in messages %}\n    {%- if message['role'] == 'system' -%}\n        {{- '<|system|>\\n' + message['content'] + '<|end|>\\n' -}}\n    {%- elif message['role'] == 'user' -%}\n        {{- '<|user|>\\n' + message['content'] + '<|end|>\\n' -}}\n    "+"{%- elif message['role'] == 'assistant' -%}\n        {{- '<|assistant|>\\n' + message['content'] + '<|end|>\\n' -}}\n    {%- endif -%}\n{%- endfor -%}\n{%- if add_generation_prompt -%}\n    {{- '<|assistant|>\\n' -}}\n{%- endif -%}\n"
+		: (False:C215)  //Phi 4 mini (official)
+			$chat_template:="{{ bos_token }}{% for message in messages %}{{'<|' + message['role'] + '|>' + '\\n' + message['content'] + '<|end|>' + '\\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|assistant|>' + '\\n' }}{% endif %}"
+			$folder:=$homeFolder.folder("Phi-4-mini-instruct-onnx-int4-cpu")
+			$path:="keisuke-miyako/Phi-4-mini-instruct-onnx-int4-cpu"
+			$URL:="keisuke-miyako/Phi-4-mini-instruct-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
+		: (False:C215)  //Phi 3.5 mini (official)
+			$chat_template:="{{ bos_token }}{% for message in messages %}{{'<|' + message['role'] + '|>' + '\\n' + message['content'] + '<|end|>' + '\\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|assistant|>' + '\\n' }}{% endif %}"
+			$folder:=$homeFolder.folder("Phi-3.5-mini-instruct-onnx-int4-cpu")
+			$path:="keisuke-miyako/Phi-3.5-mini-instruct-onnx-int4-cpu"
+			$URL:="keisuke-miyako/Phi-3.5-mini-instruct-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
+		: (False:C215)  //SmolLM2
 			$chat_template:="{%- for message in messages -%}\n{%- if message.role == \"system\" -%}\n<|system|>\n{{ message.content }}\n<|end|>\n{%- elif message.role == \"user\" -%}\n<|user|>\n{{ message.content }}\n<|end|>\n{%- elif message.role == \"assistant\" -%}\n<|assistant|>\n{{ message.c"+"ontent }}\n<|end|>\n{%- endif -%}\n{%- endfor -%}\n{%- if add_generation_prompt -%}\n<|assistant|>\n{%- endif -%}\n"
 			$folder:=$homeFolder.folder("SmolLM2-1.7B-onnx-int4-cpu")
 			$path:="keisuke-miyako/SmolLM2-1.7B-onnx-int4-cpu"
@@ -42,31 +57,23 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 			$options:={chat_template: $chat_template}
-		: (False:C215)
-			$chat_template:="{{ bos_token }}{% for message in messages %}{% if (message['role'] == 'user') != ((loop.index0 + 1) % 2 == 0) %}{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}{% endif %}{% if message['role'] == 'assistant'"+" %}{% set role = 'model' %}{% else %}{% set role = message['role'] %}{% endif %}{{'<start_of_turn>' + role + '\\n' + message['content'] | trim + '<end_of_turn>\\n'}}{% endfor %}{% if add_generation_prompt %}{{'<start_of_turn>model\\n'}}{% endif %}\n"
-			$folder:=$homeFolder.folder("gemma-2-2B-it-onnx-int4-cpu")
-			$path:="keisuke-miyako/gemma-2-2B-it-onnx-int4-cpu"
-			$URL:="keisuke-miyako/gemma-2-2B-it-onnx-int4-cpu"
-			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
-			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
-			$options:={chat_template: $chat_template}
-		: (False:C215)
-			$chat_template:="{% for message in messages %}\n    {% if message['role'] == 'system' %}\n        {{ '<|im_start|>system\\n' + message['content'] + '<|im_end|>\\n' }}\n    {% elif message['role'] == 'user' %}\n        {{ '<|im_start|>user\\n' + message['content'] + '<|im_end"+"|>\\n<|im_start|>assistant\\n' }}\n        {% if enable_thinking | default(true) %}\n            {{ '<|thought|>\\n' }}\n        {% endif %}\n    {% elif message['role'] == 'assistant' %}\n        {{ message['content'] + '<|im_end|>\\n' }}\n    {% endif %}\n{% e"+"ndfor %}\n"
+		: (False:C215)  //Qwen3
+			$chat_template:="{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0].role == 'system' %}\n        {{- messages[0].content + '\\n\\n' }}\n    {%- endif %}\n    {{- \"# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are "+"provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}{{ tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function nam"+"e and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0].role == 'system' %}\n        {{- '<|im_start|>system\\"+"n' + messages[0].content + '<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n\n{%- set ns = namespace(last_query_index=messages|length - 1) %}\n{%- for message in messages %}\n    {%- if loop.first and message.role == 'system' %}{% continue %}{% endif %}\n "+"   \n    {%- set content = message.content if message.content is not none else \"\" %}\n    \n    {{- '<|im_start|>' + message.role + '\\n' }}\n    {%- if message.role == 'assistant' and '<think>' in content %}\n        {%- if loop.index0 < ns.last_query_inde"+"x %}\n            {# Pruning logic: Only keep the most recent thinking block #}\n            {{- content.split('</think>')[-1] }}\n        {%- else %}\n            {{- content }}\n        {%- endif %}\n    {%- else %}\n        {{- content }}\n    {%- endif %}"+"\n    {{- '<|im_end|>\\n' }}\n{%- endfor %}\n\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n    {%- if enable_thinking %}\n        {{- '<think>\\n' }}\n    {%- elif enable_thinking == false %}\n        {{- '<think>\\n</think>' }}\n    {%-"+" endif %}\n{%- endif %}"
 			$folder:=$homeFolder.folder("Qwen3-1.7B-onnx-int4-cpu")
 			$path:="keisuke-miyako/Qwen3-1.7B-onnx-int4-cpu"
 			$URL:="keisuke-miyako/Qwen3-1.7B-onnx-int4-cpu"
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 			$options:={chat_template: $chat_template}
-		: (False:C215)
-			$chat_template:="{% for message in messages %}\n    {% if loop.first and message['role'] == 'system' %}\n        {{ '<|im_start|>system\\n' + message['content'] + '<|im_end|>\\n' }}\n    {% elif message['role'] == 'user' %}\n        {{ '<|im_start|>user\\n' + message['conten"+"t'] + '<|im_end|>\\n' }}\n    {% elif message['role'] == 'assistant' %}\n        {{ '<|im_start|>assistant\\n' + message['content'] + '<|im_end|>\\n' }}\n    {% endif %}\n{% endfor %}\n{% if add_generation_prompt %}\n    {{ '<|im_start|>assistant\\n' }}\n{% endi"+"f %}\n"
+		: (False:C215)  //Qwen2.5
+			$chat_template:="{% for message in messages %}\n    {% if loop.first and message['role'] != 'system' %}\n        {{ '<|im_start|>system\\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>\\n' }}\n    {% endif %}\n    {{ '<|im_start|>' + message["+"'role'] + '\\n' + message['content'] + '<|im_end|>' + '\\n' }}\n{% endfor %}\n{% if add_generation_prompt %}\n    {{ '<|im_start|>assistant\\n' }}\n{% endif %}"
 			$folder:=$homeFolder.folder("Qwen2.5-1.5B-onnx-int4-cpu")
 			$path:="keisuke-miyako/Qwen2.5-1.5B-onnx-int4-cpu"
 			$URL:="keisuke-miyako/Qwen2.5-1.5B-onnx-int4-cpu"
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 			$options:={chat_template: $chat_template}
-		: (False:C215)
+		: (False:C215)  //Baguettotron
 			$chat_template:="{%- for message in messages %}{%- if message['role'] == 'system' -%}{{- message['content'] + '\\n' -%}{%- elif message['role'] == 'user' -%}{{- '[INST] ' + message['content'] + ' [/INST]' -%}{%- elif message['role'] == 'assistant' -%}{{- message['conte"+"nt'] + '\\n' -%}{%- endif -%}{%- endfor -%}{%- if add_generation_prompt and messages[-1]['role'] != 'assistant' -%}{{- '\\n' -%}{%- endif -%}\n"
 			$folder:=$homeFolder.folder("Baguettotron-onnx-int4-cpu")
 			$path:="keisuke-miyako/Baguettotron-onnx-int4-cpu"
@@ -74,7 +81,7 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 			$options:={chat_template: $chat_template}
-		: (False:C215)
+		: (False:C215)  //EuroLLM
 			$chat_template:="{% for message in messages %}\n    {{ '<|im_start|>' + message['role'] + '\\n' + message['content'] + '<|im_end|>' + '\\n' }}\n{% endfor %}\n{% if add_generation_prompt %}\n    {{ '<|im_start|>assistant\\n' }}\n{% endif %}"
 			$folder:=$homeFolder.folder("EuroLLM-1.7B-Instruct-onnx-int4-cpu")
 			$path:="keisuke-miyako/EuroLLM-1.7B-Instruct-onnx-int4-cpu"
@@ -93,6 +100,16 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$path:="keisuke-miyako/bge-small-en-v1.5-onnx"
 			$URL:="keisuke-miyako/bge-small-en-v1.5-onnx"
 			$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding")
+			
+			//$folder:=$homeFolder.folder("nomic-embed-text-v1.5-onnx")
+			//$path:="keisuke-miyako/nomic-embed-text-v1.5-onnx"
+			//$URL:="keisuke-miyako/nomic-embed-text-v1.5-onnx"
+			//$embeddings:=cs.event.huggingface.new($folder; $URL; $path; "embedding")
+			
+			//$folder:=$homeFolder.folder("embeddinggemma-300m-onnx")
+			//$path:="keisuke-miyako/embeddinggemma-300m-onnx"
+			//$URL:="keisuke-miyako/embeddinggemma-300m-onnx"
+			//$embeddings:=cs.event.huggingface.new($folder; $URL; $path; "embedding")
 			
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
 			$options:={chat_template: $chat_template}
