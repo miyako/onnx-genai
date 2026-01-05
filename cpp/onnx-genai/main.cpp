@@ -395,6 +395,7 @@ static void parse_request(
                           unsigned int *top_k,
                           double *top_p,
                           double *temperature,
+                          double *repetition_penalty,
                           unsigned int *n,
                           bool *is_stream,
                           OgaTokenizer* tokenizer,
@@ -438,6 +439,11 @@ static void parse_request(
             {
                 *max_tokens = max_tokens_node.asInt();
             }
+            Json::Value repetition_penalty_node = root["repetition_penalty"];
+            if(repetition_penalty_node.isNumeric())
+            {
+                *repetition_penalty = repetition_penalty_node.asDouble();
+            }
             /*
              only these are set by AI-Kit
              */
@@ -479,12 +485,13 @@ static void before_run_inference(
                                  unsigned int *top_k,
                                  double *top_p,
                                  double *temperature,
+                                 double *repetition_penalty,
                                  unsigned int *n,
                                  bool *is_stream,
                                  OgaTokenizer* tokenizer,
                                  std::string& chat_template) {
     
-    parse_request(request_body, prompt, max_tokens, top_k, top_p, temperature, n, is_stream, tokenizer, chat_template);
+    parse_request(request_body, prompt, max_tokens, top_k, top_p, temperature, repetition_penalty, n, is_stream, tokenizer, chat_template);
 }
 
 static std::string run_inference(
@@ -497,6 +504,7 @@ static std::string run_inference(
                                  unsigned int top_k,
                                  double top_p,
                                  double temperature,
+                                 double repetition_penalty,
                                  unsigned int n,
                                  std::string prompt
                                  ) {
@@ -526,6 +534,7 @@ static std::string run_inference(
         params->SetSearchOption("top_k", top_k);
         params->SetSearchOption("top_p", top_p);
         params->SetSearchOption("temperature", temperature);
+        params->SetSearchOption("repetition_penalty", repetition_penalty);
         params->SetSearchOption("num_return_sequences", n);
         
         // Create Generator
@@ -668,6 +677,7 @@ static void run_inference_stream(
                                  unsigned int top_k,
                                  double top_p,
                                  double temperature,
+                                 double repetition_penalty,
                                  unsigned int n,
                                  std::string prompt,
                                  std::function<bool(const std::string&, unsigned int)> on_token_generated
@@ -691,6 +701,7 @@ static void run_inference_stream(
     params->SetSearchOption("top_k", top_k);
     params->SetSearchOption("top_p", top_p);
     params->SetSearchOption("temperature", temperature);
+    params->SetSearchOption("repetition_penalty", repetition_penalty);
     params->SetSearchOption("num_return_sequences", n);
     
     // Create Generator
@@ -1176,7 +1187,8 @@ int main(int argc, OPTARG_T argv[]) {
     std::string modelName;
     std::unique_ptr<OgaModel> model;
     std::unique_ptr<OgaTokenizer> tokenizer;
-        
+    std::unique_ptr<OgaConfig> config;
+    
     if (model_path.length() != 0) {
         if (fs::exists(model_path)) {
             if (fs::is_directory(model_path)) {
@@ -1185,7 +1197,24 @@ int main(int argc, OPTARG_T argv[]) {
                 fingerprint = get_system_fingerprint(model_path, "directml");
                 modelName = get_model_name(model_path);
                 try {
-                    model = OgaModel::Create(model_path.c_str());
+                    config = OgaConfig::Create(model_path.c_str());
+                    // 2. Overlay the stop sequences as a JSON string
+                    // This fixes the C++ "type" error because you are passing a single string
+                    config->Overlay(R"({
+                        "search": {
+                            "stop_sequences": [
+                    "<|end|>", 
+                    "<|im_end|>", 
+                    "<|eot_id|>", 
+                    "<end_of_turn>", 
+                    "<|endoftext|>", 
+                    "<bos>",
+                    "<|user|>", 
+                    "<|assistant|>"]
+                        }
+                    })");
+//                    model = OgaModel::Create(model_path.c_str());
+                    model = OgaModel::Create(*config);
                     tokenizer = OgaTokenizer::Create(*model);
                     model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
@@ -1283,6 +1312,7 @@ int main(int argc, OPTARG_T argv[]) {
                 unsigned int top_k = 50;
                 double top_p = 0.9;
                 double temperature = 0.7;
+                double repetition_penalty = 1.2;
                 unsigned int n = 1;
                 bool is_stream = false;
                 
@@ -1292,6 +1322,7 @@ int main(int argc, OPTARG_T argv[]) {
                                      &top_k,
                                      &top_p,
                                      &temperature,
+                                     &repetition_penalty,
                                      &n,
                                      &is_stream,
                                      tokenizer.get(),
@@ -1328,6 +1359,7 @@ int main(int argc, OPTARG_T argv[]) {
                                              top_k,
                                              top_p,
                                              temperature,
+                                             repetition_penalty,
                                              n,
                                              prompt,
                                              token_callback
@@ -1357,6 +1389,7 @@ int main(int argc, OPTARG_T argv[]) {
                                                               top_k,
                                                               top_p,
                                                               temperature,
+                                                              repetition_penalty,
                                                               n,
                                                               prompt
                                                               );
@@ -1520,6 +1553,7 @@ int main(int argc, OPTARG_T argv[]) {
             unsigned int top_k = 50;
             double top_p = 0.9;
             double temperature = 0.7;
+            double repetition_penalty = 1.2;
             unsigned int n = 1;
             bool is_stream = false;
             
@@ -1529,6 +1563,7 @@ int main(int argc, OPTARG_T argv[]) {
                                  &top_k,
                                  &top_p,
                                  &temperature,
+                                 &repetition_penalty,
                                  &n,
                                  &is_stream,
                                  tokenizer.get(),
@@ -1544,6 +1579,7 @@ int main(int argc, OPTARG_T argv[]) {
                                      top_k,
                                      top_p,
                                      temperature,
+                                     repetition_penalty,
                                      n,
                                      prompt
                                      );
