@@ -537,6 +537,10 @@ static std::string run_inference(
         params->SetSearchOption("repetition_penalty", repetition_penalty);
         params->SetSearchOption("num_return_sequences", n);
         
+        int32_t end_id = tokenizer->ToTokenId("<|end|>");
+        int32_t user_id = tokenizer->ToTokenId("<|user|>");
+        int32_t assistant_id = tokenizer->ToTokenId("<|assistant|>");
+        
         // Create Generator
         // Generator is stateful; we need 1 per request.
         auto generator = OgaGenerator::Create(*model, *params);
@@ -1187,7 +1191,6 @@ int main(int argc, OPTARG_T argv[]) {
     std::string modelName;
     std::unique_ptr<OgaModel> model;
     std::unique_ptr<OgaTokenizer> tokenizer;
-    std::unique_ptr<OgaConfig> config;
     
     if (model_path.length() != 0) {
         if (fs::exists(model_path)) {
@@ -1197,24 +1200,7 @@ int main(int argc, OPTARG_T argv[]) {
                 fingerprint = get_system_fingerprint(model_path, "directml");
                 modelName = get_model_name(model_path);
                 try {
-                    config = OgaConfig::Create(model_path.c_str());
-                    // 2. Overlay the stop sequences as a JSON string
-                    // This fixes the C++ "type" error because you are passing a single string
-                    config->Overlay(R"({
-                        "search": {
-                            "stop_sequences": [
-                    "<|end|>", 
-                    "<|im_end|>", 
-                    "<|eot_id|>", 
-                    "<end_of_turn>", 
-                    "<|endoftext|>", 
-                    "<bos>",
-                    "<|user|>", 
-                    "<|assistant|>"]
-                        }
-                    })");
-//                    model = OgaModel::Create(model_path.c_str());
-                    model = OgaModel::Create(*config);
+                    model = OgaModel::Create(model_path.c_str());
                     tokenizer = OgaTokenizer::Create(*model);
                     model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
