@@ -57,7 +57,7 @@ Else
     $folder:=$homeFolder.folder("all-MiniLM-L6-v2")
     $path:=""
     $URL:="ONNX-models/all-MiniLM-L6-v2-ONNX"
-    $embeddings:=cs.event.huggingface.new($folder; $URL; $path; "embedding")
+    $embeddings:=cs.event.huggingface.new($folder; $URL; $path; "embedding"; "model.onnx")
     
     $options:={}
     var $huggingfaces : cs.event.huggingfaces
