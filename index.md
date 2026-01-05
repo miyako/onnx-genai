@@ -202,7 +202,7 @@ optimum-cli export onnx \
 
 optimum-cli onnxruntime quantize \
   --onnx_model /.onnx/bge-small-en-v1.5-fp32 \
-  --output ~/.onnx/bge-small-en-v1.5
+  --output ~/.onnx/bge-small-en-v1.5 --avx2
     
 ```
 
