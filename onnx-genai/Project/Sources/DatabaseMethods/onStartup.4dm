@@ -96,20 +96,20 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$URL:="keisuke-miyako/Llama-3.2-1B-Instruct-onnx-int4-cpu"
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 			
-			$folder:=$homeFolder.folder("bge-small-en-v1.5-onnx")
-			$path:="keisuke-miyako/bge-small-en-v1.5-onnx"
-			$URL:="keisuke-miyako/bge-small-en-v1.5-onnx"
-			$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding")
+			//$folder:=$homeFolder.folder("bge-small-en-v1.5-onnx")
+			//$path:="keisuke-miyako/bge-small-en-v1.5-onnx"
+			//$URL:="keisuke-miyako/bge-small-en-v1.5-onnx"
+			//$embeddings:=cs.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
 			
 			//$folder:=$homeFolder.folder("nomic-embed-text-v1.5-onnx")
 			//$path:="keisuke-miyako/nomic-embed-text-v1.5-onnx"
 			//$URL:="keisuke-miyako/nomic-embed-text-v1.5-onnx"
-			//$embeddings:=cs.event.huggingface.new($folder; $URL; $path; "embedding")
+			//$embeddings:=cs.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
 			
-			//$folder:=$homeFolder.folder("embeddinggemma-300m-onnx")
-			//$path:="keisuke-miyako/embeddinggemma-300m-onnx"
-			//$URL:="keisuke-miyako/embeddinggemma-300m-onnx"
-			//$embeddings:=cs.event.huggingface.new($folder; $URL; $path; "embedding")
+			$folder:=$homeFolder.folder("embeddinggemma-300m-onnx")
+			$path:="keisuke-miyako/embeddinggemma-300m-onnx"
+			$URL:="keisuke-miyako/embeddinggemma-300m-onnx"
+			$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
 			
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
 			$options:={chat_template: $chat_template}

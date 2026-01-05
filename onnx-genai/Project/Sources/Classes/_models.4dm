@@ -47,29 +47,52 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 			Else 
 				continue
 		End case 
-		
 		var $request : 4D:C1709.HTTPRequest
 		$request:=4D:C1709.HTTPRequest.new($API).wait()
 		If ($request.response.status=Null:C1517)
 			This:C1470._models.push([$USER; $REPO].join("/"))
-			This:C1470.options.embedding_model:=$huggingface.folder
+			Case of 
+				: ($huggingface.domain="chat.completion")
+					This:C1470.options.chat_completion_model:=$huggingface.folder
+				: ($huggingface.domain="embedding")
+					This:C1470.options.embeggings_model:=$huggingface.folder
+					This:C1470.options.embeggings_model_name:=$huggingface.name
+			End case 
 			This:C1470.offline:=True:C214
 			continue
 		End if 
 		If ($request.response.status=200)
-			If (Value type:C1509($request.response)=Is object:K8:27) && (Value type:C1509($request.response.body)=Is collection:K8:32)
-				$resources:=$request.response.body.map(Formula:C1597($1.result:={\
-					USER: $2; \
-					REPO: $3; \
-					BRANCH: $4; \
-					type: $1.value.type; \
-					domain: $6; \
-					size: $1.value.size; \
-					path: $1.value.path; \
-					oid: $1.value.oid; \
-					folder: $5}); $USER; $REPO; $BRANCH; $huggingface.folder; $huggingface.domain)
-				This:C1470.files:=This:C1470.files.combine($resources.query("type == :1"; "file"))
-				This:C1470._models.push([$USER; $REPO].join("/"))
+			If (Value type:C1509($request.response)=Is object:K8:27)
+				Case of 
+					: (OB Instance of:C1731($huggingface.folder; 4D:C1709.Folder))
+						$resources:=$request.response.body.map(Formula:C1597($1.result:={\
+							USER: $2; \
+							REPO: $3; \
+							BRANCH: $4; \
+							type: $1.value.type; \
+							domain: $6; \
+							name: $7; \
+							size: $1.value.size; \
+							path: $1.value.path; \
+							oid: $1.value.oid; \
+							folder: $5}); $USER; $REPO; $BRANCH; $huggingface.folder; $huggingface.domain; $huggingface.name)
+						This:C1470.files:=This:C1470.files.combine($resources.query("type == :1"; "file"))
+						This:C1470._models.push([$USER; $REPO].join("/"))
+					: (OB Instance of:C1731($huggingface.folder; 4D:C1709.File))
+						var $file : Object
+						$file:=$request.response.body.query("path == :1"; $huggingface.name).first()
+						If ($file=Null:C1517)
+							continue
+						End if 
+						$file.domain:=$huggingface.domain
+						$file.name:=$huggingface.name
+						$file.folder:=$huggingface.folder
+						$file.USER:=$USER
+						$file.REPO:=$REPO
+						$file.BRANCH:=$BRANCH
+						This:C1470.files.push($file)
+						This:C1470._models.push([$USER; $REPO].join("/"))
+				End case 
 			End if 
 		End if 
 	End while 
@@ -77,13 +100,15 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 Function download()
 	
 	For each ($file; This:C1470.files)
-		If ($file.folder.exists) && ($file.folder.file($file.path).exists) && ($file.folder.file($file.path).size=$file.size)
+		If ($file.folder.exists)\
+			 && (OB Instance of:C1731($file.folder; 4D:C1709.Folder) ? ($file.folder.file($file.path).exists) : ($file.folder.exists))\
+			 && (OB Instance of:C1731($file.folder; 4D:C1709.Folder) ? ($file.folder.file($file.path).size=$file.size) : ($file.folder.size=$file.size))
 			This:C1470.onDownload($file.oid)
 			continue
 		End if 
 		cs:C1710.event.download.new(\
 			This:C1470; \
-			$file.folder.file($file.path); \
+			OB Instance of:C1731($file.folder; 4D:C1709.Folder) ? $file.folder.file($file.path) : $file.folder; \
 			$file.folder; \
 			$file.oid; \
 			["https://huggingface.co"; $file.USER; $file.REPO; "resolve"; $file.BRANCH; $file.path].join("/"); \

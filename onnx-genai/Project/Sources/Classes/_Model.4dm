@@ -1,5 +1,6 @@
 property chat_completion_model : 4D:C1709.Folder
 property embeggings_model : 4D:C1709.Folder
+property embeggings_model_name : Text
 
 Class extends _models
 
@@ -29,11 +30,16 @@ Function onDownload($oid : Text)
 	$downloaded:=This:C1470.files.query("oid == :1"; $oid).first()
 	
 	If ($downloaded#Null:C1517)
+		var $model : Object
+		$model:=OB Instance of:C1731($downloaded.folder; 4D:C1709.Folder)\
+			 ? $downloaded.folder.folder($downloaded.path).parent : $downloaded.folder
+		
 		Case of 
 			: ($downloaded.domain="chat.completion")
-				This:C1470.options.chat_completion_model:=$downloaded.folder.folder($downloaded.path).parent
+				This:C1470.options.chat_completion_model:=$model
 			: ($downloaded.domain="embedding")
-				This:C1470.options.embeggings_model:=$downloaded.folder.folder($downloaded.path).parent
+				This:C1470.options.embeggings_model:=$model
+				This:C1470.options.embeggings_model_name:=$downloaded.name
 		End case 
 	End if 
 	

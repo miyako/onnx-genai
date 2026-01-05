@@ -1455,7 +1455,7 @@ int main(int argc, OPTARG_T argv[]) {
                 
                 std::string response_json;
 
-                if((embeddings_tokenizer != NULL) &&(num_input_nodes > 2)) {
+                if((embeddings_tokenizer != NULL) &&(num_input_nodes > 1)) {
                     /*
                      standard encoder-only model
                      input: input_ids, attention_mask, token_type_ids
