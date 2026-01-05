@@ -91,7 +91,10 @@ curl -X 'POST' \
         "content": "Explain quantum computing in one sentence."
       }
     ],
-    "temperature": 0.7
+    "temperature": 0.3,
+    "top_p": 0.9,
+    "top_k": 40,
+    "repetition_penalty": 1.1
   }'
 ```
 
