@@ -545,6 +545,7 @@ static std::string run_inference(
         int32_t chat_start_id = tokenizer->ToTokenId("<|im_start|>");
         int32_t turn_start_id = tokenizer->ToTokenId("<|start_of_turn|>");
         int32_t head_start_id = tokenizer->ToTokenId("<|start_header_id|>");
+        int32_t assistant_id = tokenizer->ToTokenId("<|assistant|>");
         
         // Define your multiple stop conditions
         std::unordered_set<int32_t> stop_tokens = {
@@ -552,7 +553,7 @@ static std::string run_inference(
             file_end_id,
             chat_start_id,
             turn_start_id,
-            head_start_id};
+            head_start_id, assistant_id};
         
         // Create Generator
         // Generator is stateful; we need 1 per request.
@@ -733,13 +734,15 @@ static void run_inference_stream(
     int32_t chat_start_id = tokenizer->ToTokenId("<|im_start|>");
     int32_t turn_start_id = tokenizer->ToTokenId("<|start_of_turn|>");
     int32_t head_start_id = tokenizer->ToTokenId("<|start_header_id|>");
+    int32_t assistant_id = tokenizer->ToTokenId("<|assistant|>");
+    
     // Define your multiple stop conditions
     std::unordered_set<int32_t> stop_tokens = {
         chat_end_id,
         file_end_id,
         chat_start_id,
         turn_start_id,
-        head_start_id};
+        head_start_id, assistant_id};
     
     // Create Generator
     // Generator is stateful; we need 1 per request.
