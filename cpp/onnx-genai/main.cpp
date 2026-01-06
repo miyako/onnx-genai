@@ -537,23 +537,26 @@ static std::string run_inference(
         params->SetSearchOption("repetition_penalty", repetition_penalty);
         params->SetSearchOption("num_return_sequences", n);
         
-        // Force the generator to stop at <|im_end|> (151645)
-        // instead of <|endoftext|> (151643)
         int32_t chat_end_id = tokenizer->ToTokenId("<|im_end|>");
-//        params->SetSearchOption("eos_token_id", chat_end_id);
         int32_t file_end_id = tokenizer->ToTokenId("<|endoftext|>");
         int32_t chat_start_id = tokenizer->ToTokenId("<|im_start|>");
-        int32_t turn_start_id = tokenizer->ToTokenId("<|start_of_turn|>");
         int32_t head_start_id = tokenizer->ToTokenId("<|start_header_id|>");
-        int32_t assistant_id = tokenizer->ToTokenId("<|assistant|>");
+        
+        int32_t pad_id = tokenizer->ToTokenId("<pad>");
+        int32_t bos_id = tokenizer->ToTokenId("<bos>");
+        int32_t turn_start_id = tokenizer->ToTokenId("<start_of_turn>");
+        int32_t turn_end_id = tokenizer->ToTokenId("<end_of_turn>");
         
         // Define your multiple stop conditions
         std::unordered_set<int32_t> stop_tokens = {
             chat_end_id,
             file_end_id,
             chat_start_id,
+            head_start_id,
+            pad_id,
+            bos_id,
             turn_start_id,
-            head_start_id, assistant_id};
+            turn_end_id};
         
         // Create Generator
         // Generator is stateful; we need 1 per request.
@@ -726,23 +729,26 @@ static void run_inference_stream(
     params->SetSearchOption("repetition_penalty", repetition_penalty);
     params->SetSearchOption("num_return_sequences", n);
     
-    // Force the generator to stop at <|im_end|> (151645)
-    // instead of <|endoftext|> (151643)
     int32_t chat_end_id = tokenizer->ToTokenId("<|im_end|>");
-//        params->SetSearchOption("eos_token_id", chat_end_id);
     int32_t file_end_id = tokenizer->ToTokenId("<|endoftext|>");
     int32_t chat_start_id = tokenizer->ToTokenId("<|im_start|>");
-    int32_t turn_start_id = tokenizer->ToTokenId("<|start_of_turn|>");
     int32_t head_start_id = tokenizer->ToTokenId("<|start_header_id|>");
-    int32_t assistant_id = tokenizer->ToTokenId("<|assistant|>");
+    
+    int32_t pad_id = tokenizer->ToTokenId("<pad>");
+    int32_t bos_id = tokenizer->ToTokenId("<bos>");
+    int32_t turn_start_id = tokenizer->ToTokenId("<start_of_turn>");
+    int32_t turn_end_id = tokenizer->ToTokenId("<end_of_turn>");
     
     // Define your multiple stop conditions
     std::unordered_set<int32_t> stop_tokens = {
         chat_end_id,
         file_end_id,
         chat_start_id,
+        head_start_id,
+        pad_id,
+        bos_id,
         turn_start_id,
-        head_start_id, assistant_id};
+        turn_end_id};
     
     // Create Generator
     // Generator is stateful; we need 1 per request.

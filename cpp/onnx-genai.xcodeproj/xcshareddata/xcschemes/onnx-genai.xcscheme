@@ -58,11 +58,15 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.onnx/Llama-3.2-1B-Instruct-onnx-int4-cpu"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.onnx/Baguettotron"
             isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/.onnx/gemma-2-2b-it-onnx-int4-cpu"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-e"
@@ -93,7 +97,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "llama3"
+            argument = "gemma"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>
