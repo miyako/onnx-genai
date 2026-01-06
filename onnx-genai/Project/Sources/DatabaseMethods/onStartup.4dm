@@ -33,7 +33,7 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	var $huggingfaces : cs:C1710.event.huggingfaces
 	
 	Case of 
-		: (True:C214)  //danube2
+		: (False:C215)  //danube2
 			$chat_template:="<|begin_of_text|>{% for message in messages %}\n{% if message['role'] == 'system' %}\n<|start_header_id|>system<|end_header_id|>\n\n{{ message['content'] }}<|eot_id|>\n{% elif message['role'] == 'user' %}\n<|start_header_id|>user<|end_header_id|>\n\n{{ messag"+"e['content'] }}<|eot_id|>\n{% elif message['role'] == 'assistant' %}\n<|start_header_id|>assistant<|end_header_id|>\n\n{{ message['content'] }}<|eot_id|>\n{% endif %}\n{% endfor %}\n{% if add_generation_prompt %}\n<|start_header_id|>assistant<|end_header_id|>"+"\n\n{% endif %}"
 			$folder:=$homeFolder.folder("h2o-danube2-1.8b-chat-onnx-int4-cpu")
 			$path:="keisuke-miyako/h2o-danube2-1.8b-chat-onnx-int4-cpu"
@@ -49,7 +49,6 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 			$options:={chat_template: $chat_template}
-			
 		: (False:C215)  //Phi 4 mini (official)
 			$chat_template:="{{ bos_token }}{% for message in messages %}{{'<|' + message['role'] + '|>' + '\\n' + message['content'] + '<|end|>' + '\\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|assistant|>' + '\\n' }}{% endif %}"
 			$folder:=$homeFolder.folder("Phi-4-mini-instruct-onnx-int4-cpu")
@@ -74,7 +73,7 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 			$options:={chat_template: $chat_template}
-		: (False:C215)  //Qwen3
+		: (True:C214)  //Qwen3
 			$chat_template:="{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0].role == 'system' %}\n        {{- messages[0].content + '\\n\\n' }}\n    {%- endif %}\n    {{- \"# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are "+"provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}{{ tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function nam"+"e and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0].role == 'system' %}\n        {{- '<|im_start|>system\\"+"n' + messages[0].content + '<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n\n{%- set ns = namespace(last_query_index=messages|length - 1) %}\n{%- for message in messages %}\n    {%- if loop.first and message.role == 'system' %}{% continue %}{% endif %}\n "+"   \n    {%- set content = message.content if message.content is not none else \"\" %}\n    \n    {{- '<|im_start|>' + message.role + '\\n' }}\n    {%- if message.role == 'assistant' and '<think>' in content %}\n        {%- if loop.index0 < ns.last_query_inde"+"x %}\n            {# Pruning logic: Only keep the most recent thinking block #}\n            {{- content.split('</think>')[-1] }}\n        {%- else %}\n            {{- content }}\n        {%- endif %}\n    {%- else %}\n        {{- content }}\n    {%- endif %}"+"\n    {{- '<|im_end|>\\n' }}\n{%- endfor %}\n\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n    {%- if enable_thinking %}\n        {{- '<think>\\n' }}\n    {%- elif enable_thinking == false %}\n        {{- '<think>\\n</think>' }}\n    {%-"+" endif %}\n{%- endif %}"
 			$folder:=$homeFolder.folder("Qwen3-1.7B-onnx-int4-cpu")
 			$path:="keisuke-miyako/Qwen3-1.7B-onnx-int4-cpu"
