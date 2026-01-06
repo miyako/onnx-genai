@@ -241,6 +241,10 @@ python -m tf2onnx.convert \
 |🇪🇺|[EuroLLM&nbsp;1.7B](https://huggingface.co/keisuke-miyako/EuroLLM-1.7B-Instruct-onnx-int4-cpu)|`1.7`|`1.94`|`4096`|`128000`|`European`|
 |🇺🇸|[SmolLM2&nbsp;1.7B](https://huggingface.co/keisuke-miyako/SmolLM2-1.7B-onnx-int4-cpu)|`1.7`|`1.48`|`8192`|`49152`|`6`
 |🇺🇸|[Granite&nbsp;3.0&nbsp;2B](https://huggingface.co/keisuke-miyako/granite-3.0-2b-instruct-onnx-int4-cpu)|`2.5`|`1.99`|`4096`|`49155`|`12`
+|🇯🇵|[ELYZA&nbsp;JP&nbsp;8B](https://huggingface.co/keisuke-miyako/Llama-3-ELYZA-JP-8B-onnx-int4-cpu)|`8.0`|``|`8192`|`128256`|`Japanese`
+|🇯🇵|[RakutenAI&nbsp;7B&nbsp;Chat](https://huggingface.co/keisuke-miyako/RakutenAI-7B-chat-onnx-int4-cpu)|`7.0`|``|`32768`|`48000`|`Japanese`
+|🇯🇵|[RakutenAI&nbsp;7B&nbsp;Instruct](https://huggingface.co/keisuke-miyako/RakutenAI-7B-instruct-onnx-int-cpu/blob/main/README.md)|`7.0`|``|`32768`|`48000`|`Japanese`
+
 
 #### Not Compatible
 
