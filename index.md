@@ -243,8 +243,8 @@ python -m tf2onnx.convert \
 |🇺🇸|[Granite&nbsp;3.0&nbsp;2B](https://huggingface.co/keisuke-miyako/granite-3.0-2b-instruct-onnx-int4-cpu)|`2.5`|`1.99`|`4096`|`49155`|`12`
 |🇯🇵|[ELYZA&nbsp;JP&nbsp;8B](https://huggingface.co/keisuke-miyako/Llama-3-ELYZA-JP-8B-onnx-int4-cpu)|`8.0`|`6.81`|`8192`|`128256`|`Japanese`&nbsp;`English`
 |🇯🇵|[Swallow&nbsp;8B](https://huggingface.co/keisuke-miyako/Llama-3.1-Swallow-8B-Instruct-v0.3-onnx-int4-cpu)|`8.0`|`6.81`|`8192`|`128256`|`Japanese`&nbsp;`English`
-|🇯🇵|[RakutenAI&nbsp;7B&nbsp;Chat](https://huggingface.co/keisuke-miyako/RakutenAI-7B-chat-onnx-int4-cpu)|`7.0`|``|`32768`|`48000`|`Japanese`&nbsp;`English`
-|🇯🇵|[RakutenAI&nbsp;7B&nbsp;Instruct](https://huggingface.co/keisuke-miyako/RakutenAI-7B-instruct-onnx-int-cpu)|`7.0`|``|`32768`|`48000`|`Japanese`&nbsp;`English`
+|🇯🇵|[RakutenAI&nbsp;7B&nbsp;Chat](https://huggingface.co/keisuke-miyako/RakutenAI-7B-chat-onnx-int4-cpu)|`7.0`|`5.31`|`32768`|`48000`|`Japanese`&nbsp;`English`
+|🇯🇵|[RakutenAI&nbsp;7B&nbsp;Instruct](https://huggingface.co/keisuke-miyako/RakutenAI-7B-instruct-onnx-int-cpu)|`7.0`|`5.31`|`32768`|`48000`|`Japanese`&nbsp;`English`
 
 
 #### Not Compatible
