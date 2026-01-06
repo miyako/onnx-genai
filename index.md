@@ -244,11 +244,10 @@ python -m tf2onnx.convert \
 |-|-|-:|-:|-:|-:|:-:|
 |⚠️|[Ministral&nbsp;3B](https://huggingface.co/mistralai/Ministral-3-3B-Instruct-2512-ONNX)|`3.4`|`2.29`|`256000`|`131072`|`European`
 |⚠️|[Gemma&nbsp;3&nbsp;1B](https://huggingface.co/onnx-community/gemma-3-1b-it-ONNX)|`1.0`|`1.41`|`32768`|`262144`|`140`|
-|⚠️|[CroissantLLMChat](https://huggingface.co/croissantllm/CroissantLLMChat-v0.1)|`1.3`|`1.07`|`2048`|`32000`|`French` 
-|⚠️|[Gemma&nbsp;2&nbsp;2B](https://huggingface.co/keisuke-miyako/gemma-2-2b-it-onnx-f16-cpu)|`2.6`|`5.27`|`8192`|`256128`|`English`|
 |⚠️|[Gemma&nbsp;2&nbsp;2B](https://huggingface.co/keisuke-miyako/gemma-2-2b-it-onnx-int4-cpu)|`2.6`|`4.04`|`8192`|`256128`|`English`|
 |⚠️|[Danube&nbsp;3](https://huggingface.co/keisuke-miyako/h2o-danube3-4b-chat-onnx-int4-cpu)|`4.0`|`2.9`|`8192`|`32000`|`English`
 |⚠️|[Danube&nbsp;3.1](https://huggingface.co/keisuke-miyako/h2o-danube3.1-4b-chat-onnx-int4-cpu)|`4.0`|`2.9`|`8192`|`32000`|`English`
+|⚠️|[CroissantLLMChat](https://huggingface.co/croissantllm/CroissantLLMChat-v0.1)|`1.3`|`1.07`|`2048`|`32000`|`French` 
 
 #### AI Kit compatibility
 
