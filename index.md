@@ -223,7 +223,7 @@ python -m tf2onnx.convert \
     --tag serve
 ```
 
-#### Frontier Models
+#### Models
 
 ||Model|Parameters|Size|Context&nbsp;Length|Vocabulary|Languages|
 |-|-|-:|-:|-:|-:|:-:|
@@ -233,6 +233,10 @@ python -m tf2onnx.convert \
 |🇫🇷|[Baguettotron](https://huggingface.co/keisuke-miyako/Baguettotron-onnx-int4-cpu)|`0.3`|`1.79`|`8192`|`65000`|`European`
 |🇨🇳|[Qwen&nbsp;3&nbsp;1.7B](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-onnx-int4-cpu)|`1.7`|`2.35`|`32768`|`151936`|`119`| 
 |🇨🇳|[Qwen&nbsp;2.5&nbsp;1.5B](https://huggingface.co/keisuke-miyako/Qwen2.5-1.5B-onnx-int4-cpu)|`1.5`|`1.94`|`128000`|`151936`|`29`| 
+|🇺🇸|[Danube](https://huggingface.co/h2oai/h2o-danube-1.8b-chat)|`1.8`|[`1.43`](https://huggingface.co/keisuke-miyako/h2o-danube-1.8b-chat-onnx-int4-cpu)|`16384`|`32000`|`English` 
+|🇺🇸|[Danube&nbsp;2](https://huggingface.co/h2oai/h2o-danube2-1.8b-chat)|`1.8`|[`1.43`](https://huggingface.co/keisuke-miyako/h2o-danube2-1.8b-chat-onnx-int4-cpu)|`8192`|`32000`|`English`
+|🇺🇸|[Danube&nbsp;3](https://huggingface.co/h2oai/h2o-danube3-4b-chat)|`4.0`|[`2.9`](https://huggingface.co/keisuke-miyako/h2o-danube3-4b-chat-onnx-int4-cpu)|`8192`|`32000`|`English`
+|🇺🇸|[Danube&nbsp;3.1](https://huggingface.co/h2oai/h2o-danube3.1-4b-chat)|`4.0`|[`2.9`](https://huggingface.co/keisuke-miyako/h2o-danube3.1-4b-chat-onnx-int4-cpu)|`8192`|`32000`|`English`
 |🇪🇺|[EuroLLM&nbsp;1.7B](https://huggingface.co/keisuke-miyako/EuroLLM-1.7B-Instruct-onnx-int4-cpu)|`1.7`|`1.94`|`4096`|`128000`|`European`|
 |🇺🇸|[SmolLM2&nbsp;1.7B](https://huggingface.co/keisuke-miyako/SmolLM2-1.7B-onnx-int4-cpu)|`1.7`|`1.48`|`8192`|`49152`|`6`
 
