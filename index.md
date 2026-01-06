@@ -235,8 +235,6 @@ python -m tf2onnx.convert \
 |🇨🇳|[Qwen&nbsp;2.5&nbsp;1.5B](https://huggingface.co/keisuke-miyako/Qwen2.5-1.5B-onnx-int4-cpu)|`1.5`|`1.94`|`128000`|`151936`|`29`| 
 |🇺🇸|[Danube](https://huggingface.co/keisuke-miyako/h2o-danube-1.8b-chat-onnx-int4-cpu)|`1.8`|`1.43`|`16384`|`32000`|`English` 
 |🇺🇸|[Danube&nbsp;2](https://huggingface.co/keisuke-miyako/h2o-danube2-1.8b-chat-onnx-int4-cpu)|`1.8`|`1.43`|`8192`|`32000`|`English`
-|🇺🇸|[Danube&nbsp;3](https://huggingface.co/keisuke-miyako/h2o-danube3-4b-chat-onnx-int4-cpu)|`4.0`|`2.9`|`8192`|`32000`|`English`
-|🇺🇸|[Danube&nbsp;3.1](https://huggingface.co/keisuke-miyako/h2o-danube3.1-4b-chat-onnx-int4-cpu)|`4.0`|`2.9`|`8192`|`32000`|`English`
 |🇪🇺|[EuroLLM&nbsp;1.7B](https://huggingface.co/keisuke-miyako/EuroLLM-1.7B-Instruct-onnx-int4-cpu)|`1.7`|`1.94`|`4096`|`128000`|`European`|
 |🇺🇸|[SmolLM2&nbsp;1.7B](https://huggingface.co/keisuke-miyako/SmolLM2-1.7B-onnx-int4-cpu)|`1.7`|`1.48`|`8192`|`49152`|`6`
 
@@ -249,6 +247,8 @@ python -m tf2onnx.convert \
 |⚠️|[CroissantLLMChat](https://huggingface.co/croissantllm/CroissantLLMChat-v0.1)|`1.3`|`1.07`|`2048`|`32000`|`French` 
 |⚠️|[Gemma&nbsp;2&nbsp;2B](https://huggingface.co/keisuke-miyako/gemma-2-2b-it-onnx-f16-cpu)|`2.6`|`5.27`|`8192`|`256128`|`English`|
 |⚠️|[Gemma&nbsp;2&nbsp;2B](https://huggingface.co/keisuke-miyako/gemma-2-2b-it-onnx-int4-cpu)|`2.6`|`4.04`|`8192`|`256128`|`English`|
+|⚠️|[Danube&nbsp;3](https://huggingface.co/keisuke-miyako/h2o-danube3-4b-chat-onnx-int4-cpu)|`4.0`|`2.9`|`8192`|`32000`|`English`
+|⚠️|[Danube&nbsp;3.1](https://huggingface.co/keisuke-miyako/h2o-danube3.1-4b-chat-onnx-int4-cpu)|`4.0`|`2.9`|`8192`|`32000`|`English`
 
 #### AI Kit compatibility
 
