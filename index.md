@@ -249,8 +249,8 @@ python -m tf2onnx.convert \
 |⚠️|[Danube&nbsp;3](https://huggingface.co/keisuke-miyako/h2o-danube3-4b-chat-onnx-int4-cpu)|`4.0`|`2.9`|`8192`|`32000`|`English`
 |⚠️|[Danube&nbsp;3.1](https://huggingface.co/keisuke-miyako/h2o-danube3.1-4b-chat-onnx-int4-cpu)|`4.0`|`2.9`|`8192`|`32000`|`English`
 |⚠️|[CroissantLLMChat](https://huggingface.co/keisuke-miyako/CroissantLLMChat-v0.1-onnx-int4-cpu)|`1.3`|`1.07`|`2048`|`32000`|`French` 
-|⚠️|[EXAONE&nbsp;3.5&nbsp;2.4B](https://huggingface.co/keisuke-miyako/EXAONE-3.5-2.4B-Instruct-onnx-int4-cpu)|`2.4`|`2.66`|`32768`|`102400`| `English` `Korean`
-|⚠️|[InternLM&nbsp;1.8B](https://huggingface.co/keisuke-miyako/internlm2_5-1_8b-chat-onnx-in4-cpu)|`1.8`|`1.86`|`32768`|`92544`| `English` `Chinense`
+|⚠️|[EXAONE&nbsp;3.5&nbsp;2.4B](https://huggingface.co/keisuke-miyako/EXAONE-3.5-2.4B-Instruct-onnx-int4-cpu)|`2.4`|`2.66`|`32768`|`102400`|`English`&nbsp;`Korean`
+|⚠️|[InternLM&nbsp;1.8B](https://huggingface.co/keisuke-miyako/internlm2_5-1_8b-chat-onnx-in4-cpu)|`1.8`|`1.86`|`32768`|`92544`|`English`&nbsp;`Chinense`
 
 #### AI Kit compatibility
 
