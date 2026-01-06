@@ -31,7 +31,7 @@
       shouldAutocreateTestPlan = "YES">
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Release"
+      buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
@@ -69,7 +69,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/miyako/.onnx/embeddinggemma-300m-onnx/model_quantized.onnx"
+            argument = "/Users/miyako/.onnx/gemma-2-2b-it-onnx-int4-cpu"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument

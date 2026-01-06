@@ -537,9 +537,22 @@ static std::string run_inference(
         params->SetSearchOption("repetition_penalty", repetition_penalty);
         params->SetSearchOption("num_return_sequences", n);
         
-        int32_t end_id = tokenizer->ToTokenId("<|end|>");
-        int32_t user_id = tokenizer->ToTokenId("<|user|>");
-        int32_t assistant_id = tokenizer->ToTokenId("<|assistant|>");
+        // Force the generator to stop at <|im_end|> (151645)
+        // instead of <|endoftext|> (151643)
+        int32_t chat_end_id = tokenizer->ToTokenId("<|im_end|>");
+//        params->SetSearchOption("eos_token_id", chat_end_id);
+        int32_t file_end_id = tokenizer->ToTokenId("<|endoftext|>");
+        int32_t chat_start_id = tokenizer->ToTokenId("<|im_start|>");
+        int32_t turn_start_id = tokenizer->ToTokenId("<|start_of_turn|>");
+        int32_t head_start_id = tokenizer->ToTokenId("<|start_header_id|>");
+        
+        // Define your multiple stop conditions
+        std::unordered_set<int32_t> stop_tokens = {
+            chat_end_id,
+            file_end_id,
+            chat_start_id,
+            turn_start_id,
+            head_start_id};
         
         // Create Generator
         // Generator is stateful; we need 1 per request.
@@ -567,6 +580,10 @@ static std::string run_inference(
                 if (seq_len == 0) continue;
                 // Get the most recently generated token
                 int32_t new_token = seq_data[seq_len - 1];
+                if (stop_tokens.count(new_token)) {
+                    // We hit one of our stop tokens!
+                    continue;;
+                }
                 // Decode using the specific stream for this sequence
                 const char* token_str = streams[i]->Decode(new_token);
                 if (token_str) {
@@ -708,6 +725,22 @@ static void run_inference_stream(
     params->SetSearchOption("repetition_penalty", repetition_penalty);
     params->SetSearchOption("num_return_sequences", n);
     
+    // Force the generator to stop at <|im_end|> (151645)
+    // instead of <|endoftext|> (151643)
+    int32_t chat_end_id = tokenizer->ToTokenId("<|im_end|>");
+//        params->SetSearchOption("eos_token_id", chat_end_id);
+    int32_t file_end_id = tokenizer->ToTokenId("<|endoftext|>");
+    int32_t chat_start_id = tokenizer->ToTokenId("<|im_start|>");
+    int32_t turn_start_id = tokenizer->ToTokenId("<|start_of_turn|>");
+    int32_t head_start_id = tokenizer->ToTokenId("<|start_header_id|>");
+    // Define your multiple stop conditions
+    std::unordered_set<int32_t> stop_tokens = {
+        chat_end_id,
+        file_end_id,
+        chat_start_id,
+        turn_start_id,
+        head_start_id};
+    
     // Create Generator
     // Generator is stateful; we need 1 per request.
     auto generator = OgaGenerator::Create(*model, *params);
@@ -735,6 +768,10 @@ static void run_inference_stream(
             // Get the most recently generated token
             int32_t new_token = seq_data[seq_len - 1];
             // Decode using the specific stream for this sequence
+            if (stop_tokens.count(new_token)) {
+                // We hit one of our stop tokens!
+                continue;;
+            }
             const char* token_str = streams[i]->Decode(new_token);
             if (token_str) {
                 if (!on_token_generated(token_str, i)) {
@@ -1200,7 +1237,14 @@ int main(int argc, OPTARG_T argv[]) {
                 fingerprint = get_system_fingerprint(model_path, "directml");
                 modelName = get_model_name(model_path);
                 try {
+//                    auto config = OgaConfig::Create(model_path.c_str());
                     model = OgaModel::Create(model_path.c_str());
+//#ifdef WIN32
+//                    config->AppendProvider("DmlExecutionProvider");
+//#else
+//                    config->AppendProvider("CoreMLExecutionProvider");
+//#endif
+//                    model = OgaModel::Create(*config);
                     tokenizer = OgaTokenizer::Create(*model);
                     model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
