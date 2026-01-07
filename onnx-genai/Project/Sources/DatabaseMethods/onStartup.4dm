@@ -33,6 +33,30 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	var $huggingfaces : cs:C1710.event.huggingfaces
 	
 	Case of 
+		: (True:C214)  // 
+			$chat_template:="{%- if messages[0]['role'] == 'system' -%}\n    {{- messages[0]['content'] + '\\n' -}}\n    {%- set loop_messages = messages[1:] -%}\n{%- else -%}\n    {{- 'A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful"+", detailed, and polite answers to the user\\'s questions.\\n' -}}\n    {%- set loop_messages = messages -%}\n{%- endif -%}\n\n{%- for message in loop_messages -%}\n    {%- if message['role'] == 'user' -%}\n        {{- 'USER: ' + message['content'] + '\\n' -}}\n"+"    {%- elif message['role'] == 'assistant' -%}\n        {{- 'ASSISTANT: ' + message['content'] + eos_token + '\\n' -}}\n    {%- endif -%}\n{%- endfor -%}\n\n{%- if add_generation_prompt -%}\n    {{- 'ASSISTANT:' -}} \n{%- endif -%}"
+			$folder:=$homeFolder.folder("RakutenAI-7B-instruct-onnx-int4-cpu")
+			$path:="keisuke-miyako/RakutenAI-7B-instruct-onnx-int4-cpu"
+			$URL:="keisuke-miyako/RakutenAI-7B-instruct-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
+		: (False:C215)  // ✅ Swallow-8B-Instruct
+			$chat_template:="{% set loop_messages = messages %}{% for message in loop_messages %}{% set content = '<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n'+ message['content'] | trim + '<|eot_id|>' %}{% if loop.index0 == 0 %}{% set content = bos_token + cont"+"ent %}{% endif %}{{ content }}{% endfor %}{% if add_generation_prompt %}{{ '<|start_header_id|>assistant<|end_header_id|>\n\n' }}{% endif %}"
+			$folder:=$homeFolder.folder("Llama-3.1-Swallow-8B-Instruct-v0.3-onnx-int4-cpu")
+			$path:="keisuke-miyako/Llama-3.1-Swallow-8B-Instruct-v0.3-onnx-int4-cpu"
+			$URL:="keisuke-miyako/Llama-3.1-Swallow-8B-Instruct-v0.3-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
+		: (False:C215)  // ✅ RakutenAI-7B-Chat
+			$chat_template:="\n{%- if messages[0]['role'] == 'system' %}\n    {%- set system_message = messages[0]['content'] | trim + ' ' %}\n    {%- set messages = messages[1:] %}\n{%- else %}\n    {%- set system_message = 'A chat between a curious user and an artificial intelligenc"+"e assistant. The assistant gives helpful, detailed, and polite answers to the user\\'s questions. ' %}\n{%- endif %}\n\n{{- system_message }}\n{%- for message in messages %}\n    {%- if message['role'] == 'user' %}\n        {{- 'USER: ' + message['content'] "+"| trim }}\n    {%- elif message['role'] == 'assistant' %}\n        {{- ' ASSISTANT: '  + message['content'] | trim + '</s>' }}\n    {%- endif %}\n{%- endfor %}\n\n{%- if add_generation_prompt %}\n    {{- ' ASSISTANT:' }}\n{%- endif %}\n"
+			$folder:=$homeFolder.folder("RakutenAI-7B-chat-onnx-int4-cpu")
+			$path:="keisuke-miyako/RakutenAI-7B-chat-onnx-int4-cpu"
+			$URL:="keisuke-miyako/RakutenAI-7B-chat-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
 		: (False:C215)  // Granite3
 			$chat_template:="{%- if tools %}\n    {{- '<|start_of_role|>available_tools<|end_of_role|>\n' }}\n    {%- for tool in tools %}\n    {{- tool | tojson(indent=4) }}\n    {%- if not loop.last %}\n        {{- '\n\n' }}\n    {%- endif %}\n    {%- endfor %}\n    {{- '<|end_of_text|>\n'"+" }}\n{%- endif %}\n{%- for message in messages %}\n    {%- if message['role'] == 'system' %}\n    {{- '<|start_of_role|>system<|end_of_role|>' + message['content'] + '<|end_of_text|>\n' }}\n    {%- elif message['role'] == 'user' %}\n    {{- '<|start_of_role|"+">user<|end_of_role|>' + message['content'] + '<|end_of_text|>\n' }}\n    {%- elif message['role'] == 'assistant' %}\n    {{- '<|start_of_role|>assistant<|end_of_role|>'  + message['content'] + '<|end_of_text|>\n' }}\n    {%- elif message['role'] == 'assist"+"ant_tool_call' %}\n    {{- '<|start_of_role|>assistant<|end_of_role|><|tool_call|>' + message['content'] + '<|end_of_text|>\n' }}\n    {%- elif message['role'] == 'tool_response' %}\n    {{- '<|start_of_role|>tool_response<|end_of_role|>' + message['conte"+"nt'] + '<|end_of_text|>\n' }}\n    {%- endif %}\n    {%- if loop.last and add_generation_prompt %}\n    {{- '<|start_of_role|>assistant<|end_of_role|>' }}\n    {%- endif %}\n{%- endfor %}"
 			$folder:=$homeFolder.folder("granite-3.0-2b-instruct-onnx-int4-cpu")
