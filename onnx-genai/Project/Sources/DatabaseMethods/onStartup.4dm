@@ -233,7 +233,7 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
 			$options:={chat_template: $chat_template; pooling: "last_token"}
-			//cls, mean, 
+			//cls, mean, last_token, colbert
 			
 	End case 
 	
