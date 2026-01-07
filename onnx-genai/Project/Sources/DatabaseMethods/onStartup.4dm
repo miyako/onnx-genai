@@ -33,7 +33,7 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	var $huggingfaces : cs:C1710.event.huggingfaces
 	
 	Case of 
-		: (True:C214)  // 
+		: (True:C214)  // ✅ Calm2 Chat
 			$chat_template:="{% for message in messages %}\n    {% if message['role'] == 'user' %}\n{{ 'USER: ' + message['content'] + '\\n' }}\n    {% elif message['role'] == 'assistant' %}\n{{ 'ASSISTANT: ' + message['content'] + '\\n' }}\n    {% endif %}\n{% endfor %}\n{% if add_genera"+"tion_prompt %}\n{{ 'ASSISTANT: ' }}\n{% endif %}"
 			$folder:=$homeFolder.folder("calm2-7b-chat-onnx")
 			$path:="keisuke-miyako/calm2-7b-chat-onnx"
