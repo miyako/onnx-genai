@@ -232,7 +232,9 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
 			
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
-			$options:={chat_template: $chat_template}
+			$options:={chat_template: $chat_template; pooling: "last_token"}
+			//cls, mean, 
+			
 	End case 
 	
 	$ONNX:=cs:C1710.ONNX.new($port; $huggingfaces; $homeFolder; $options; $event)

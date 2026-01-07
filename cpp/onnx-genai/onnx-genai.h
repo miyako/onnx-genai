@@ -105,40 +105,6 @@ enum PoolingMode {
 
 #pragma mark -
 
-static std::string run_embeddings(
-                                  Ort::Session *session,
-                                  std::string& input,
-                                  std::vector<const char*>&  input_names_c_array,
-                                  size_t num_input_nodes,
-                                  std::vector<const char*>&   output_names_c_array,
-                                  size_t num_output_nodes);
-static std::string run_inference(
-                                 OgaModel* model,
-                                 OgaTokenizer* tokenizer,
-                                 const std::string& modelName,
-                                 const std::string& fingerprint,
-                                 long long created,
-                                 unsigned int max_tokens,
-                                 unsigned int top_k,
-                                 double top_p,
-                                 double temperature,
-                                 unsigned int n,
-                                 std::string prompt
-                                 );
-static void run_inference_stream(
-                                 OgaModel* model,
-                                 OgaTokenizer* tokenizer,
-                                 const std::string& modelName,
-                                 const std::string& fingerprint,
-                                 long long created,
-                                 unsigned int max_tokens,
-                                 unsigned int top_k,
-                                 double top_p,
-                                 double temperature,
-                                 unsigned int n,
-                                 std::string prompt,
-                                 std::function<bool(const std::string&)> on_token_generated
-                                 );
 static std::string create_stream_chunk(int n,
                                        const std::string& id,
                                        const std::string& model,

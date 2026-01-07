@@ -800,83 +800,9 @@ std::vector<int64_t> ConvertToInt64(const std::vector<int>& input_ids) {
     return output;
 }
 
-static // --- The Processor Code ---
-void ProcessOutput(
-    Ort::Value& output_tensor,              // From session.Run()
-    const std::vector<int64_t>& input_mask, // The flat mask you sent to ONNX
-    int64_t batch_size,
-    int64_t seq_len
-) {
-    // 1. Get Output Data Info
-    // Shape is typically [BatchSize, SeqLen, HiddenSize]
-    auto type_info = output_tensor.GetTensorTypeAndShapeInfo();
-    auto shape = type_info.GetShape();
-    int64_t hidden_size = shape[2];
-    
-    // Get pointer to the raw float array containing all batches
-    float* raw_data = output_tensor.GetTensorMutableData<float>();
-
-    // 2. Prepare Containers for your function
-    std::vector<Eigen::MatrixXf> hidden_batch_vec;
-    std::vector<Eigen::VectorXi> mask_batch_vec;
-
-    hidden_batch_vec.reserve(batch_size);
-    mask_batch_vec.reserve(batch_size);
-
-    // 3. Loop over Batch to slice data
-    for (int i = 0; i < batch_size; ++i) {
-        // --- A. Extract Hidden States ---
-        // Calculate offset for this specific batch item
-        float* batch_ptr = raw_data + (i * seq_len * hidden_size);
-
-        // Map raw memory to Eigen.
-        // IMPORTANT: ONNX is RowMajor, Eigen Default is ColMajor.
-        // We Map as RowMajor, then assign to MatrixXf (which copies/converts to ColMajor).
-        Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-            mapped_matrix(batch_ptr, seq_len, hidden_size);
-        
-        hidden_batch_vec.push_back(mapped_matrix);
-
-        // --- B. Extract/Convert Mask ---
-        // Input mask was flat [Batch * Seq]. We slice it for this batch.
-        std::vector<int> current_mask_int;
-        current_mask_int.reserve(seq_len);
-        
-        for(int j = 0; j < seq_len; ++j) {
-            // Convert int64_t -> int (Eigen::VectorXi is int)
-            current_mask_int.push_back(static_cast<int>(input_mask[i * seq_len + j]));
-        }
-        
-        // Map std::vector to Eigen::VectorXi
-        mask_batch_vec.push_back(
-            Eigen::Map<Eigen::VectorXi>(current_mask_int.data(), seq_len)
-        );
-    }
-
-    // 4. Perform Mean Pooling
-    // Result is likely [BatchSize, HiddenSize] (depending on your implementation)
-    Eigen::MatrixXf pooled_embeddings = mean_pool_batch(hidden_batch_vec, mask_batch_vec);
-
-    // 5. Perform L2 Normalization
-    // We iterate through the rows (or cols) of the pooled result
-    // Assuming pooled_embeddings is [BatchSize, HiddenSize] (Row per embedding)
-    for (int i = 0; i < pooled_embeddings.rows(); ++i) {
-        // Extract the row as a vector
-        Eigen::VectorXf emb = pooled_embeddings.row(i);
-        
-        // Normalize
-        Eigen::VectorXf normalized_emb = l2_normalize(emb);
-        
-        // (Optional) Store it back or print it
-        std::cout << "Normalized Embedding " << i << ":\n"
-                  << normalized_emb.head(5) // Print first 5 dims
-                  << "...\n" << std::endl;
-    }
-}
-
-static std::string last_token_response(std::vector<Ort::Value>& outputs,
-                                            std::vector<int64_t>& attention_mask,
-                                            int seq_len) {
+static std::string last_token_pooling_response(std::vector<Ort::Value>& outputs,
+                                               std::vector<int64_t>& attention_mask,
+                                               int seq_len) {
     
     Json::Value rootNode(Json::objectValue);
     
@@ -886,31 +812,29 @@ static std::string last_token_response(std::vector<Ort::Value>& outputs,
         auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
         float* floatarr = outputs[0].GetTensorMutableData<float>();
         
-        auto shape = output_info.GetShape();
-        if(shape.size() > 2) {
-            int64_t hidden_size = shape[2];
-     
-            Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-                            raw_matrix(floatarr, seq_len, hidden_size);
-            
-            // Logic for Decoder/LLM models (Gemma)
-            int last_token_index = 0;
-
-            // Find the last index where mask == 1
-            for (int i = 0; i < seq_len; ++i) {
-                if (attention_mask[i] == 1) {
-                    last_token_index = i;
-                } else {
-                    break; // Assuming padding is always at the end
-                }
+        // Logic for Decoder/LLM models (Gemma)
+        int last_token_index = 0;
+        // Find the last index where mask == 1
+        for (int i = 0; i < seq_len; ++i) {
+            if (attention_mask[i] == 1) {
+                last_token_index = i;
+            } else {
+                break; // Assuming padding is always at the end
             }
-            
-            // Take the vector at that index
-            Eigen::VectorXf last_vec = raw_matrix.row(last_token_index);
-            
-            // Then normalize
-            Eigen::VectorXf final_embedding = l2_normalize(last_vec);
         }
+        // Take the vector at that index
+        Eigen::VectorXf last_vec = raw_matrix.row(last_token_index);
+        // Then normalize
+        Eigen::VectorXf final_embedding = l2_normalize(last_vec);
+        // Create the std::vector
+        std::vector<float> embeddings(final_embedding.data(), final_embedding.data() + final_embedding.size());
+        rootNode["object"] = "embedding";
+        Json::Value embeddingsNode(Json::arrayValue);
+        for (float val : embeddings) {
+            embeddingsNode.append(val);
+        }
+        rootNode["embedding"] = embeddingsNode;
+        rootNode["index"] = 0;
     }
     
     Json::StreamWriterBuilder writer;
@@ -945,19 +869,15 @@ static std::string colbert_pooling_response(std::vector<Ort::Value>& outputs,
             // --- COLBERT LOGIC START ---
             // Iterate over every token in the sequence
             for (int i = 0; i < seq_len; ++i) {
-                
                 // 1. Skip Padding (if your tokenizer added 0-padding at the end)
                 // If your 'ids' input contains 0s for padding, use attention_mask to skip.
                 // If 'ids' is exactly the length of the text, this check always passes.
                 if (attention_mask[i] == 0) continue;
-                
                 // 2. Get the specific token vector
                 Eigen::VectorXf token_vec = raw_matrix.row(i);
-                
                 // 3. Normalize (L2 Norm) - REQUIRED for MaxSim
                 // ColBERT relies on dot product == cosine similarity, which requires unit vectors.
                 token_vec.normalize();
-                
                 // 4. Append to JSON
                 Json::Value vectorNode(Json::arrayValue);
                 for (int j = 0; j < hidden_size; ++j) {
@@ -966,7 +886,6 @@ static std::string colbert_pooling_response(std::vector<Ort::Value>& outputs,
                 bagOfVectors.append(vectorNode);
             }
             // --- COLBERT LOGIC END ---
-            
             rootNode["data"] = bagOfVectors; // List of Lists
             rootNode["index"] = 0;
         }
@@ -995,10 +914,18 @@ static std::string cls_pooling_response(std::vector<Ort::Value>& outputs,
             
             Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
                             raw_matrix(floatarr, seq_len, hidden_size);
-            
+            // Just take the first row
             Eigen::VectorXf cls_vec = raw_matrix.row(0);
-            
             Eigen::VectorXf final_embedding = l2_normalize(cls_vec);
+            // Create the std::vector
+            std::vector<float> embeddings(final_embedding.data(), final_embedding.data() + final_embedding.size());
+            rootNode["object"] = "embedding";
+            Json::Value embeddingsNode(Json::arrayValue);
+            for (float val : embeddings) {
+                embeddingsNode.append(val);
+            }
+            rootNode["embedding"] = embeddingsNode;
+            rootNode["index"] = 0;
         }
     }
         
@@ -1022,7 +949,7 @@ static std::string mean_pooling_response(std::vector<Ort::Value>& outputs,
         auto shape = output_info.GetShape();// [Batch, Seq, Hidden]
         if(shape.size() > 2) {
             int64_t hidden_size = shape[2];
-            // 2. Prepare Batches
+            // Prepare Batches
             std::vector<Eigen::MatrixXf> hidden_batch_vec;
             std::vector<Eigen::VectorXi> mask_batch_vec;
             // (Since batch=1, loop runs once)
@@ -1035,9 +962,9 @@ static std::string mean_pooling_response(std::vector<Ort::Value>& outputs,
             Eigen::VectorXi mask_vec(seq_len);
             for(int i=0; i<seq_len; ++i) mask_vec(i) = (int)attention_mask[i];
             mask_batch_vec.push_back(mask_vec);
-            // 1. Mean Pool
+            // Mean Pool
             Eigen::MatrixXf pooled = mean_pool_batch(hidden_batch_vec, mask_batch_vec); // Returns [1, Hidden]
-            // 2. Normalize
+            // Normalize
             Eigen::VectorXf final_embedding = l2_normalize(pooled.row(0));
             // Create the std::vector
             std::vector<float> embeddings(final_embedding.data(), final_embedding.data() + final_embedding.size());
@@ -1129,7 +1056,7 @@ static std::string run_embeddings(
                 reponseJson = cls_pooling_response(outputs, attention_mask, seq_len);
                 break;
             case POOLING_LAST_TOKEN:
-
+                reponseJson = last_token_pooling_response(outputs, attention_mask, seq_len);
                 break;
             case POOLING_MEAN:
             default:
