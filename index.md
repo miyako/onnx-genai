@@ -199,14 +199,14 @@ Download and convert a model yourself with [optimum-cli](https://github.com/hugg
 
 ```sh
 optimum-cli export onnx \
-  --model BAAI/bge-small-en-v1.5 \
+  --model sonoisa/sentence-bert-base-ja-mean-tokens-v2 \
   --task feature-extraction \
-  ~/.onnx/bge-small-en-v1.5-fp32
+  --trust-remote-code \
+  ~/.onnx/sonoisa/sentence-bert-base-ja-mean-tokens-v2-fp32
 
 optimum-cli onnxruntime quantize \
-  --onnx_model /.onnx/bge-small-en-v1.5-fp32 \
-  --output ~/.onnx/bge-small-en-v1.5 --avx2
-    
+  --onnx_model ~/.onnx/sonoisa/sentence-bert-base-ja-mean-tokens-v2-fp32 \
+  --output ~/.onnx/sonoisa/sentence-bert-base-ja-mean-tokens-v2-onnx --avx2    
 ```
 
 Or, 
@@ -247,6 +247,8 @@ python -m tf2onnx.convert \
 |🇯🇵|[RakutenAI&nbsp;7B&nbsp;Instruct](https://huggingface.co/keisuke-miyako/RakutenAI-7B-instruct-onnx-int-cpu)|`7.0`|`5.31`|`32768`|`48000`|`Japanese`&nbsp;`English`
 |🇯🇵|[Youko&nbsp;8B](https://huggingface.co/keisuke-miyako/llama-3-youko-8b-instruct-onnx-int4-cpu)|`8.0`|`6.81`|`8192`|`128256`|`Japanese`&nbsp;`English`
 |🇯🇵|[Baku&nbsp;2B](https://huggingface.co/keisuke-miyako/gemma-2-baku-2b-it-onnx-int4-cpu)|`2.6`|`4.04`|`8192`|`256000`|`Japanese`&nbsp;`English`
+|🇯🇵|[Youri&nbsp;7B&nbsp;Instruct](https://huggingface.co/keisuke-miyako/youri-7b-instruction-onnx-int4-cpu)|`7.0`|`4.66`|`4096`|`32000`|`Japanese`&nbsp;`English`
+|🇯🇵|[Youri&nbsp;7Bnbsp;Chat](https://huggingface.co/keisuke-miyako/youri-7b-chat-onnx-int4-cpu)|`7.0`|`4.66`|`4096`|`32000`|`Japanese`&nbsp;`English`
 
 #### Not Compatible
 

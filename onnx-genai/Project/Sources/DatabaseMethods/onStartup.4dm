@@ -33,7 +33,23 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	var $huggingfaces : cs:C1710.event.huggingfaces
 	
 	Case of 
-		: (True:C214)  // ✅ Baku
+		: (False:C215)  // ✅ Youri 7B Chat
+			$chat_template:="{{ bos_token }}\n{% for message in messages %}\n    {% if message['role'] == 'system' %}\n        {{ '設定: ' + message['content'] + '\\n' }}\n    {% elif message['role'] == 'user' %}\n        {{ 'ユーザー: ' + message['content'] + '\\n' }}\n    {% elif"+" message['role'] == 'assistant' %}\n        {{ 'システム: ' + message['content'] + eos_token + '\\n' }}\n    {% endif %}\n{% endfor %}\n{% if add_generation_prompt %}\n    {{ 'システム: ' }}\n{% endif %}"
+			$folder:=$homeFolder.folder("youri-7b-chat-onnx-int4-cpu")
+			$path:="keisuke-miyako/youri-7b-chat-onnx-int4-cpu"
+			$URL:="keisuke-miyako/youri-7b-chat-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
+		: (False:C215)  // ✅ Youri 7B Instruction
+			$chat_template:="{% for message in messages %}\n    {# 1. Print the system preamble only at the very start #}\n    {% if loop.first %}\n        {{ '以下は、タスクを説明する指示と、文脈のある入力の組み合わせです。要求を適切に満たす"+"応答を書きなさい。\\n\\n' }}\n    {% endif %}\n\n    {# 2. User Turn #}\n    {% if message['role'] == 'user' %}\n        {{ '### 指示:\\n' + message['content'] + '\\n' }}\n        {{ '### 入力:\\n\\n' }}\n    \n    {# 3. Assistant Turn #}\n    {% elif m"+"essage['role'] == 'assistant' %}\n        {{ '### 応答:\\n' + message['content'] + eos_token + '\\n\\n' }}\n    {% endif %}\n{% endfor %}\n\n{# 4. Trigger for generation (add the final header) #}\n{% if add_generation_prompt %}\n    {{ '### 応答:\\n' }}\n{% e"+"ndif %}"
+			$folder:=$homeFolder.folder("youri-7b-instruction-onnx-int4-cpu")
+			$path:="keisuke-miyako/youri-7b-instruction-onnx-int4-cpu"
+			$URL:="keisuke-miyako/youri-7b-instruction-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
+		: (False:C215)  // ✅ Baku
 			$chat_template:="{% if messages[0]['role'] == 'system' %}{{ raise_exception('System role not supported') }}{% endif %}{% for message in messages %}{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}{{ raise_exception('Conversation roles must alternate user/"+"assistant/user/assistant/...') }}{% endif %}{% if (message['role'] == 'assistant') %}{% set role = 'model' %}{% else %}{% set role = message['role'] %}{% endif %}{{ '<start_of_turn>' + role + '\n' + message['content'] | trim + '<end_of_turn>\n' }}{% end"+"for %}{% if add_generation_prompt %}{{'<start_of_turn>model\n'}}{% endif %}"
 			$folder:=$homeFolder.folder("gemma-2-baku-2b-it-onnx-int4-cpu")
 			$path:="keisuke-miyako/gemma-2-baku-2b-it-onnx-int4-cpu"
@@ -185,7 +201,7 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 			$options:={chat_template: $chat_template}
-		: (False:C215)
+		: (True:C214)
 			$chat_template:="<|begin_of_text|>{% for message in messages %}\n{% if message['role'] == 'system' %}\n<|start_header_id|>system<|end_header_id|>\n\n{{ message['content'] }}<|eot_id|>\n{% elif message['role'] == 'user' %}\n<|start_header_id|>user<|end_header_id|>\n\n{{ messag"+"e['content'] }}<|eot_id|>\n{% elif message['role'] == 'assistant' %}\n<|start_header_id|>assistant<|end_header_id|>\n\n{{ message['content'] }}<|eot_id|>\n{% endif %}\n{% endfor %}\n{% if add_generation_prompt %}\n<|start_header_id|>assistant<|end_header_id|>"+"\n\n{% endif %}"
 			$folder:=$homeFolder.folder("Llama-3.2-1B-Instruct-onnx-int4-cpu")
 			$path:="keisuke-miyako/Llama-3.2-1B-Instruct-onnx-int4-cpu"
