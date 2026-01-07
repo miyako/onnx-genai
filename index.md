@@ -223,7 +223,7 @@ python -m tf2onnx.convert \
     --tag serve
 ```
 
-#### Models
+#### Chat Completion Models
 
 ||Model|Parameters|Size|Context&nbsp;Length|Vocabulary|Languages|
 |-|-|-:|-:|-:|-:|:-:|
@@ -249,6 +249,7 @@ python -m tf2onnx.convert \
 |🇯🇵|[Baku&nbsp;2B](https://huggingface.co/keisuke-miyako/gemma-2-baku-2b-it-onnx-int4-cpu)|`2.6`|`4.04`|`8192`|`256000`|`Japanese`&nbsp;`English`
 |🇯🇵|[Youri&nbsp;7B&nbsp;Instruct](https://huggingface.co/keisuke-miyako/youri-7b-instruction-onnx-int4-cpu)|`7.0`|`4.66`|`4096`|`32000`|`Japanese`&nbsp;`English`
 |🇯🇵|[Youri&nbsp;7Bnbsp;Chat](https://huggingface.co/keisuke-miyako/youri-7b-chat-onnx-int4-cpu)|`7.0`|`4.66`|`4096`|`32000`|`Japanese`&nbsp;`English`
+|🇯🇵|[Calm2&nbsp;7Bnbsp;Chat](https://huggingface.co/keisuke-miyako/calm2-7b-chat-onnx)|`7.0`|``|`32768`|`65024`|`Japanese`&nbsp;`English`
 
 #### Not Compatible
 
@@ -261,6 +262,13 @@ python -m tf2onnx.convert \
 |⚠️|[CroissantLLMChat](https://huggingface.co/keisuke-miyako/CroissantLLMChat-v0.1-onnx-int4-cpu)|`1.3`|`1.07`|`2048`|`32000`|`French` 
 |⚠️|[EXAONE&nbsp;3.5&nbsp;2.4B](https://huggingface.co/keisuke-miyako/EXAONE-3.5-2.4B-Instruct-onnx-int4-cpu)|`2.4`|`2.66`|`32768`|`102400`|`English`&nbsp;`Korean`
 |⚠️|[InternLM&nbsp;1.8B](https://huggingface.co/keisuke-miyako/internlm2_5-1_8b-chat-onnx-in4-cpu)|`1.8`|`1.86`|`32768`|`92544`|`English`&nbsp;`Chinense`
+
+#### Embeddings Models
+
+||Model|Dimensions|Size|Context&nbsp;Length|Tokenizer
+|-|-|-:|-:|-:|-:|
+|🇯🇵|[sentence-bert-base-ja-mean-tokens-v2](https://huggingface.co/keisuke-miyako/sentence-bert-base-ja-mean-tokens-v2-onnx/blob/main/config.json)|`768`|`111`|`512`|`BertJapaneseTokenizer`|
+
 
 #### AI Kit compatibility
 
