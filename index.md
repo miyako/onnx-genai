@@ -263,13 +263,6 @@ python -m tf2onnx.convert \
 |⚠️|[EXAONE&nbsp;3.5&nbsp;2.4B](https://huggingface.co/keisuke-miyako/EXAONE-3.5-2.4B-Instruct-onnx-int4-cpu)|`2.4`|`2.66`|`32768`|`102400`|`English`&nbsp;`Korean`
 |⚠️|[InternLM&nbsp;1.8B](https://huggingface.co/keisuke-miyako/internlm2_5-1_8b-chat-onnx-in4-cpu)|`1.8`|`1.86`|`32768`|`92544`|`English`&nbsp;`Chinense`
 
-#### Embeddings Models
-
-||Model|Dimensions|Size|Context&nbsp;Length|
-|-|-|-:|-:|-:|
-|🇯🇵|[sentence-bert-base-ja-mean-tokens-v2](https://huggingface.co/keisuke-miyako/sentence-bert-base-ja-mean-tokens-v2-onnx/blob/main/config.json)|`768`|`111`|`512`|
-
-
 #### AI Kit compatibility
 
 The API is compatibile with [Open AI](https://platform.openai.com/docs/api-reference/embeddings). 
