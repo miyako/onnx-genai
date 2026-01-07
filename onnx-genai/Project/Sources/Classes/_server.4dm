@@ -45,13 +45,32 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		$chat_template:=$option.chat_template
 	End if 
 	
+	If (Value type:C1509($option.pooling)=Is text:K8:3) && ($option.pooling#"")
+		Case of 
+			: ($option.pooling="cls")
+				$command+=" -c "
+			: ($option.pooling="mean")
+				//default
+			: ($option.pooling="last_token")
+				$command+=" -l "
+			: ($option.pooling="colbert")
+				$command+=" -b "
+				
+		End case 
+		
+		$command+=" -j "
+		$chat_template:=$option.chat_template
+	End if 
+	
+	
+	
 	var $arg : Object
 	var $valueType : Integer
 	var $key : Text
 	
 	For each ($arg; OB Entries:C1720($option))
 		Case of 
-			: (["m"; "e"; "i"; "o"; "h"; "host"; "p"; "port"; "j"; "chat_template"; "embeggings_model_name"].includes($arg.key))
+			: (["m"; "e"; "i"; "o"; "h"; "host"; "p"; "port"; "j"; "chat_template"; "pooling"; "embeggings_model_name"].includes($arg.key))
 				continue
 		End case 
 		$valueType:=Value type:C1509($arg.value)
