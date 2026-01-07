@@ -33,7 +33,32 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	var $huggingfaces : cs:C1710.event.huggingfaces
 	
 	Case of 
-		: (True:C214)  // 
+		: (True:C214)  // Baku
+			$chat_template:="{% if messages[0]['role'] == 'system' %}{{ raise_exception('System role not supported') }}{% endif %}{% for message in messages %}{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}{{ raise_exception('Conversation roles must alternate user/"+"assistant/user/assistant/...') }}{% endif %}{% if (message['role'] == 'assistant') %}{% set role = 'model' %}{% else %}{% set role = message['role'] %}{% endif %}{{ '<start_of_turn>' + role + '\n' + message['content'] | trim + '<end_of_turn>\n' }}{% end"+"for %}{% if add_generation_prompt %}{{'<start_of_turn>model\n'}}{% endif %}"
+			$folder:=$homeFolder.folder("gemma-2-baku-2b-it-onnx-int4-cpu")
+			$path:="keisuke-miyako/gemma-2-baku-2b-it-onnx-int4-cpu"
+			$URL:="keisuke-miyako/gemma-2-baku-2b-it-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
+			
+		: (False:C215)  // ✅ ELYZA
+			$chat_template:="{% set loop_messages = messages %}{% for message in loop_messages %}{% set content = '<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n'+ message['content'] | trim + '<|eot_id|>' %}{% if loop.index0 == 0 %}{% set content = bos_token + cont"+"ent %}{% endif %}{{ content }}{% endfor %}{% if add_generation_prompt %}{{ '<|start_header_id|>assistant<|end_header_id|>\n\n' }}{% endif %}"
+			$folder:=$homeFolder.folder("Llama-3-ELYZA-JP-8B-onnx-int4-cpu")
+			$path:="keisuke-miyako/Llama-3-ELYZA-JP-8B-onnx-int4-cpu"
+			$URL:="keisuke-miyako/Llama-3-ELYZA-JP-8B-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
+		: (False:C215)  // ✅ Youko
+			$chat_template:="{% set loop_messages = messages %}{% for message in loop_messages %}{% set content = '<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n'+ message['content'] | trim + '<|eot_id|>' %}{% if loop.index0 == 0 %}{% set content = bos_token + cont"+"ent %}{% endif %}{{ content }}{% endfor %}{% if add_generation_prompt %}{{ '<|start_header_id|>assistant<|end_header_id|>\n\n' }}{% endif %}"
+			$folder:=$homeFolder.folder("llama-3-youko-8b-instruct-onnx-int4-cpu")
+			$path:="keisuke-miyako/llama-3-youko-8b-instruct-onnx-int4-cpu"
+			$URL:="keisuke-miyako/llama-3-youko-8b-instruct-onnx-int4-cpu"
+			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
+			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
+			$options:={chat_template: $chat_template}
+		: (False:C215)  // ✅ RakutenAI-7B-instruct
 			$chat_template:="{%- if messages[0]['role'] == 'system' -%}\n    {{- messages[0]['content'] + '\\n' -}}\n    {%- set loop_messages = messages[1:] -%}\n{%- else -%}\n    {{- 'A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful"+", detailed, and polite answers to the user\\'s questions.\\n' -}}\n    {%- set loop_messages = messages -%}\n{%- endif -%}\n\n{%- for message in loop_messages -%}\n    {%- if message['role'] == 'user' -%}\n        {{- 'USER: ' + message['content'] + '\\n' -}}\n"+"    {%- elif message['role'] == 'assistant' -%}\n        {{- 'ASSISTANT: ' + message['content'] + eos_token + '\\n' -}}\n    {%- endif -%}\n{%- endfor -%}\n\n{%- if add_generation_prompt -%}\n    {{- 'ASSISTANT:' -}} \n{%- endif -%}"
 			$folder:=$homeFolder.folder("RakutenAI-7B-instruct-onnx-int4-cpu")
 			$path:="keisuke-miyako/RakutenAI-7B-instruct-onnx-int4-cpu"
@@ -66,7 +91,7 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 			$options:={chat_template: $chat_template}
 		: (False:C215)  //Gemma2
-			$chat_template:="{{ bos_token }}\n{% for message in messages %}\n    {% if message['role'] == 'user' %}\n        {{ '<start_of_turn>user\\n' + message['content'] | trim + '<end_of_turn>\\n' }}\n    {% elif message['role'] == 'assistant' %}\n        {{ '<start_of_turn>model\\n"+"' + message['content'] | trim + '<end_of_turn>\\n' }}\n    {% endif %}\n{% endfor %}\n{% if add_generation_prompt %}\n    {{ '<start_of_turn>model\\n' }}\n{% endif %}"
+			$chat_template:="{% for message in messages %}\n    {% if message['role'] == 'user' %}\n        {{ '<start_of_turn>user\\n' + message['content'] | trim + '<end_of_turn>\\n' }}\n    {% elif message['role'] == 'assistant' %}\n        {{ '<start_of_turn>model\\n"+"' + message['content'] | trim + '<end_of_turn>\\n' }}\n    {% endif %}\n{% endfor %}\n{% if add_generation_prompt %}\n    {{ '<start_of_turn>model\\n' }}\n{% endif %}"
 			$folder:=$homeFolder.folder("gemma-2-2b-it-onnx-int4-cpu")
 			$path:="keisuke-miyako/gemma-2-2b-it-onnx-int4-cpu"
 			$URL:="keisuke-miyako/gemma-2-2b-it-onnx-int4-cpu"
@@ -74,7 +99,7 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 			$options:={chat_template: $chat_template}
 		: (False:C215)  //InternLM2 (Do not use this)
-			$chat_template:="{{ bos_token }}{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant\n' }}{% endif %}"
+			$chat_template:="{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant\n' }}{% endif %}"
 			$folder:=$homeFolder.folder("internlm2_5-1_8b-chat-onnx-in4-cpu")
 			$path:="keisuke-miyako/internlm2_5-1_8b-chat-onnx-in4-cpu"
 			$URL:="keisuke-miyako/internlm2_5-1_8b-chat-onnx-in4-cpu"
