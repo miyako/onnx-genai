@@ -236,8 +236,8 @@ static void usage(void)
     fprintf(stderr, "onnx-genai\n\n");
     fprintf(stderr, " -%c path     : %s\n", 'm' , "model");
     fprintf(stderr, " -%c path     : %s\n", 'e' , "embedding model");
-    fprintf(stderr, " -%c template : %s\n", 'c' , "chat template name");
     fprintf(stderr, " -%c          : %s\n", 'j' , "chat template from stdin");
+    fprintf(stderr, " -%c path     : %s\n", 't' , "chat template");
     fprintf(stderr, " -%c path     : %s\n", 'i' , "input");
     fprintf(stderr, " %c           : %s\n", '-' , "use stdin for input");
     fprintf(stderr, " -%c path     : %s\n", 'o' , "output (default=stdout)");
@@ -295,11 +295,11 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:e:i:o:sp:c:j-h"
+#define ARGS (OPTARG_T)L"m:e:i:o:sp:jt:-h"
 #define _atoi _wtoi
 #define _atof _wtof
 #else
-#define ARGS "m:e:i:o:sp:c:j-h"
+#define ARGS "m:e:i:o:sp:jt:-h"
 #define _atoi atoi
 #define _atof atof
 #endif
@@ -1066,18 +1066,14 @@ int main(int argc, OPTARG_T argv[]) {
 #ifdef WIN32
     std::wstring model_path_u16;
     std::wstring embedding_model_path_u16;
-    std::wstring chat_template_name_u16;
-    std::wstring chat_template_u16;
 #endif
     std::string model_path;           // -m
     std::string embedding_model_path; // -e
-    std::string chat_template_name;   // -c
     std::string chat_template;        // -j
+    std::string chat_template_path;   // -t
     OPTARG_T input_path  = NULL;      // -i
     OPTARG_T output_path = NULL;      // -o
-    
-    chat_template_name = "phi3";
-    
+        
     // Server mode flags
     bool server_mode = false;         // -s
     int port = 8080;                  // -p
@@ -1111,14 +1107,6 @@ int main(int argc, OPTARG_T argv[]) {
             case 'o':
                 output_path = optarg;
                 break;
-            case 'c':
-#ifdef WIN32
-                chat_template_name_u16 = optarg;
-                chat_template_name = wchar_to_utf8(chat_template_name_u16.c_str());
-#else
-                chat_template_name = optarg;
-#endif
-                break;
             case 's':
                 server_mode = true;
                 break;
@@ -1146,90 +1134,28 @@ int main(int argc, OPTARG_T argv[]) {
                 }
             }
                 break;
+            case 't':
+            {
+                chat_template_path = optarg;
+                if ((chat_template_path != "")) {
+                    FILE *f = _fopen(chat_template_path.c_str(), _rb);
+                    if(f) {
+                        std::vector<unsigned char> chat_template_string(0);
+                        fseek(f, 0, SEEK_END);
+                        size_t len = (size_t)ftell(f);
+                        fseek(f, 0, SEEK_SET);
+                        chat_template_string.resize(len);
+                        fread(chat_template_string.data(), 1, chat_template_string.size(), f);
+                        fclose(f);
+                        chat_template = std::string((const char *)chat_template_string.data(), chat_template_string.size());
+                    }
+                }
+            }
+                break;
             default:
                 usage();
                 break;
         }
-    }
-    
-    if(chat_template_name == "qwen") {
-        chat_template = R"(
-{% for message in messages %}
-{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}
-{% endfor %}
-{% if add_generation_prompt %}
-{{'<|im_start|>assistant\n'}}
-{{'<think>'}}
-{% endif %}
-)";
-    }
-    
-    if(chat_template_name == "llama3") {
-        chat_template = R"(
-{% for message in messages %}
-{{'<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n' + message['content'] + '<|eot_id|>'}}
-{% endfor %}
-{% if add_generation_prompt %}
-{{'<|start_header_id|>assistant<|end_header_id|>\n\n'}}
-{% endif %}
-)";
-    }
-    
-    if(chat_template_name == "phi3") {
-        chat_template = R"(
-{% for message in messages %}
-{{'<|' + message['role'] + '|>\n' + message['content'] + '<|end|>\n'}}
-{% endfor %}
-{% if add_generation_prompt %}
-{{'<|assistant|>\n'}}
-{% endif %}
-)";
-    }
-    
-    if(chat_template_name == "gemma") {
-        chat_template = R"(
-{% for message in messages %}
-{{'<start_of_turn>' + ('model' if message['role'] == 'assistant' else message['role']) + '\n' + message['content'] + '<end_of_turn>\n'}}
-{% endfor %}
-{% if add_generation_prompt %}
-{{'<start_of_turn>model\n'}}
-{% endif %}
-)";
-    }
-    
-    if(chat_template_name == "mistral") {
-        chat_template = R"(
-{{'<s>'}}
-{% for message in messages %}
-{% if message['role'] == 'user' %}
-{{'[INST] ' + message['content'] + ' [/INST]'}}
-{% elif message['role'] == 'system' %}
-{{'[INST] ' + message['content'] + ' [/INST]'}}
-{% else %}
-{{' ' + message['content'] + '</s>'}}
-{% endif %}
-{% endfor %}
-)";
-    }
-    
-    if(chat_template_name == "cohere") {
-        chat_template = R"(
-{{'<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>'}}
-{% for message in messages %}
-{% if message['role'] == 'system' %}
-{{ message['content'] }}
-{% endif %}
-{% endfor %}
-{{'<|END_OF_TURN_TOKEN|>'}}
-{% for message in messages %}
-{% if message['role'] != 'system' %}
-{{'<|START_OF_TURN_TOKEN|><|' + message['role'].upper() + '_TOKEN|>' + message['content'] + '<|END_OF_TURN_TOKEN|>'}}
-{% endif %}
-{% endfor %}
-{% if add_generation_prompt %}
-{{'<|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>'}}
-{% endif %}
-)";
     }
     
     std::string fingerprint;
