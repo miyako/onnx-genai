@@ -55,14 +55,8 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 				$command+=" -l "
 			: ($option.pooling="colbert")
 				$command+=" -b "
-				
 		End case 
-		
-		$command+=" -j "
-		$chat_template:=$option.chat_template
 	End if 
-	
-	
 	
 	var $arg : Object
 	var $valueType : Integer
