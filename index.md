@@ -265,9 +265,9 @@ python -m tf2onnx.convert \
 
 #### Embeddings Models
 
-||Model|Dimensions|Size|Context&nbsp;Length|Tokenizer
-|-|-|-:|-:|-:|-:|
-|🇯🇵|[sentence-bert-base-ja-mean-tokens-v2](https://huggingface.co/keisuke-miyako/sentence-bert-base-ja-mean-tokens-v2-onnx/blob/main/config.json)|`768`|`111`|`512`|`BertJapaneseTokenizer`|
+||Model|Dimensions|Size|Context&nbsp;Length|
+|-|-|-:|-:|-:|
+|🇯🇵|[sentence-bert-base-ja-mean-tokens-v2](https://huggingface.co/keisuke-miyako/sentence-bert-base-ja-mean-tokens-v2-onnx/blob/main/config.json)|`768`|`111`|`512`|
 
 
 #### AI Kit compatibility
