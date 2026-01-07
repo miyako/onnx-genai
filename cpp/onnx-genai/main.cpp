@@ -1070,9 +1070,9 @@ int main(int argc, OPTARG_T argv[]) {
     std::string model_path;           // -m
     std::string embedding_model_path; // -e
     std::string chat_template;        // -j
-    std::string chat_template_path;   // -t
     OPTARG_T input_path  = NULL;      // -i
     OPTARG_T output_path = NULL;      // -o
+    OPTARG_T chat_template_path = NULL;
         
     // Server mode flags
     bool server_mode = false;         // -s
@@ -1137,8 +1137,8 @@ int main(int argc, OPTARG_T argv[]) {
             case 't':
             {
                 chat_template_path = optarg;
-                if ((chat_template_path != "")) {
-                    FILE *f = _fopen(chat_template_path.c_str(), _rb);
+                if (chat_template_path != NULL){
+                    FILE *f = _fopen(chat_template_path, _rb);
                     if(f) {
                         std::vector<unsigned char> chat_template_string(0);
                         fseek(f, 0, SEEK_END);
