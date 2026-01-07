@@ -45,19 +45,13 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		$chat_template:=$option.chat_template
 	End if 
 	
-	If (Value type:C1509($option.chat_template_name)=Is text:K8:3) && ($option.chat_template_name#"")
-		$command+=" -c "
-		$command+=This:C1470.escape($option.chat_template_name)
-		$command+=" "
-	End if 
-	
 	var $arg : Object
 	var $valueType : Integer
 	var $key : Text
 	
 	For each ($arg; OB Entries:C1720($option))
 		Case of 
-			: (["m"; "e"; "i"; "o"; "h"; "host"; "p"; "port"; "j"; "chat_template"; "c"; "chat_template_name"; "embeggings_model_name"].includes($arg.key))
+			: (["m"; "e"; "i"; "o"; "h"; "host"; "p"; "port"; "j"; "chat_template"; "embeggings_model_name"].includes($arg.key))
 				continue
 		End case 
 		$valueType:=Value type:C1509($arg.value)
