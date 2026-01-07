@@ -33,7 +33,7 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	var $huggingfaces : cs:C1710.event.huggingfaces
 	
 	Case of 
-		: (True:C214)  // Baku
+		: (True:C214)  // ✅ Baku
 			$chat_template:="{% if messages[0]['role'] == 'system' %}{{ raise_exception('System role not supported') }}{% endif %}{% for message in messages %}{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}{{ raise_exception('Conversation roles must alternate user/"+"assistant/user/assistant/...') }}{% endif %}{% if (message['role'] == 'assistant') %}{% set role = 'model' %}{% else %}{% set role = message['role'] %}{% endif %}{{ '<start_of_turn>' + role + '\n' + message['content'] | trim + '<end_of_turn>\n' }}{% end"+"for %}{% if add_generation_prompt %}{{'<start_of_turn>model\n'}}{% endif %}"
 			$folder:=$homeFolder.folder("gemma-2-baku-2b-it-onnx-int4-cpu")
 			$path:="keisuke-miyako/gemma-2-baku-2b-it-onnx-int4-cpu"
@@ -41,7 +41,6 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 			$options:={chat_template: $chat_template}
-			
 		: (False:C215)  // ✅ ELYZA
 			$chat_template:="{% set loop_messages = messages %}{% for message in loop_messages %}{% set content = '<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n'+ message['content'] | trim + '<|eot_id|>' %}{% if loop.index0 == 0 %}{% set content = bos_token + cont"+"ent %}{% endif %}{{ content }}{% endfor %}{% if add_generation_prompt %}{{ '<|start_header_id|>assistant<|end_header_id|>\n\n' }}{% endif %}"
 			$folder:=$homeFolder.folder("Llama-3-ELYZA-JP-8B-onnx-int4-cpu")
@@ -82,7 +81,7 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 			$options:={chat_template: $chat_template}
-		: (False:C215)  // Granite3
+		: (False:C215)  //Granite3
 			$chat_template:="{%- if tools %}\n    {{- '<|start_of_role|>available_tools<|end_of_role|>\n' }}\n    {%- for tool in tools %}\n    {{- tool | tojson(indent=4) }}\n    {%- if not loop.last %}\n        {{- '\n\n' }}\n    {%- endif %}\n    {%- endfor %}\n    {{- '<|end_of_text|>\n'"+" }}\n{%- endif %}\n{%- for message in messages %}\n    {%- if message['role'] == 'system' %}\n    {{- '<|start_of_role|>system<|end_of_role|>' + message['content'] + '<|end_of_text|>\n' }}\n    {%- elif message['role'] == 'user' %}\n    {{- '<|start_of_role|"+">user<|end_of_role|>' + message['content'] + '<|end_of_text|>\n' }}\n    {%- elif message['role'] == 'assistant' %}\n    {{- '<|start_of_role|>assistant<|end_of_role|>'  + message['content'] + '<|end_of_text|>\n' }}\n    {%- elif message['role'] == 'assist"+"ant_tool_call' %}\n    {{- '<|start_of_role|>assistant<|end_of_role|><|tool_call|>' + message['content'] + '<|end_of_text|>\n' }}\n    {%- elif message['role'] == 'tool_response' %}\n    {{- '<|start_of_role|>tool_response<|end_of_role|>' + message['conte"+"nt'] + '<|end_of_text|>\n' }}\n    {%- endif %}\n    {%- if loop.last and add_generation_prompt %}\n    {{- '<|start_of_role|>assistant<|end_of_role|>' }}\n    {%- endif %}\n{%- endfor %}"
 			$folder:=$homeFolder.folder("granite-3.0-2b-instruct-onnx-int4-cpu")
 			$path:="keisuke-miyako/granite-3.0-2b-instruct-onnx-int4-cpu"
