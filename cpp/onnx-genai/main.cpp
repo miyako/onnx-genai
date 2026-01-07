@@ -812,29 +812,37 @@ static std::string last_token_pooling_response(std::vector<Ort::Value>& outputs,
         auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
         float* floatarr = outputs[0].GetTensorMutableData<float>();
         
-        // Logic for Decoder/LLM models (Gemma)
-        int last_token_index = 0;
-        // Find the last index where mask == 1
-        for (int i = 0; i < seq_len; ++i) {
-            if (attention_mask[i] == 1) {
-                last_token_index = i;
-            } else {
-                break; // Assuming padding is always at the end
+        auto shape = output_info.GetShape();
+        if(shape.size() > 2) {
+            int64_t hidden_size = shape[2];
+         
+            Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+                            raw_matrix(floatarr, seq_len, hidden_size);
+            
+            // Logic for Decoder/LLM models (Gemma)
+            int last_token_index = 0;
+            // Find the last index where mask == 1
+            for (int i = 0; i < seq_len; ++i) {
+                if (attention_mask[i] == 1) {
+                    last_token_index = i;
+                } else {
+                    break; // Assuming padding is always at the end
+                }
             }
+            // Take the vector at that index
+            Eigen::VectorXf last_vec = raw_matrix.row(last_token_index);
+            // Then normalize
+            Eigen::VectorXf final_embedding = l2_normalize(last_vec);
+            // Create the std::vector
+            std::vector<float> embeddings(final_embedding.data(), final_embedding.data() + final_embedding.size());
+            rootNode["object"] = "embedding";
+            Json::Value embeddingsNode(Json::arrayValue);
+            for (float val : embeddings) {
+                embeddingsNode.append(val);
+            }
+            rootNode["embedding"] = embeddingsNode;
+            rootNode["index"] = 0;
         }
-        // Take the vector at that index
-        Eigen::VectorXf last_vec = raw_matrix.row(last_token_index);
-        // Then normalize
-        Eigen::VectorXf final_embedding = l2_normalize(last_vec);
-        // Create the std::vector
-        std::vector<float> embeddings(final_embedding.data(), final_embedding.data() + final_embedding.size());
-        rootNode["object"] = "embedding";
-        Json::Value embeddingsNode(Json::arrayValue);
-        for (float val : embeddings) {
-            embeddingsNode.append(val);
-        }
-        rootNode["embedding"] = embeddingsNode;
-        rootNode["index"] = 0;
     }
     
     Json::StreamWriterBuilder writer;
