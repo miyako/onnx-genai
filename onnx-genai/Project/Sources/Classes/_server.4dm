@@ -51,10 +51,12 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 				$command+=" -c "
 			: ($option.pooling="mean")
 				//default
-			: ($option.pooling="last_token")
+			: ($option.pooling="last-token")
 				$command+=" -l "
-			: ($option.pooling="colbert")
+			: ($option.pooling="multi-vector")
 				$command+=" -b "
+			: ($option.pooling="splade")
+				//not implemented
 		End case 
 	End if 
 	
