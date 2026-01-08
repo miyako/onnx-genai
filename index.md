@@ -147,71 +147,92 @@ $onnx.terminate()
 
 #### Chat Completions Model
 
-Downloaded an ONNX model:
+Download and convert a model with [optimum](https://github.com/huggingface/optimum):
 
-```
-hf download microsoft/Phi-3.5-mini-instruct-onnx \
-  --include "cpu_and_mobile/cpu-int4-awq-block-128-acc-level-4/*" \
-  --local-dir .
-```
-
-Or,
-
-```
-hf download PleIAs/Baguettotron --local-dir ~/.onnx/baguettotron 
-python -m onnxruntime_genai.models.builder -m ~/.onnx/baguettotron -o ~/.onnx/baguettotron-onnx -p int4 -e cpu
+```py
+from google.colab import drive
+drive.mount('/content/drive')
 ```
 
-The ONNX format is based on **Protocol Buffers**, which has a hard limit of `2GB` for a single file. ONNX splits the model into a `.onnx` file (the graph) and a `.data` file (the weights).
-
-To download a specific file, Hugging Face uses the /resolve/ endpoint. The URL structure is:
-
-```
-https://huggingface.co/[REPO_ID]/resolve/[BRANCH]/[FILE_PATH]
+```py
+!pip install "optimum[onnxruntime-gpu]" transformers
+!pip install numpy onnxruntime-genai
+!pip install onnx_ir
 ```
 
-Example:
+```py
+from google.colab import userdata
+from huggingface_hub import login
+# Retrieve the token from the secrets manager
+hf_token = userdata.get('HF_TOKEN')
 
+# Log in to Hugging Face
+login(token=hf_token)
+
+print("Logged in successfully!")
 ```
-TOKEN="your_hf_token_here"
-curl -H "Authorization: Bearer $TOKEN" -L -O [URL]
-curl -L -O https://huggingface.co/SamLowe/universal-sentence-encoder-large-5-onnx/resolve/main/model.onnx
-curl -s "https://huggingface.co/api/models/$REPO/tree/main?recursive=true" | \
-jq -r '.[] | select(.type=="file") | .path' | \
-while read -r file; do
-    echo "Downloading $file..."
-    curl -L --create-dirs -o "$file" "https://huggingface.co/$REPO/resolve/main/$file"
+
+```py
+from huggingface_hub import snapshot_download
+import os
+import json
+
+# --- STEP 1: Download the model locally ---
+print("Downloading model snapshot to local disk...")
+# We use Python here so we don't need the flag in the command line later
+local_model_path = snapshot_download(
+    repo_id="cyberagent/calm2-7b-chat",
+    ignore_patterns=["*.msgpack", "*.h5", "*.ot"] # Skip useless files to save speed
+)
+print(f"Model downloaded to: {local_model_path}")
+
+# --- STEP 2: Run the Builder on the local files ---
+# We pass the local path variable to the command using '$'
+print("Starting INT4 Conversion...")
+
+!python -m onnxruntime_genai.models.builder \
+    -m "$local_model_path" \
+    -o "/content/drive/My Drive/calm2_INT4_CPU" \
+    -p int4 \
+    -e cpu --extra_options trust_remote_code=true
 ```
 
 #### Embeddings Model
+
+Download and convert a model with [optimum](https://github.com/huggingface/optimum):
+
+
+```py
+from google.colab import drive
+drive.mount('/content/drive')
+```
+
+```py
+!pip install "optimum[onnxruntime-gpu]" transformers
+!pip install numpy onnxruntime-genai
+!pip install onnx_ir  
+```
+
+```py
+!optimum-cli export onnx \
+  --model sbintuitions/sarashina-embedding-v2-1b \
+  --task feature-extraction \
+  --trust-remote-code \
+  "/content/drive/My Drive/sbintuitions/sarashina-embedding-v2-1b-fp32"
+
+!optimum-cli onnxruntime quantize \
+  --onnx_model "/content/drive/My Drive/sbintuitions/sarashina-embedding-v2-1b-fp32" \
+  --output "/content/drive/My Drive/sbintuitions/sarashina-embedding-v2-1b-onnx" --avx2
+  ```
 
 You need to place a `tokenizer.model` file for old Google models (T5, ALBERT) or a `tokenizer.json` file for model Hugging Face models (Qwen, GPT, BERT) next to the ONNX file.
 
 The runtime will use this file to tokenise the input, run ONNX inference, mean pool, L2 noemalise the embeddings.
 
-Alternatively you can use an "End-to-End" (E2E) model like [**universal-sentence-encoder-large-5-onnx**](https://huggingface.co/SamLowe/universal-sentence-encoder-large-5-onnx/) that takes raw string as input and returns vectors as output. In this scenario, pre-processing and post processing are both included in the ONNX inference.
-
 > At its core, ONNX is a frameworks for maths, not text. An E2E model typically uses 
 **`onnxruntime-extensions`** to handle string. However, the text processing is not as powerful as specialised tokenisers. It is normally better to use ONNX for the vector maths and handle string manipulation outside of ONNX.
 
-Download and convert a model yourself with [optimum-cli](https://github.com/huggingface/optimum):
-
-
-```sh
-optimum-cli export onnx \
-  --model sonoisa/sentence-bert-base-ja-mean-tokens-v2 \
-  --task feature-extraction \
-  --trust-remote-code \
-  ~/.onnx/sonoisa/sentence-bert-base-ja-mean-tokens-v2-fp32
-
-optimum-cli onnxruntime quantize \
-  --onnx_model ~/.onnx/sonoisa/sentence-bert-base-ja-mean-tokens-v2-fp32 \
-  --output ~/.onnx/sonoisa/sentence-bert-base-ja-mean-tokens-v2-onnx --avx2    
-```
-
-Or, 
-
-Use [**`tf2onnx`**](https://github.com/onnx/tensorflow-onnx) to convert a **TensorFlow** to an ONNX E2E model:
+Alternatively, convert a **TensorFlow** to an ONNX E2E model with [**`tf2onnx`**](https://github.com/onnx/tensorflow-onnx):
 
 ```bash
 pip install tf2onnx onnxruntime-extensions tensorflow-hub
@@ -222,6 +243,8 @@ python -m tf2onnx.convert \
     --extra_opset ai.onnx.contrib:1 \
     --tag serve
 ```
+
+An "End-to-End" (E2E) model like [**universal-sentence-encoder-large-5-onnx**](https://huggingface.co/SamLowe/universal-sentence-encoder-large-5-onnx/) that takes raw string as input and returns vectors as output. In this scenario, pre-processing, inference, and post processing are all baked into the model.
 
 #### Chat Completion Models
 

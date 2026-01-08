@@ -295,11 +295,11 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:e:i:o:sp:jt:bcl-h"
+#define ARGS (OPTARG_T)L"m:e:i:o:sp:jt:bcld-h"
 #define _atoi _wtoi
 #define _atof _wtof
 #else
-#define ARGS "m:e:i:o:sp:jt:bcl-h"
+#define ARGS "m:e:i:o:sp:jt:bcld-h"
 #define _atoi atoi
 #define _atof atof
 #endif
@@ -1220,6 +1220,9 @@ int main(int argc, OPTARG_T argv[]) {
             case 'l':
                 pooling_mode = POOLING_LAST_TOKEN;
                 break;
+            case 'd':
+                pooling_mode = POOLING_E2E;
+                break;
             case 'h':
 #ifdef WIN32
                 host = wchar_to_utf8(optarg);
@@ -1320,7 +1323,7 @@ int main(int argc, OPTARG_T argv[]) {
                 embedding_fingerprint = get_system_fingerprint(embedding_model_path, "directml");
                 try {
                     embeddings_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "Embeddings");
-                    embedding_modelName = get_model_name(embedding_model_path);
+                    embedding_modelName = get_model_name(fs::path(embedding_model_path).parent_path());
                     Ort::SessionOptions session_options;
                     session_options.SetIntraOpNumThreads(1);
                     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
@@ -1541,27 +1544,30 @@ int main(int argc, OPTARG_T argv[]) {
                 
                 std::string response_json;
 
-                if((embeddings_tokenizer != NULL) &&(num_input_nodes > 1)) {
-                    /*
-                     standard encoder-only model
-                     input: input_ids, attention_mask, token_type_ids
-                     output: last_hidden_state or logits
-                     */
-                    std::vector<int> ids = embeddings_tokenizer->Encode(input);
-                    response_json = run_embeddings(
-                                                   embeddings_session.get(),
-                                                   ids, input_names_c_array,
-                                                   num_input_nodes,
-                                                   output_names_c_array,
-                                                   num_output_nodes,
-                                                   pooling_mode);
-                }else{
-                    response_json = run_embeddings_e2e(
-                                                       embeddings_session.get(),
-                                                       input, input_names_c_array,
-                                                       num_input_nodes,
-                                                       output_names_c_array,
-                                                       num_output_nodes);
+                switch (pooling_mode) {
+                    case POOLING_E2E:
+                        response_json = run_embeddings_e2e(
+                                                           embeddings_session.get(),
+                                                           input, input_names_c_array,
+                                                           num_input_nodes,
+                                                           output_names_c_array,
+                                                           num_output_nodes);
+                        break;
+                        
+                    default:
+                    {
+                        if((embeddings_tokenizer != NULL) {
+                            std::vector<int> ids = embeddings_tokenizer->Encode(input);
+                            response_json = run_embeddings(
+                                                           embeddings_session.get(),
+                                                           ids, input_names_c_array,
+                                                           num_input_nodes,
+                                                           output_names_c_array,
+                                                           num_output_nodes,
+                                                           pooling_mode);
+                        }
+                    }
+                        break;
                 }
                 res.set_content(response_json, "application/json");
                 res.status = 200;

@@ -100,7 +100,8 @@ enum PoolingMode {
     POOLING_MEAN,         // E5, BGE, Ruri, Sentence-BERT, Sarashina
     POOLING_COLBERT,      // JaColBERT / ColBERTv2
     POOLING_CLS,          //BGE-M3
-    POOLING_LAST_TOKEN    //GEMMA
+    POOLING_LAST_TOKEN,   //GEMMA
+    POOLING_E2E
 };
 
 #pragma mark -

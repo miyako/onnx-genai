@@ -31,7 +31,7 @@
       shouldAutocreateTestPlan = "YES">
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Release"
+      buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
@@ -61,35 +61,23 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/miyako/.onnx/Baguettotron"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "/Users/miyako/.onnx/RakutenAI-7B-instruct-onnx-int4-cpu"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
             argument = "-e"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/miyako/.onnx/gemma-2-2b-it-onnx-int4-cpu"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "/Users/miyako/.onnx/JaColBERT-onnx"
+            argument = "/Users/miyako/.onnx/JaColBERT-onnx/model_quantized.onnx"
             isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "/Users/miyako/.onnx/bge-small-en-v1.5-onnx/model_quantized.onnx"
-            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-t"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/Downloads/chat_template.jinja.txt"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-j"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument

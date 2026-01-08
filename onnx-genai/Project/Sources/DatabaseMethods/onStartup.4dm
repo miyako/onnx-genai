@@ -226,14 +226,37 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			//$URL:="keisuke-miyako/nomic-embed-text-v1.5-onnx"
 			//$embeddings:=cs.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
 			
-			$folder:=$homeFolder.folder("embeddinggemma-300m-onnx")
-			$path:="keisuke-miyako/embeddinggemma-300m-onnx"
-			$URL:="keisuke-miyako/embeddinggemma-300m-onnx"
-			$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
-			
-			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
-			$options:={chat_template: $chat_template; pooling: "last_token"}
-			//cls, mean, last_token, colbert
+			Case of 
+				: (False:C215)
+					$folder:=$homeFolder.folder("embeddinggemma-300m-onnx")
+					$path:="keisuke-miyako/embeddinggemma-300m-onnx"
+					$URL:="keisuke-miyako/embeddinggemma-300m-onnx"
+					$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
+					$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
+					$options:={chat_template: $chat_template; pooling: "last_token"}
+					//cls, mean (default), last_token, colbert
+				: (False:C215)
+					$folder:=$homeFolder.folder("ruri-v3-310m-onnx")
+					$path:="keisuke-miyako/ruri-v3-310m-onnx"
+					$URL:="keisuke-miyako/ruri-v3-310m-onnx"
+					$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
+					$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
+					$options:={chat_template: $chat_template; pooling: "mean"}
+				: (False:C215)
+					$folder:=$homeFolder.folder("sbert-base-ja-onnx")
+					$path:="keisuke-miyako/sbert-base-ja-onnx"
+					$URL:="keisuke-miyako/sbert-base-ja-onnx"
+					$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
+					$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
+					$options:={chat_template: $chat_template; pooling: "mean"}
+				: (True:C214)
+					$folder:=$homeFolder.folder("sarashina-embedding-v2-1b-onnx")
+					$path:="keisuke-miyako/sarashina-embedding-v2-1b-onnx"
+					$URL:="keisuke-miyako/sarashina-embedding-v2-1b-onnx"
+					$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
+					$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
+					$options:={chat_template: $chat_template; pooling: "mean"}
+			End case 
 			
 	End case 
 	
