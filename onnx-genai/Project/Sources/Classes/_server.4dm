@@ -66,7 +66,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	For each ($arg; OB Entries:C1720($option))
 		Case of 
-			: (["m"; "e"; "i"; "o"; "h"; "host"; "p"; "port"; "j"; "chat_template"; "pooling"; "embeggings_model_name"].includes($arg.key))
+			: (["m"; "e"; "i"; "o"; "h"; "host"; "p"; "port"; "j"; "chat_template"; "pooling"; "embeggings_model_name"; "HF_TOKEN"].includes($arg.key))
 				continue
 		End case 
 		$valueType:=Value type:C1509($arg.value)
