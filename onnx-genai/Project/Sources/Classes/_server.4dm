@@ -57,6 +57,8 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 				$command+=" -b "
 			: ($option.pooling="splade")
 				//not implemented
+			: ($option.pooling="use")  //universal sentence encoder
+				$command+=" -d "
 		End case 
 	End if 
 	
