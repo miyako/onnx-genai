@@ -1323,16 +1323,20 @@ int main(int argc, OPTARG_T argv[]) {
                 embedding_fingerprint = get_system_fingerprint(embedding_model_path, "directml");
                 try {
                     embeddings_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "Embeddings");
+#ifdef WIN32
+                    embedding_modelName = get_model_name(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
+#else
                     embedding_modelName = get_model_name(fs::path(embedding_model_path).parent_path());
+#endif
                     Ort::SessionOptions session_options;
                     session_options.SetIntraOpNumThreads(1);
                     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
                     Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
-        #ifdef WIN32
+#ifdef WIN32
                     embeddings_session = std::make_unique<Ort::Session>(*embeddings_env, embedding_model_path_u16.c_str(), session_options);
-        #else
+#else
                     embeddings_session = std::make_unique<Ort::Session>(*embeddings_env, embedding_model_path.c_str(), session_options);
-        #endif
+#endif
                     num_input_nodes = embeddings_session->GetInputCount();
                     num_output_nodes = embeddings_session->GetOutputCount();
                     for (size_t i = 0; i < num_input_nodes; i++) {
