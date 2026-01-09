@@ -17,3 +17,9 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
  -p          : server listening port (default=8080)
  -h host     : server host (default=127.0.0.1)    
 ```
+
+## OpenAI Compatible Endpoints
+
+- `/v1/models`
+- `/v1/chat/completions`
+- `/v1/embeddings`
