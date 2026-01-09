@@ -23,3 +23,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 - `/v1/models`
 - `/v1/chat/completions`
 - `/v1/embeddings`
+
+## Converted ONNX Models
+
+https://huggingface.co/collections/keisuke-miyako/onnx-runtime
