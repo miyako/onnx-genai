@@ -227,13 +227,27 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			//$embeddings:=cs.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
 			
 			Case of 
+				: (False:C215)
+					$folder:=$homeFolder.folder("multilingual-e5-base-onnx")
+					$path:="keisuke-miyako/multilingual-e5-base-onnx"
+					$URL:="keisuke-miyako/multilingual-e5-base-onnx"
+					$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
+					$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
+					$options:={chat_template: $chat_template; pooling: "mean"}
 				: (True:C214)
+					$folder:=$homeFolder.folder("universal-sentence-encoder-multilingual-large-onnx")
+					$path:="SamLowe/universal-sentence-encoder-large-5-onnx"
+					$URL:="SamLowe/universal-sentence-encoder-large-5-onnx"
+					$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model.onnx")
+					$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
+					$options:={chat_template: $chat_template; pooling: "e2e"}
+				: (False:C215)
 					$folder:=$homeFolder.folder("embeddinggemma-300m-onnx")
 					$path:="keisuke-miyako/embeddinggemma-300m-onnx"
 					$URL:="keisuke-miyako/embeddinggemma-300m-onnx"
 					$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
 					$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
-					$options:={chat_template: $chat_template; pooling: "last-token"}
+					$options:={chat_template: $chat_template; pooling: "mean"}
 				: (False:C215)
 					$folder:=$homeFolder.folder("ruri-v3-310m-onnx")
 					$path:="keisuke-miyako/ruri-v3-310m-onnx"

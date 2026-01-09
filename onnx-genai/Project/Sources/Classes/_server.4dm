@@ -53,11 +53,11 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 				//default
 			: ($option.pooling="last-token")
 				$command+=" -l "
-			: ($option.pooling="multi-vector")
+			: ($option.pooling="multi-vector")  //ColBERT
 				$command+=" -b "
 			: ($option.pooling="splade")
 				//not implemented
-			: ($option.pooling="use")  //universal sentence encoder
+			: ($option.pooling="e2e")  //Universal Sentence Encoder
 				$command+=" -d "
 		End case 
 	End if 
