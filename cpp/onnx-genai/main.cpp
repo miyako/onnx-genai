@@ -1556,7 +1556,7 @@ int main(int argc, OPTARG_T argv[]) {
                         
                     default:
                     {
-                        if((embeddings_tokenizer != NULL) {
+                        if (embeddings_tokenizer != NULL) {
                             std::vector<int> ids = embeddings_tokenizer->Encode(input);
                             response_json = run_embeddings(
                                                            embeddings_session.get(),
