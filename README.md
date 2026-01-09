@@ -13,6 +13,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
  -b          : pooling=multi-vector (ColBERT)
  -l          : pooling=last-token (Llama)
  -c          : pooling=cls
- -s          : server (OpenAI compatible)
- -p          : server listening port (default=8080) 
+ -s          : server (OpenAI compatible endpoint)
+ -p          : server listening port (default=8080)
+ -h host     : server host (default=127.0.0.1)    
 ```
