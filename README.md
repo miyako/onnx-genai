@@ -14,4 +14,5 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
  -l          : pooling=last-token (Llama)
  -c          : pooling=cls
  -s          : server (OpenAI compatible)
+ -p          : server listening port (default=8080) 
 ```
