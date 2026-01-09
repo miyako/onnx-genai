@@ -27,3 +27,28 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 ## Converted ONNX Models
 
 https://huggingface.co/collections/keisuke-miyako/onnx-runtime
+
+- https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx
+- https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx
+- https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx
+- https://huggingface.co/keisuke-miyako/bge-m3-onnx
+- https://huggingface.co/keisuke-miyako/e5-small-v2-onnx
+- https://huggingface.co/keisuke-miyako/e5-base-v2-onnx
+- https://huggingface.co/keisuke-miyako/e5-large-v2-onnx
+- https://huggingface.co/keisuke-miyako/multilingual-e5-small-onnx
+- https://huggingface.co/keisuke-miyako/multilingual-e5-base-onnx
+- https://huggingface.co/keisuke-miyako/multilingual-e5-large-onnx
+- https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-onnx
+- https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-onnx
+- https://huggingface.co/keisuke-miyako/nomic-embed-text-v1-onnx
+- https://huggingface.co/keisuke-miyako/nomic-embed-text-v1.5-onnx
+- https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-onnx
+- https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-onnx
+- https://huggingface.co/keisuke-miyako/embeddinggemma-300m-onnx
+- https://huggingface.co/keisuke-miyako/amber-base-onnx
+- https://huggingface.co/keisuke-miyako/amber-large-onnx
+- https://huggingface.co/keisuke-miyako/gte-modernbert-base-onnx
+- https://huggingface.co/keisuke-miyako/universal-sentence-encoder-onnx
+- https://huggingface.co/keisuke-miyako/universal-sentence-encoder-large-onnx
+- https://huggingface.co/keisuke-miyako/universal-sentence-encoder-multilingual-onnx
+- https://huggingface.co/keisuke-miyako/universal-sentence-encoder-multilingual-large-onnx
