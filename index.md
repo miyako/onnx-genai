@@ -215,14 +215,16 @@ drive.mount('/content/drive')
 
 ```py
 !optimum-cli export onnx \
-  --model sbintuitions/sarashina-embedding-v2-1b \
+  --model Alibaba-NLP/gte-Qwen2-1.5B-instruct \
   --task feature-extraction \
   --trust-remote-code \
-  "/content/drive/My Drive/sbintuitions/sarashina-embedding-v2-1b-fp32"
+  "/content/drive/My Drive/Alibaba-NLP/gte-Qwen2-1.5B-instruct-fp32"
+
+!HF_TRUST_REMOTE_CODE=1
 
 !optimum-cli onnxruntime quantize \
-  --onnx_model "/content/drive/My Drive/sbintuitions/sarashina-embedding-v2-1b-fp32" \
-  --output "/content/drive/My Drive/sbintuitions/sarashina-embedding-v2-1b-onnx" --avx2
+  --onnx_model "/content/drive/My Drive/Alibaba-NLP/gte-Qwen2-1.5B-instruct-fp32" \
+  --output "/content/drive/My Drive/Alibaba-NLP/gte-Qwen2-1.5B-instruct-onnx" --avx2
   ```
 
 You need to place a `tokenizer.model` file for old Google models (T5, ALBERT) or a `tokenizer.json` file for model Hugging Face models (Qwen, GPT, BERT) next to the ONNX file.
