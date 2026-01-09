@@ -234,17 +234,63 @@ The runtime will use this file to tokenise the input, run ONNX inference, mean p
 
 Alternatively, convert a **TensorFlow** to an ONNX E2E model with [**`tf2onnx`**](https://github.com/onnx/tensorflow-onnx):
 
-```bash
-pip install tf2onnx onnxruntime-extensions tensorflow-hub
-python -m tf2onnx.convert \
-    --saved-model /content/use_model \
-    --output universal-sentence-encoder-large-5.onnx \
-    --opset 12 \
-    --extra_opset ai.onnx.contrib:1 \
-    --tag serve
+```py
+from google.colab import drive
+drive.mount('/content/drive')
 ```
 
-An "End-to-End" (E2E) model like [**universal-sentence-encoder-large-5-onnx**](https://huggingface.co/SamLowe/universal-sentence-encoder-large-5-onnx/) that takes raw string as input and returns vectors as output. In this scenario, pre-processing, inference, and post processing are all baked into the model.
+```py
+!pip install tf2onnx onnxruntime-extensions kagglehub
+```
+
+```py
+import tensorflow as tf
+import tensorflow_hub as hub
+import os
+import subprocess
+
+# 1. Configuration
+TF_MODEL_URL = "https://www.kaggle.com/models/google/universal-sentence-encoder/TensorFlow2/large/2"
+SAVED_MODEL_DIR = "/content/use_model"
+OUTPUT_ONNX_PATH = "/content/drive/universal-sentence-encoder-large-5.onnx"
+
+# Ensure output directory exists (if using Google Drive, make sure it's mounted)
+output_dir = os.path.dirname(OUTPUT_ONNX_PATH)
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+
+print(f"1. Downloading and saving model to {SAVED_MODEL_DIR}...")
+
+# 2. Load and Save the model
+# Loading the Hub module and saving it ensures we have a standard SavedModel structure
+module = hub.load(TF_MODEL_URL)
+tf.saved_model.save(module, SAVED_MODEL_DIR)
+
+print(f"2. Converting model to ONNX at {OUTPUT_ONNX_PATH}...")
+
+# 3. Convert using tf2onnx
+# We use subprocess.run to pass the python variables safely to the shell command
+command = [
+    "python", "-m", "tf2onnx.convert",
+    "--saved-model", SAVED_MODEL_DIR,
+    "--output", OUTPUT_ONNX_PATH,
+    "--opset", "13",                  # Opset 13 is recommended for text/string support
+    "--tag", "serve"
+]
+
+result = subprocess.run(command, capture_output=True, text=True)
+
+# 4. Check results
+if result.returncode == 0:
+    print(result.stderr)  # tf2onnx logs often go to stderr
+    print(f"\nSuccess! Model saved to: {OUTPUT_ONNX_PATH}")
+else:
+    print("Error during conversion:")
+    print(result.stderr)
+    print(result.stdout)
+```
+
+An "End-to-End" (E2E) model that takes raw string as input and returns vectors as output. In this scenario, pre-processing, inference, and post processing are all baked into the model.
 
 #### Chat Completion Models
 
