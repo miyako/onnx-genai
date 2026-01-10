@@ -101,7 +101,7 @@ curl -X 'POST' \
 ```
 curl -X POST http://127.0.0.1:8080/v1/embeddings \
      -H "Content-Type: application/json" \
-     -d '{"input":"Rain won’t stop me. Wind won’t stop me. Neither will driving snow. Sweltering summer heat<2028>will only raise my determination. With a body built for endurance, a heart free of greed, I’ll never lose my temper, trying always to keep a quiet smile on my face."}'
+     -d '{"input":"Rain won’t stop me. Wind won’t stop me. Neither will driving snow. Sweltering summer heat will only raise my determination. With a body built for endurance, a heart free of greed, I’ll never lose my temper, trying always to keep a quiet smile on my face."}'
 ```
 
 Or, use AI Kit:
