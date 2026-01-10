@@ -64,3 +64,9 @@ https://huggingface.co/collections/keisuke-miyako/onnx-runtime
 - https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-onnx
 - https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-onnx
 - https://huggingface.co/keisuke-miyako/sarashina-embedding-v1-1b-onnx
+- ~~ruri-base-v2~~
+- ~~ruri-large-v2~~
+- https://huggingface.co/keisuke-miyako/ruri-v3-30m-onnx
+- https://huggingface.co/keisuke-miyako/ruri-v3-70m-onnx
+- https://huggingface.co/keisuke-miyako/ruri-v3-130m-onnx
+- https://huggingface.co/keisuke-miyako/ruri-v3-310m-onnx
