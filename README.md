@@ -63,3 +63,4 @@ https://huggingface.co/collections/keisuke-miyako/onnx-runtime
 - https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-onnx
 - https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-onnx
 - https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-onnx
+- https://huggingface.co/keisuke-miyako/sarashina-embedding-v1-1b-onnx
