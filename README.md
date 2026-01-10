@@ -52,6 +52,7 @@ https://huggingface.co/collections/keisuke-miyako/onnx-runtime
 - https://huggingface.co/keisuke-miyako/gte-multilingual-base-onnx
 - https://huggingface.co/keisuke-miyako/gte-modernbert-base-onnx
 - https://huggingface.co/keisuke-miyako/gte-Qwen2-1.5B-instruct-onnx
+- https://huggingface.co/keisuke-miyako/gte-Qwen2-7B-instruct-onnx
 - https://huggingface.co/keisuke-miyako/universal-sentence-encoder-onnx
 - https://huggingface.co/keisuke-miyako/universal-sentence-encoder-large-onnx
 - https://huggingface.co/keisuke-miyako/universal-sentence-encoder-multilingual-onnx
