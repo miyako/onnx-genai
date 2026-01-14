@@ -508,7 +508,6 @@ static void parse_request(
                     }
                 }
             }
-            
         }
     }
 }
@@ -636,7 +635,7 @@ static std::string run_inference(
                 int32_t new_token = seq_data[seq_len - 1];
                 if (stop_tokens.count(new_token)) {
                     // We hit one of our stop tokens!
-                    continue;;
+                    continue;
                 }
                 // Decode using the specific stream for this sequence
                 const char* token_str = streams[i]->Decode(new_token);
@@ -835,10 +834,11 @@ static void run_inference_stream(
             // Decode using the specific stream for this sequence
             if (stop_tokens.count(new_token)) {
                 // We hit one of our stop tokens!
-                continue;;
+                continue;
             }
             const char* token_str = streams[i]->Decode(new_token);
             if (token_str) {
+//                std::cout << token_str;
                 if (!on_token_generated(token_str, i)) {
                     // If callback returns false, client disconnected
                     break;
@@ -1500,7 +1500,20 @@ int main(int argc, OPTARG_T argv[]) {
                     
                     // Corrected Lambda structure
                     res.set_chunked_content_provider("text/event-stream",
-                                                     [&, req_id, prompt, max_tokens, top_k, top_p, temperature, n ](size_t offset, httplib::DataSink &sink) {
+                                                     [&,
+                                                       req_id,
+                                                       prompt,
+                                                       max_tokens,
+                                                       top_k,
+                                                       top_p,
+                                                       temperature,
+                                                       repetition_penalty,
+                                                       is_stream,
+                                                       n,
+                                                       chat_template,
+                                                       guidance_string_type,
+                                                       guidance_string
+                                                     ](size_t offset, httplib::DataSink &sink) {
                         // Send initial role packet (optional but good practice)
                         for (int i = 0; i < n; i++) {
                             std::string role_chunk = create_stream_chunk(i, req_id, modelName, fingerprint, "");
@@ -1509,13 +1522,13 @@ int main(int argc, OPTARG_T argv[]) {
                         
                         // Define a callback to handle tokens as they are generated
                         auto token_callback = [&](const std::string& token, unsigned int n) {
+                                                       
                             std::string chunk = create_stream_chunk(n, req_id, modelName, fingerprint, token);
                             sink.write(chunk.data(), chunk.size());
+                            
                             return true; // Return false to stop inference if needed
                         };
-                        
-                        // Run Inference (You must implement run_inference_stream)
-                        // Note: This function must block here until finished, calling token_callback repeatedly
+
                         run_inference_stream(
                                              model.get(),
                                              tokenizer.get(),

@@ -13,5 +13,13 @@
             </PersistentString>
          </PersistentStrings>
       </ContextState>
+      <ContextState
+         contextName = "main::$_0::operator()(httplib::Request const&amp;, httplib::Response&amp;) const::&apos;lambda&apos;(unsigned long, httplib::DataSink&amp;)::operator()(unsigned long, httplib::DataSink&amp;) const:main.cpp">
+         <PersistentStrings>
+            <PersistentString
+               value = "guidance_string">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
    </ContextStates>
 </VariablesViewState>
