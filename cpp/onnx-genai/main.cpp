@@ -480,10 +480,14 @@ static void parse_request(
                         Json::Value json_schema_node = response_format_node["json_schema"];
                         if(json_schema_node.isObject())
                         {
-                            Json::StreamWriterBuilder writer;
-                            writer["indentation"] = "";
-                            guidance_string = Json::writeString(writer, json_schema_node);
-                            guidance_string_type = "json_schema";
+                            Json::Value schema_node = json_schema_node["schema"];
+                            if(schema_node.isObject())
+                            {
+                                Json::StreamWriterBuilder writer;
+                                writer["indentation"] = "";
+                                guidance_string = Json::writeString(writer, schema_node);
+                                guidance_string_type = "json_schema";
+                            }
                         }
                     }
                     if(response_format_type == "regex") {
