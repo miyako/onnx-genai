@@ -399,7 +399,9 @@ static void parse_request(
                           unsigned int *n,
                           bool *is_stream,
                           OgaTokenizer* tokenizer,
-                          std::string& chat_template) {
+                          std::string& chat_template,
+                          std::string& guidance_string_type,
+                          std::string& guidance_string) {
     
     Json::Value root;
     Json::CharReaderBuilder builder;
@@ -467,6 +469,42 @@ static void parse_request(
             {
                 *is_stream = stream_node.asBool();
             }
+            Json::Value response_format_node = root["response_format"];
+            if(response_format_node.isObject())
+            {
+                Json::Value response_format_type_node = response_format_node["type"];
+                if(response_format_type_node.isString())
+                {
+                    std::string response_format_type = response_format_type_node.asString();
+                    if(response_format_type == "json_schema") {
+                        Json::Value json_schema_node = response_format_node["json_schema"];
+                        if(json_schema_node.isObject())
+                        {
+                            Json::StreamWriterBuilder writer;
+                            writer["indentation"] = "";
+                            guidance_string = Json::writeString(writer, json_schema_node);
+                            guidance_string_type = "json_schema";
+                        }
+                    }
+                    if(response_format_type == "regex") {
+                        Json::Value regex_node = response_format_node["regex"];
+                        if(regex_node.isString())
+                        {
+                            guidance_string = regex_node.asString();
+                            guidance_string_type = "regex";
+                        }
+                    }
+                    if(response_format_type == "lark_grammar") {
+                        Json::Value lark_grammar_node = response_format_node["lark_grammar"];
+                        if(lark_grammar_node.isString())
+                        {
+                            guidance_string = lark_grammar_node.asString();
+                            guidance_string_type = "lark_grammar";
+                        }
+                    }
+                }
+            }
+            
         }
     }
 }
@@ -489,9 +527,11 @@ static void before_run_inference(
                                  unsigned int *n,
                                  bool *is_stream,
                                  OgaTokenizer* tokenizer,
-                                 std::string& chat_template) {
+                                 std::string& chat_template,
+                                 std::string& guidance_string_type,
+                                 std::string& guidance_string) {
     
-    parse_request(request_body, prompt, max_tokens, top_k, top_p, temperature, repetition_penalty, n, is_stream, tokenizer, chat_template);
+    parse_request(request_body, prompt, max_tokens, top_k, top_p, temperature, repetition_penalty, n, is_stream, tokenizer, chat_template, guidance_string_type, guidance_string);
 }
 
 static std::string run_inference(
@@ -506,7 +546,9 @@ static std::string run_inference(
                                  double temperature,
                                  double repetition_penalty,
                                  unsigned int n,
-                                 std::string prompt
+                                 std::string prompt,
+                                 std::string guidance_string_type,
+                                 std::string guidance_string
                                  ) {
     /*
      The chat completion object
@@ -536,6 +578,10 @@ static std::string run_inference(
         params->SetSearchOption("temperature", temperature);
         params->SetSearchOption("repetition_penalty", repetition_penalty);
         params->SetSearchOption("num_return_sequences", n);
+        
+        if(guidance_string_type != ""){
+            params->SetGuidance(guidance_string_type.c_str(), guidance_string.c_str());
+        }
         
         int32_t chat_end_id = tokenizer->ToTokenId("<|im_end|>");
         int32_t file_end_id = tokenizer->ToTokenId("<|endoftext|>");
@@ -705,6 +751,8 @@ static void run_inference_stream(
                                  double repetition_penalty,
                                  unsigned int n,
                                  std::string prompt,
+                                 std::string guidance_string_type,
+                                 std::string guidance_string,
                                  std::function<bool(const std::string&, unsigned int)> on_token_generated
                                  ) {
     
@@ -728,6 +776,10 @@ static void run_inference_stream(
     params->SetSearchOption("temperature", temperature);
     params->SetSearchOption("repetition_penalty", repetition_penalty);
     params->SetSearchOption("num_return_sequences", n);
+    
+    if(guidance_string_type != ""){
+        params->SetGuidance(guidance_string_type.c_str(), guidance_string.c_str());
+    }
     
     int32_t chat_end_id = tokenizer->ToTokenId("<|im_end|>");
     int32_t file_end_id = tokenizer->ToTokenId("<|endoftext|>");
@@ -1422,6 +1474,8 @@ int main(int argc, OPTARG_T argv[]) {
                 double repetition_penalty = 1.2;
                 unsigned int n = 1;
                 bool is_stream = false;
+                std::string guidance_string_type;
+                std::string guidance_string;
                 
                 before_run_inference(req.body,
                                      prompt,
@@ -1433,7 +1487,9 @@ int main(int argc, OPTARG_T argv[]) {
                                      &n,
                                      &is_stream,
                                      tokenizer.get(),
-                                     chat_template);
+                                     chat_template,
+                                     guidance_string_type,
+                                     guidance_string);
                 
                 if(is_stream) {
                     std::string req_id = get_openai_style_id();
@@ -1469,6 +1525,8 @@ int main(int argc, OPTARG_T argv[]) {
                                              repetition_penalty,
                                              n,
                                              prompt,
+                                             guidance_string_type,
+                                             guidance_string,
                                              token_callback
                                              );
                         // 4. Send finish reason
@@ -1498,7 +1556,9 @@ int main(int argc, OPTARG_T argv[]) {
                                                               temperature,
                                                               repetition_penalty,
                                                               n,
-                                                              prompt
+                                                              prompt,
+                                                              guidance_string_type,
+                                                              guidance_string
                                                               );
                     res.set_content(response_json, "application/json");
                     res.status = 200;
@@ -1667,6 +1727,8 @@ int main(int argc, OPTARG_T argv[]) {
             double repetition_penalty = 1.2;
             unsigned int n = 1;
             bool is_stream = false;
+            std::string guidance_string_type;
+            std::string guidance_string;
             
             before_run_inference(request_str,
                                  prompt,
@@ -1678,7 +1740,9 @@ int main(int argc, OPTARG_T argv[]) {
                                  &n,
                                  &is_stream,
                                  tokenizer.get(),
-                                 chat_template);
+                                 chat_template,
+                                 guidance_string_type,
+                                 guidance_string);
             
             response = run_inference(
                                      model.get(),
@@ -1692,7 +1756,9 @@ int main(int argc, OPTARG_T argv[]) {
                                      temperature,
                                      repetition_penalty,
                                      n,
-                                     prompt
+                                     prompt,
+                                     guidance_string_type,
+                                     guidance_string
                                      );
             
         } catch (const std::exception& e) {
