@@ -835,13 +835,19 @@ static std::string last_token_pooling_response(std::vector<Ort::Value>& outputs,
             Eigen::VectorXf final_embedding = l2_normalize(last_vec);
             // Create the std::vector
             std::vector<float> embeddings(final_embedding.data(), final_embedding.data() + final_embedding.size());
-            rootNode["object"] = "embedding";
+            
+            Json::Value dataNode = Json::objectValue;
+            dataNode["object"] = "embedding";
             Json::Value embeddingsNode(Json::arrayValue);
             for (float val : embeddings) {
                 embeddingsNode.append(val);
             }
-            rootNode["embedding"] = embeddingsNode;
-            rootNode["index"] = 0;
+            dataNode["embedding"] = embeddingsNode;
+            dataNode["index"] = 0;
+            Json::Value listNode = Json::arrayValue;
+            listNode.append(dataNode);
+            rootNode["data"] = listNode;
+            rootNode["object"] = "list";
         }
     }
     
@@ -871,9 +877,7 @@ static std::string colbert_pooling_response(std::vector<Ort::Value>& outputs,
             Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
                             raw_matrix(floatarr, seq_len, hidden_size);
             
-            rootNode["object"] = "list"; // Changed from "embedding" to denote a list of vectors
-                            Json::Value bagOfVectors(Json::arrayValue);
-            
+            Json::Value listNode(Json::arrayValue);
             // --- COLBERT LOGIC START ---
             // Iterate over every token in the sequence
             for (int i = 0; i < seq_len; ++i) {
@@ -887,15 +891,21 @@ static std::string colbert_pooling_response(std::vector<Ort::Value>& outputs,
                 // ColBERT relies on dot product == cosine similarity, which requires unit vectors.
                 token_vec.normalize();
                 // 4. Append to JSON
-                Json::Value vectorNode(Json::arrayValue);
+                
+                Json::Value dataNode = Json::objectValue;
+                dataNode["object"] = "embedding";
+                
+                Json::Value embeddingsNode(Json::arrayValue);
                 for (int j = 0; j < hidden_size; ++j) {
-                    vectorNode.append(token_vec[j]);
+                    embeddingsNode.append(token_vec[j]);
                 }
-                bagOfVectors.append(vectorNode);
+                dataNode["embedding"] = embeddingsNode;
+                dataNode["index"] = i;
+                listNode.append(dataNode);
             }
             // --- COLBERT LOGIC END ---
-            rootNode["data"] = bagOfVectors; // List of Lists
-            rootNode["index"] = 0;
+            rootNode["data"] = listNode;
+            rootNode["object"] = "list";
         }
     }
         
@@ -927,13 +937,19 @@ static std::string cls_pooling_response(std::vector<Ort::Value>& outputs,
             Eigen::VectorXf final_embedding = l2_normalize(cls_vec);
             // Create the std::vector
             std::vector<float> embeddings(final_embedding.data(), final_embedding.data() + final_embedding.size());
-            rootNode["object"] = "embedding";
+
+            Json::Value dataNode = Json::objectValue;
+            dataNode["object"] = "embedding";
             Json::Value embeddingsNode(Json::arrayValue);
             for (float val : embeddings) {
                 embeddingsNode.append(val);
             }
-            rootNode["embedding"] = embeddingsNode;
-            rootNode["index"] = 0;
+            dataNode["embedding"] = embeddingsNode;
+            dataNode["index"] = 0;
+            Json::Value listNode = Json::arrayValue;
+            listNode.append(dataNode);
+            rootNode["data"] = listNode;
+            rootNode["object"] = "list";
         }
     }
         
@@ -976,13 +992,19 @@ static std::string mean_pooling_response(std::vector<Ort::Value>& outputs,
             Eigen::VectorXf final_embedding = l2_normalize(pooled.row(0));
             // Create the std::vector
             std::vector<float> embeddings(final_embedding.data(), final_embedding.data() + final_embedding.size());
-            rootNode["object"] = "embedding";
+
+            Json::Value dataNode = Json::objectValue;
+            dataNode["object"] = "embedding";
             Json::Value embeddingsNode(Json::arrayValue);
             for (float val : embeddings) {
                 embeddingsNode.append(val);
             }
-            rootNode["embedding"] = embeddingsNode;
-            rootNode["index"] = 0;
+            dataNode["embedding"] = embeddingsNode;
+            dataNode["index"] = 0;
+            Json::Value listNode = Json::arrayValue;
+            listNode.append(dataNode);
+            rootNode["data"] = listNode;
+            rootNode["object"] = "list";
         }
     }
     
@@ -1133,19 +1155,25 @@ static std::string run_embeddings_e2e(
             auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
             float* floatarr  = outputs[0].GetTensorMutableData<float>();
             
-            Json::Value embeddingsNode(Json::arrayValue);
             auto shape = output_info.GetShape();
             if(shape.size() > 0) {
                 int64_t embedding_dim = shape[1];
                 // Create the std::vector
                 std::vector<float> embeddings(floatarr, floatarr + embedding_dim);
-                rootNode["object"] = "embedding";
+
+                Json::Value dataNode = Json::objectValue;
+                dataNode["object"] = "embedding";
+                Json::Value embeddingsNode(Json::arrayValue);
                 for (float val : embeddings) {
                     embeddingsNode.append(val);
                 }
+                dataNode["embedding"] = embeddingsNode;
+                dataNode["index"] = 0;
+                Json::Value listNode = Json::arrayValue;
+                listNode.append(dataNode);
+                rootNode["data"] = listNode;
+                rootNode["object"] = "list";
             }
-            rootNode["embedding"] = embeddingsNode;
-            rootNode["index"] = 0;
         }
     } catch (const std::exception& e) {
         throw;
