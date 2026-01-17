@@ -75,4 +75,4 @@ https://huggingface.co/collections/keisuke-miyako/onnx-runtime
 - https://huggingface.co/keisuke-miyako/modernbert-ja-70m-onnx
 - https://huggingface.co/keisuke-miyako/modernbert-ja-130m-onnx
 - https://huggingface.co/keisuke-miyako/modernbert-ja-310m-onnx
-- https://huggingface.co/keisuke-miyako/jina-embeddings-v3-onnx
+- ~~jina-embeddings-v3~~
