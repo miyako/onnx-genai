@@ -71,4 +71,4 @@ https://huggingface.co/collections/keisuke-miyako/onnx-runtime
 - https://huggingface.co/keisuke-miyako/ruri-v3-70m-onnx
 - https://huggingface.co/keisuke-miyako/ruri-v3-130m-onnx
 - https://huggingface.co/keisuke-miyako/ruri-v3-310m-onnx
-- jinaai/jina-embeddings-v3
+- https://huggingface.co/keisuke-miyako/jina-embeddings-v3-onnx
