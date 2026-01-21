@@ -40,7 +40,6 @@ extern "C" {
 }
 #endif
 #include "json/json.h"
-
 #include <onnxruntime_cxx_api.h>
 #include <onnxruntime_extensions.h>
 #include <cmath>
@@ -51,6 +50,7 @@ extern "C" {
 #include "tokenizers_cpp.h"
 
 #define BUFLEN 4096
+#define TOKEN_BACKSTOP 0
 
 #ifdef __GNUC__
 #define _fopen fopen

@@ -585,18 +585,15 @@ static std::string run_inference(
         if(guidance_string_type != ""){
             params->SetGuidance(guidance_string_type.c_str(), guidance_string.c_str());
         }
-        
+#if TOKEN_BACKSTOP
         int32_t chat_end_id = tokenizer->ToTokenId("<|im_end|>");
         int32_t file_end_id = tokenizer->ToTokenId("<|endoftext|>");
         int32_t chat_start_id = tokenizer->ToTokenId("<|im_start|>");
         int32_t head_start_id = tokenizer->ToTokenId("<|start_header_id|>");
-        
         int32_t pad_id = tokenizer->ToTokenId("<pad>");
         int32_t bos_id = tokenizer->ToTokenId("<bos>");
         int32_t turn_start_id = tokenizer->ToTokenId("<start_of_turn>");
         int32_t turn_end_id = tokenizer->ToTokenId("<end_of_turn>");
-        
-        // Define your multiple stop conditions
         std::unordered_set<int32_t> stop_tokens = {
             chat_end_id,
             file_end_id,
@@ -606,12 +603,11 @@ static std::string run_inference(
             bos_id,
             turn_start_id,
             turn_end_id};
-        
+#endif
         // Create Generator
         // Generator is stateful; we need 1 per request.
         auto generator = OgaGenerator::Create(*model, *params);
         generator->AppendTokenSequences(*input_sequences);
-                
         // Create a vector of streams
         // Decoding is stateful; we need 1 decoder per sequence.
         std::vector<std::string> generated_responses(n);
@@ -633,11 +629,12 @@ static std::string run_inference(
                 if (seq_len == 0) continue;
                 // Get the most recently generated token
                 int32_t new_token = seq_data[seq_len - 1];
+#if TOKEN_BACKSTOP
                 if (stop_tokens.count(new_token)) {
                     // We hit one of our stop tokens!
                     continue;
                 }
-                // Decode using the specific stream for this sequence
+#endif
                 const char* token_str = streams[i]->Decode(new_token);
                 if (token_str) {
                     generated_responses[i] += token_str;
@@ -783,18 +780,15 @@ static void run_inference_stream(
     if(guidance_string_type != ""){
         params->SetGuidance(guidance_string_type.c_str(), guidance_string.c_str());
     }
-    
+#if TOKEN_BACKSTOP
     int32_t chat_end_id = tokenizer->ToTokenId("<|im_end|>");
     int32_t file_end_id = tokenizer->ToTokenId("<|endoftext|>");
     int32_t chat_start_id = tokenizer->ToTokenId("<|im_start|>");
     int32_t head_start_id = tokenizer->ToTokenId("<|start_header_id|>");
-    
     int32_t pad_id = tokenizer->ToTokenId("<pad>");
     int32_t bos_id = tokenizer->ToTokenId("<bos>");
     int32_t turn_start_id = tokenizer->ToTokenId("<start_of_turn>");
     int32_t turn_end_id = tokenizer->ToTokenId("<end_of_turn>");
-    
-    // Define your multiple stop conditions
     std::unordered_set<int32_t> stop_tokens = {
         chat_end_id,
         file_end_id,
@@ -804,12 +798,11 @@ static void run_inference_stream(
         bos_id,
         turn_start_id,
         turn_end_id};
-    
+#endif
     // Create Generator
     // Generator is stateful; we need 1 per request.
     auto generator = OgaGenerator::Create(*model, *params);
     generator->AppendTokenSequences(*input_sequences);
-    
     // Create a vector of streams
     // Decoding is stateful; we need 1 decoder per sequence.
     std::vector<std::string> generated_responses(n);
@@ -831,14 +824,14 @@ static void run_inference_stream(
             if (seq_len == 0) continue;
             // Get the most recently generated token
             int32_t new_token = seq_data[seq_len - 1];
-            // Decode using the specific stream for this sequence
+#if TOKEN_BACKSTOP
             if (stop_tokens.count(new_token)) {
                 // We hit one of our stop tokens!
                 continue;
             }
+#endif
             const char* token_str = streams[i]->Decode(new_token);
             if (token_str) {
-//                std::cout << token_str;
                 if (!on_token_generated(token_str, i)) {
                     // If callback returns false, client disconnected
                     break;
