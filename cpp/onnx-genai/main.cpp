@@ -19,6 +19,23 @@ std::string LoadBytesFromFile(const std::string& path) {
     return data;
 }
 
+static // Helper to read the template file from the model directory
+std::string LoadChatTemplate(const std::string& model_path) {
+    fs::path path(model_path);
+    fs::path chat_template_path = path;
+
+    if (fs::is_directory(path)) {
+        chat_template_path = path / "chat_template.jinja";
+    }
+    
+    if (fs::exists(chat_template_path) && chat_template_path.extension() == ".jinja") {
+        std::cout << "Loading jinja from: " << chat_template_path << std::endl;
+        return LoadBytesFromFile(chat_template_path.string());
+    }
+    
+    return "";
+}
+
 static // Unified Loader
 std::unique_ptr<Tokenizer> LoadTokenizer(const std::string& model_path) {
     fs::path path(model_path);
@@ -1359,15 +1376,11 @@ int main(int argc, OPTARG_T argv[]) {
                 fingerprint = get_system_fingerprint(model_path, "directml");
                 modelName = get_model_name(model_path);
                 try {
-//                    auto config = OgaConfig::Create(model_path.c_str());
                     model = OgaModel::Create(model_path.c_str());
-//#ifdef WIN32
-//                    config->AppendProvider("DmlExecutionProvider");
-//#else
-//                    config->AppendProvider("CoreMLExecutionProvider");
-//#endif
-//                    model = OgaModel::Create(*config);
                     tokenizer = OgaTokenizer::Create(*model);
+                    if(chat_template == "") {
+                        chat_template = LoadChatTemplate(model_path);
+                    }
                     model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
                     std::cerr << "Failed to load model: " << e.what() << std::endl;
@@ -1419,12 +1432,10 @@ int main(int argc, OPTARG_T argv[]) {
                     for (size_t i = 0; i < num_input_nodes; i++) {
                         auto input_name_ptr = embeddings_session->GetInputNameAllocated(i, allocator);
                         input_node_names.push_back(input_name_ptr.get());
-                //        std::cout << "Input " << i << " Name: " << input_name_ptr.get() << std::endl;
                     }
                     for (size_t i = 0; i < num_output_nodes; i++) {
                         auto output_name_ptr = embeddings_session->GetOutputNameAllocated(i, allocator);
                         output_node_names.push_back(output_name_ptr.get());
-                //        std::cout << "Input " << i << " Name: " << output_name_ptr.get() << std::endl;
                     }
                     for (const auto& name : input_node_names) {
                         input_names_c_array.push_back(name.c_str());
