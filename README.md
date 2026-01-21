@@ -71,3 +71,7 @@ https://huggingface.co/collections/keisuke-miyako/onnx-runtime
 - https://huggingface.co/keisuke-miyako/ruri-v3-70m-onnx
 - https://huggingface.co/keisuke-miyako/ruri-v3-130m-onnx
 - https://huggingface.co/keisuke-miyako/ruri-v3-310m-onnx
+- https://huggingface.co/keisuke-miyako/modernbert-ja-30m-onnx
+- https://huggingface.co/keisuke-miyako/modernbert-ja-70m-onnx
+- https://huggingface.co/keisuke-miyako/modernbert-ja-130m-onnx
+- https://huggingface.co/keisuke-miyako/modernbert-ja-310m-onnx
