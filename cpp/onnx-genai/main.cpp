@@ -611,6 +611,8 @@ static std::string run_inference(
         int32_t bos_id = tokenizer->ToTokenId("<bos>");
         int32_t turn_start_id = tokenizer->ToTokenId("<start_of_turn>");
         int32_t turn_end_id = tokenizer->ToTokenId("<end_of_turn>");
+        int32_t end_id = tokenizer->ToTokenId("<|end|>");
+        
         std::unordered_set<int32_t> stop_tokens = {
             chat_end_id,
             file_end_id,
@@ -619,7 +621,8 @@ static std::string run_inference(
             pad_id,
             bos_id,
             turn_start_id,
-            turn_end_id};
+            turn_end_id,
+            end_id};
 #endif
         // Create Generator
         // Generator is stateful; we need 1 per request.
@@ -806,6 +809,8 @@ static void run_inference_stream(
     int32_t bos_id = tokenizer->ToTokenId("<bos>");
     int32_t turn_start_id = tokenizer->ToTokenId("<start_of_turn>");
     int32_t turn_end_id = tokenizer->ToTokenId("<end_of_turn>");
+    int32_t end_id = tokenizer->ToTokenId("<|end|>");
+
     std::unordered_set<int32_t> stop_tokens = {
         chat_end_id,
         file_end_id,
@@ -814,7 +819,8 @@ static void run_inference_stream(
         pad_id,
         bos_id,
         turn_start_id,
-        turn_end_id};
+        turn_end_id,
+        end_id};
 #endif
     // Create Generator
     // Generator is stateful; we need 1 per request.
