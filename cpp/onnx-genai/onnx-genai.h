@@ -50,7 +50,7 @@ extern "C" {
 #include "tokenizers_cpp.h"
 
 #define BUFLEN 4096
-#define TOKEN_BACKSTOP 0
+#define TOKEN_BACKSTOP 1
 
 #ifdef __GNUC__
 #define _fopen fopen
