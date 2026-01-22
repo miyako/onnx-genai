@@ -58,7 +58,6 @@ extern "C" {
 #define DEFAULT_temperature 0.0
 #define DEFAULT_repetition_penalty 1.1
 #define DEFAULT_n 1
-#define DEFAULT_min_p 0.0
 
 #ifdef __GNUC__
 #define _fopen fopen
