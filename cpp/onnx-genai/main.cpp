@@ -414,6 +414,7 @@ static void parse_request(
                           double *temperature,
                           double *repetition_penalty,
                           unsigned int *n,
+                          double *min_p,
                           bool *is_stream,
                           OgaTokenizer* tokenizer,
                           std::string& chat_template,
@@ -452,6 +453,11 @@ static void parse_request(
             if(top_k_node.isNumeric())
             {
                 *top_k = top_k_node.asInt();
+            }
+            Json::Value min_p_node = root["min_p"];
+            if(min_p_node.isNumeric())
+            {
+                *min_p = min_p_node.asDouble();
             }
             Json::Value max_tokens_node = root["max_tokens"];
             if(max_tokens_node.isNumeric())
@@ -545,13 +551,14 @@ static void before_run_inference(
                                  double *temperature,
                                  double *repetition_penalty,
                                  unsigned int *n,
+                                 double *min_p,
                                  bool *is_stream,
                                  OgaTokenizer* tokenizer,
                                  std::string& chat_template,
                                  std::string& guidance_string_type,
                                  std::string& guidance_string) {
     
-    parse_request(request_body, prompt, max_tokens, top_k, top_p, temperature, repetition_penalty, n, is_stream, tokenizer, chat_template, guidance_string_type, guidance_string);
+    parse_request(request_body, prompt, max_tokens, top_k, top_p, temperature, repetition_penalty, n, min_p, is_stream, tokenizer, chat_template, guidance_string_type, guidance_string);
 }
 
 static std::string run_inference(
@@ -566,6 +573,7 @@ static std::string run_inference(
                                  double temperature,
                                  double repetition_penalty,
                                  unsigned int n,
+                                 double min_p,
                                  std::string prompt,
                                  std::string guidance_string_type,
                                  std::string guidance_string
@@ -598,6 +606,7 @@ static std::string run_inference(
         params->SetSearchOption("temperature", temperature);
         params->SetSearchOption("repetition_penalty", repetition_penalty);
         params->SetSearchOption("num_return_sequences", n);
+        params->SetSearchOption("min_p", min_p);
         
         if(guidance_string_type != ""){
             params->SetGuidance(guidance_string_type.c_str(), guidance_string.c_str());
@@ -767,6 +776,7 @@ static void run_inference_stream(
                                  double temperature,
                                  double repetition_penalty,
                                  unsigned int n,
+                                 double min_p,
                                  std::string prompt,
                                  std::string guidance_string_type,
                                  std::string guidance_string,
@@ -793,6 +803,7 @@ static void run_inference_stream(
     params->SetSearchOption("temperature", temperature);
     params->SetSearchOption("repetition_penalty", repetition_penalty);
     params->SetSearchOption("num_return_sequences", n);
+    params->SetSearchOption("min_p", min_p);
     
     if(guidance_string_type != ""){
         params->SetGuidance(guidance_string_type.c_str(), guidance_string.c_str());
@@ -1475,12 +1486,13 @@ int main(int argc, OPTARG_T argv[]) {
                 }
                 
                 std::string prompt;
-                unsigned int max_tokens = 2048;
-                unsigned int top_k = 50;
-                double top_p = 0.9;
-                double temperature = 0.7;
-                double repetition_penalty = 1.2;
-                unsigned int n = 1;
+                unsigned int max_tokens = DEFAULT_max_tokens;
+                unsigned int top_k = DEFAULT_top_k;
+                double top_p = DEFAULT_top_p;
+                double temperature = DEFAULT_temperature;
+                double repetition_penalty = DEFAULT_repetition_penalty;
+                unsigned int n = DEFAULT_n;
+                double min_p = DEFAULT_min_p;
                 bool is_stream = false;
                 std::string guidance_string_type;
                 std::string guidance_string;
@@ -1493,6 +1505,7 @@ int main(int argc, OPTARG_T argv[]) {
                                      &temperature,
                                      &repetition_penalty,
                                      &n,
+                                     &min_p,
                                      &is_stream,
                                      tokenizer.get(),
                                      chat_template,
@@ -1545,6 +1558,7 @@ int main(int argc, OPTARG_T argv[]) {
                                              temperature,
                                              repetition_penalty,
                                              n,
+                                             min_p,
                                              prompt,
                                              guidance_string_type,
                                              guidance_string,
@@ -1577,6 +1591,7 @@ int main(int argc, OPTARG_T argv[]) {
                                                               temperature,
                                                               repetition_penalty,
                                                               n,
+                                                              min_p,
                                                               prompt,
                                                               guidance_string_type,
                                                               guidance_string
@@ -1741,12 +1756,13 @@ int main(int argc, OPTARG_T argv[]) {
         try {
             
             std::string prompt;
-            unsigned int max_tokens = 2048;
-            unsigned int top_k = 50;
-            double top_p = 0.9;
-            double temperature = 0.7;
-            double repetition_penalty = 1.2;
-            unsigned int n = 1;
+            unsigned int max_tokens = DEFAULT_max_tokens;
+            unsigned int top_k = DEFAULT_top_k;
+            double top_p = DEFAULT_top_p;
+            double temperature = DEFAULT_temperature;
+            double repetition_penalty = DEFAULT_repetition_penalty;
+            unsigned int n = DEFAULT_n;
+            double min_p = DEFAULT_min_p;
             bool is_stream = false;
             std::string guidance_string_type;
             std::string guidance_string;
@@ -1759,6 +1775,7 @@ int main(int argc, OPTARG_T argv[]) {
                                  &temperature,
                                  &repetition_penalty,
                                  &n,
+                                 &min_p,
                                  &is_stream,
                                  tokenizer.get(),
                                  chat_template,
@@ -1777,6 +1794,7 @@ int main(int argc, OPTARG_T argv[]) {
                                      temperature,
                                      repetition_penalty,
                                      n,
+                                     min_p,
                                      prompt,
                                      guidance_string_type,
                                      guidance_string
