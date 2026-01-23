@@ -153,22 +153,9 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 			$options:={chat_template: $chat_template}
-		: (False:C215)  //Phi 4 mini (official)
-			$chat_template:="{{ bos_token }}{% for message in messages %}{{'<|' + message['role'] + '|>' + '\\n' + message['content'] + '<|end|>' + '\\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|assistant|>' + '\\n' }}{% endif %}"
-			$folder:=$homeFolder.folder("Phi-4-mini-instruct-onnx-int4-cpu")
-			$path:="keisuke-miyako/Phi-4-mini-instruct-onnx-int4-cpu"
-			$URL:="keisuke-miyako/Phi-4-mini-instruct-onnx-int4-cpu"
-			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
-			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
-			$options:={chat_template: $chat_template}
-		: (False:C215)  //Phi 3.5 mini (official)
-			$chat_template:="{{ bos_token }}{% for message in messages %}{{'<|' + message['role'] + '|>' + '\\n' + message['content'] + '<|end|>' + '\\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|assistant|>' + '\\n' }}{% endif %}"
-			$folder:=$homeFolder.folder("Phi-3.5-mini-instruct-onnx-int4-cpu")
-			$path:="keisuke-miyako/Phi-3.5-mini-instruct-onnx-int4-cpu"
-			$URL:="keisuke-miyako/Phi-3.5-mini-instruct-onnx-int4-cpu"
-			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
-			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
-			$options:={chat_template: $chat_template}
+			
+			
+			
 		: (False:C215)  //SmolLM2
 			$chat_template:="{%- for message in messages -%}\n{%- if message.role == \"system\" -%}\n<|system|>\n{{ message.content }}\n<|end|>\n{%- elif message.role == \"user\" -%}\n<|user|>\n{{ message.content }}\n<|end|>\n{%- elif message.role == \"assistant\" -%}\n<|assistant|>\n{{ message.c"+"ontent }}\n<|end|>\n{%- endif -%}\n{%- endfor -%}\n{%- if add_generation_prompt -%}\n<|assistant|>\n{%- endif -%}\n"
 			$folder:=$homeFolder.folder("SmolLM2-1.7B-onnx-int4-cpu")
@@ -210,10 +197,15 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 			$options:={chat_template: $chat_template}
 		: (True:C214)
-			$chat_template:="<|begin_of_text|>{% for message in messages %}\n{% if message['role'] == 'system' %}\n<|start_header_id|>system<|end_header_id|>\n\n{{ message['content'] }}<|eot_id|>\n{% elif message['role'] == 'user' %}\n<|start_header_id|>user<|end_header_id|>\n\n{{ messag"+"e['content'] }}<|eot_id|>\n{% elif message['role'] == 'assistant' %}\n<|start_header_id|>assistant<|end_header_id|>\n\n{{ message['content'] }}<|eot_id|>\n{% endif %}\n{% endfor %}\n{% if add_generation_prompt %}\n<|start_header_id|>assistant<|end_header_id|>"+"\n\n{% endif %}"
-			$folder:=$homeFolder.folder("Llama-3.2-1B-Instruct-onnx-int4-cpu")
-			$path:="keisuke-miyako/Llama-3.2-1B-Instruct-onnx-int4-cpu"
-			$URL:="keisuke-miyako/Llama-3.2-1B-Instruct-onnx-int4-cpu"
+			
+			$folder:=$homeFolder.folder("gemma-3-1b-it")
+			$path:="keisuke-miyako/gemma-3-1b-it-onnx-int4-cpu"
+			$URL:="keisuke-miyako/gemma-3-1b-it-onnx-int4-cpu"
+			
+			//$chat_template:="<|begin_of_text|>{% for message in messages %}\n{% if message['role'] == 'system' %}\n<|start_header_id|>system<|end_header_id|>\n\n{{ message['content'] }}<|eot_id|>\n{% elif message['role'] == 'user' %}\n<|start_header_id|>user<|end_header_id|>\n\n{{ messag"+"e['content'] }}<|eot_id|>\n{% elif message['role'] == 'assistant' %}\n<|start_header_id|>assistant<|end_header_id|>\n\n{{ message['content'] }}<|eot_id|>\n{% endif %}\n{% endfor %}\n{% if add_generation_prompt %}\n<|start_header_id|>assistant<|end_header_id|>"+"\n\n{% endif %}"
+			//$folder:=$homeFolder.folder("Llama-3.2-1B-Instruct-onnx-int4-cpu")
+			//$path:="keisuke-miyako/Llama-3.2-1B-Instruct-onnx-int4-cpu"
+			//$URL:="keisuke-miyako/Llama-3.2-1B-Instruct-onnx-int4-cpu"
 			$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 			
 			//$folder:=$homeFolder.folder("bge-small-en-v1.5-onnx")
@@ -234,14 +226,14 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 					$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
 					$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
 					$options:={chat_template: $chat_template; pooling: "mean"}
-				: (True:C214)
+				: (False:C215)
 					$folder:=$homeFolder.folder("universal-sentence-encoder-multilingual-onnx")
 					$path:="keisuke-miyako/universal-sentence-encoder-multilingual-onnx"
 					$URL:="keisuke-miyako/universal-sentence-encoder-multilingual-onnx"
 					$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
 					$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
 					$options:={chat_template: $chat_template; pooling: "e2e"}
-				: (False:C215)
+				: (True:C214)
 					$folder:=$homeFolder.folder("embeddinggemma-300m-onnx")
 					$path:="keisuke-miyako/embeddinggemma-300m-onnx"
 					$URL:="keisuke-miyako/embeddinggemma-300m-onnx"
