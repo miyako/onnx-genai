@@ -40,20 +40,32 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$path:="Qwen3-4B-Thinking-2507-onnx-int4-cpu"
 	$URL:="keisuke-miyako/Qwen3-4B-Thinking-2507-onnx-int4-cpu"
 	
+	//$folder:=$homeFolder.folder("translategemma-4b-it")
+	//$path:="translategemma-4b-it-onnx-int4-cpu"
+	//$URL:="keisuke-miyako/translategemma-4b-it-onnx-int4-cpu"
+	
+	//$folder:=$homeFolder.folder("gemma-3-4b-it")
+	//$path:="gemma-3-4b-it-onnx-int4-cpu"
+	//$URL:="keisuke-miyako/gemma-3-4b-it-onnx-int4-cpu"
+	
+	$folder:=$homeFolder.folder("Ministral-3-3B-Instruct")
+	$path:="Ministral-3-3B-Instruct-2512-ONNX"
+	$URL:="mistralai/Ministral-3-3B-Instruct-2512-ONNX"
+	
 	$chat:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion")
 	
 	$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 	
 	Case of 
 		: (True:C214)  //mean
-			$folder:=$homeFolder.folder("multilingual-e5-base-onnx")
+			$folder:=$homeFolder.folder("multilingual-e5-base")
 			$path:="multilingual-e5-base-onnx"
 			$URL:="keisuke-miyako/multilingual-e5-base-onnx"
 			$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
 			$options:={pooling: "mean"}
 		: (True:C214)  //e2e
-			$folder:=$homeFolder.folder("universal-sentence-encoder-multilingual-onnx")
+			$folder:=$homeFolder.folder("universal-sentence-encoder-multilingual")
 			$path:="universal-sentence-encoder-multilingual-onnx"
 			$URL:="keisuke-miyako/universal-sentence-encoder-multilingual-onnx"
 			$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
