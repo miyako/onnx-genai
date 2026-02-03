@@ -1,7 +1,4 @@
 src/*
-ai_studio_code.cpp
-
-
 */.build/*
 */onnxruntime.pdb
 */onnxruntime-genai.pdb
@@ -17,7 +14,6 @@ ai_studio_code.cpp
 cpp/x64/onnxruntime_providers_shared.pdb
 cpp/x64/onnxruntime.pdb
 onnx-genai/userPreferences.*
-onnx-genai/Project/DerivedData/*
 onnx-genai/Data/*
 onnx-genai/onnx-genai/x64/Release/onnx-genai.tlog/*
 onnx-genai/x64/Release/onnx-genai.pdb
@@ -49,3 +45,7 @@ cpp/x64/*
 cpp/macOS/onnx-genai.dmg
 cpp/macOS/onnx-genai-amd
 cpp/macOS/onnx-genai
+onnx-genai/Project/DerivedData/CompiledCode/*
+onnx-genai/Project/DerivedData/webservices.json
+onnx-genai/Project/DerivedData/methodAttributes.json
+onnx-genai/Project/DerivedData/formAttributes.json
