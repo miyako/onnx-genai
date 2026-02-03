@@ -1088,7 +1088,7 @@ static std::string mean_pooling_response(std::vector<Ort::Value>& outputs,
 static std::string run_embeddings(
                                   Ort::Session *session,
                                   std::vector<int>& ids,
-                                std::vector<const char*>&  input_names_c_array,
+                                  std::vector<const char*>&  input_names_c_array,
                                   size_t num_input_nodes,
                                   std::vector<const char*>&   output_names_c_array,
                                   size_t num_output_nodes,
@@ -1677,6 +1677,14 @@ int main(int argc, OPTARG_T argv[]) {
                     {
                         if (embeddings_tokenizer != NULL) {
                             std::vector<int> ids = embeddings_tokenizer->Encode(input);
+                            if(pooling_mode == POOLING_CLS) {
+                                std::vector<int> cls_ids;
+                                cls_ids.reserve(ids.size() + 2);
+                                cls_ids.push_back(0);
+                                cls_ids.insert(cls_ids.end(), ids.begin(), ids.end());
+                                cls_ids.push_back(2);
+                                ids = cls_ids;
+                            }
                             response_json = run_embeddings(
                                                            embeddings_session.get(),
                                                            ids, input_names_c_array,
