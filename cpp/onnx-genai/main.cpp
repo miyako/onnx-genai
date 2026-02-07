@@ -28,7 +28,6 @@ struct RerankResult {
 struct RerankItem {
     std::vector<int> ids;
     std::vector<int> type_ids;
-//    std::string text;
 };
 
 float sigmoid(float x) {
@@ -1286,7 +1285,6 @@ static std::string run_reranking(
     
     try {
         
-//        std::vector<int64_t> input_node_dims = {batch_size, (int64_t)input_ids.size()};
         Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(
                 OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
 
@@ -1385,7 +1383,6 @@ static std::string run_reranking(
             RerankResult result = results[j];
             Json::Value dataNode = Json::objectValue;
             dataNode["index"] = result.index;
-//            dataNode["document"] = result.text;
             dataNode["relevance_score"] = result.score;
             listNode.append(dataNode);
         }
@@ -2129,7 +2126,7 @@ int main(int argc, OPTARG_T argv[]) {
                                 
                                 if (ids.size() > max_position_embeddings) {
                                     ids.resize(max_position_embeddings - 1);
-                                    int end_token_id = 2; // Default (RoBERTa/Llama)
+                                    int end_token_id = 2;
                                     if (ranking_mode == RERANKING_BERT) end_token_id = 102;
                                     ids.push_back(end_token_id);
                                     if (!type_ids.empty()) {
@@ -2138,7 +2135,7 @@ int main(int argc, OPTARG_T argv[]) {
                                         type_ids.push_back(end_type_id);
                                     }
                                 }
-                                items.emplace_back(RerankItem(ids, type_ids/*, documents[i]*/));
+                                items.emplace_back(RerankItem(ids, type_ids));
                             }
                             response_json = run_reranking(
                                                           rerank_session.get(),
