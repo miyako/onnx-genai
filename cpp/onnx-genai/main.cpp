@@ -2135,7 +2135,7 @@ int main(int argc, OPTARG_T argv[]) {
                                         type_ids.push_back(end_type_id);
                                     }
                                 }
-                                items.emplace_back(RerankItem(ids, type_ids));
+                                items.emplace_back(RerankItem({ ids, type_ids }));
                             }
                             response_json = run_reranking(
                                                           rerank_session.get(),
