@@ -1279,8 +1279,6 @@ static std::string run_reranking(
                                   size_t num_output_nodes,
                                   PoolingMode pooling_mode) {
 
-    int batch_size = 1;
-
     std::string reponseJson;
     
     std::vector<RerankResult> results;
@@ -1319,7 +1317,6 @@ static std::string run_reranking(
                                                                       input_dims.size()));
             
             if (num_input_nodes >1) {
-                // DistilBERT: only needs input_ids and attention_mask.
                 input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
                                                                           memory_info,
                                                                           attention_mask.data(),
@@ -1327,7 +1324,6 @@ static std::string run_reranking(
                                                                           input_dims.data(),
                                                                           input_dims.size()));
                 if (num_input_nodes >2) {
-                    // BERT / RoBERTa / MiniLM: ALWAYS require token_type_ids
                     input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
                                                                               memory_info,
                                                                               type_ids.data(),
