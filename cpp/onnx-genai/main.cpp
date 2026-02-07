@@ -19,6 +19,22 @@ std::string LoadBytesFromFile(const std::string& path) {
     return data;
 }
 
+struct RerankResult {
+    int index;          // Original index in the document list
+    float score;        // Relevance score
+    std::string text;   // (Optional) The document text
+};
+
+struct RerankItem {
+    std::vector<int> ids;
+    std::vector<int> type_ids;
+//    std::string text;
+};
+
+float sigmoid(float x) {
+    return 1.0f / (1.0f + std::exp(-x));
+}
+
 static // Helper to read the template file from the model directory
 std::string LoadChatTemplate(const std::string& model_path) {
     fs::path path(model_path);
@@ -34,6 +50,115 @@ std::string LoadChatTemplate(const std::string& model_path) {
     }
     
     return "";
+}
+
+static // Helper to read the template file from the model directory
+RerankingMode LoadRerankingMode(const std::string& model_path) {
+    fs::path path(model_path);
+    fs::path config_path = path;
+
+    if (fs::is_directory(path)) {
+        config_path = path / "config.json";
+    }
+    
+    if (fs::exists(config_path) && config_path.extension() == ".json") {
+//        std::cout << "Loading model_type from: " << config_path << std::endl;
+        
+        std::string json = LoadBytesFromFile(config_path.string());
+        
+        Json::Value root;
+        Json::CharReaderBuilder builder;
+        std::string errors;
+        
+        Json::CharReader *reader = builder.newCharReader();
+        bool parse = reader->parse(json.c_str(),
+                                   json.c_str() + json.size(),
+                                   &root,
+                                   &errors);
+        delete reader;
+        
+        if(parse)
+        {
+            if(root.isObject())
+            {
+                Json::Value model_type_node = root["model_type"];
+                if(model_type_node.isString())
+                {
+                    std::string model_type = model_type_node.asString();
+                    // RERANKING_ROBERTA
+                    if(model_type == "xlm-roberta") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (roberta)" << std::endl;
+                        return RERANKING_ROBERTA;
+                    }
+                    if(model_type == "roberta") {
+                        std::cout << "[Rerank] model_type: " << model_type << std::endl;
+                        return RERANKING_ROBERTA;
+                    }
+                    if(model_type == "camembert") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (roberta)" << std::endl;
+                        return RERANKING_ROBERTA;
+                    }
+                    // RERANKING_BERT
+                    if(model_type == "bert") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (bert)" << std::endl;
+                        return RERANKING_BERT;
+                    }
+                    if(model_type == "mpnet") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (bert)" << std::endl;
+                        return RERANKING_BERT;
+                    }
+                    if(model_type == "deberta-v2") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (bert)" << std::endl;
+                        return RERANKING_BERT;
+                    }
+                }
+            }
+        }
+    }
+    
+    std::cout << "[Rerank] model_type: default (roberta)" << std::endl;
+    return RERANKING_ROBERTA;
+}
+
+static // Helper to read the template file from the model directory
+int LoadMaxPositionEmbeddings(const std::string& model_path) {
+    fs::path path(model_path);
+    fs::path config_path = path;
+
+    if (fs::is_directory(path)) {
+        config_path = path / "config.json";
+    }
+    
+    if (fs::exists(config_path) && config_path.extension() == ".json") {
+//        std::cout << "Loading max_position_embeddings from: " << config_path << std::endl;
+        
+        std::string json = LoadBytesFromFile(config_path.string());
+        
+        Json::Value root;
+        Json::CharReaderBuilder builder;
+        std::string errors;
+        
+        Json::CharReader *reader = builder.newCharReader();
+        bool parse = reader->parse(json.c_str(),
+                                   json.c_str() + json.size(),
+                                   &root,
+                                   &errors);
+        delete reader;
+        
+        if(parse)
+        {
+            if(root.isObject())
+            {
+                Json::Value max_position_embeddings_node = root["max_position_embeddings"];
+                if(max_position_embeddings_node.isNumeric())
+                {
+                    return  max_position_embeddings_node.asInt();
+                }
+            }
+        }
+    }
+    
+    return 512;
 }
 
 static // Unified Loader
@@ -52,14 +177,14 @@ std::unique_ptr<Tokenizer> LoadTokenizer(const std::string& model_path) {
 
     // 2. Try to load Hugging Face JSON first (preferred for modern models)
     if (fs::exists(json_path) && json_path.extension() == ".json") {
-        std::cout << "Loading HF Tokenizer from: " << json_path << std::endl;
+//        std::cout << "Loading HF Tokenizer from: " << json_path << std::endl;
         std::string blob = LoadBytesFromFile(json_path.string());
         return Tokenizer::FromBlobJSON(blob);
     }
     
     // 3. Fallback to SentencePiece
     if (fs::exists(model_file_path) && model_file_path.extension() == ".model") {
-        std::cout << "Loading SentencePiece from: " << model_file_path << std::endl;
+//        std::cout << "Loading SentencePiece from: " << model_file_path << std::endl;
         std::string blob = LoadBytesFromFile(model_file_path.string());
         return Tokenizer::FromBlobSentencePiece(blob);
     }
@@ -201,7 +326,7 @@ Eigen::MatrixXf mean_pool_batch(
     // 2. Parallel Processing (OpenMP)
     // This distributes the rows across available CPU cores.
     #pragma omp parallel for
-    for (int i = 0; i < batch_size; ++i) {
+    for (long i = 0; i < batch_size; ++i) {
         
         // --- Step A: Optimized Mean Pooling (Inlined) ---
         // We write directly into out.row(i) to avoid creating temporary VectorXf objects.
@@ -253,6 +378,7 @@ static void usage(void)
     fprintf(stderr, "onnx-genai\n\n");
     fprintf(stderr, " -%c path     : %s\n", 'm' , "model");
     fprintf(stderr, " -%c path     : %s\n", 'e' , "embedding model");
+    fprintf(stderr, " -%c path     : %s\n", 'r' , "reranker model");
     fprintf(stderr, " -%c          : %s\n", 'j' , "chat template from stdin");
     fprintf(stderr, " -%c path     : %s\n", 't' , "chat template");
     fprintf(stderr, " -%c path     : %s\n", 'i' , "input");
@@ -312,11 +438,11 @@ int getopt(int argc, OPTARG_T *argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:e:i:o:sp:jt:bcld-h"
+#define ARGS (OPTARG_T)L"m:e:r:i:o:sp:jt:bcld-h"
 #define _atoi _wtoi
 #define _atof _wtof
 #else
-#define ARGS "m:e:i:o:sp:jt:bcld-h"
+#define ARGS "m:e:r:i:o:sp:jt:bcld-h"
 #define _atoi atoi
 #define _atof atof
 #endif
@@ -377,6 +503,54 @@ static std::string get_openai_style_id() {
 }
 
 #pragma mark -
+
+static void parse_request_reranking(const std::string &json,
+                                     std::string &query,
+                                     int *top_n,
+                                     std::vector<std::string> &documents
+                                     ) {
+    
+    Json::Value root;
+    Json::CharReaderBuilder builder;
+    std::string errors;
+    
+    Json::CharReader *reader = builder.newCharReader();
+    bool parse = reader->parse(json.c_str(),
+                               json.c_str() + json.size(),
+                               &root,
+                               &errors);
+    delete reader;
+    
+    if(parse)
+    {
+        if(root.isObject())
+        {
+            Json::Value query_node = root["query"];
+            if(query_node.isString())
+            {
+                query = query_node.asString();
+            }
+            Json::Value top_n_node = root["top_n"];
+            if(top_n_node.isNumeric())
+            {
+                *top_n = top_n_node.asInt();
+            }
+            
+            Json::Value documents_node = root["documents"];
+            if(documents_node.isArray())
+            {
+                for(Json::Value::const_iterator it = documents_node.begin() ; it != documents_node.end() ; it++)
+                {
+                    if(it->isString())
+                    {
+                        std::string document = it->asString();
+                        documents.push_back(document);
+                    }
+                }
+            }
+        }
+    }
+}
 
 static void parse_request_embeddings(const std::string &json,
                                      std::string &input) {
@@ -527,6 +701,15 @@ static void parse_request(
             }
         }
     }
+}
+
+static void before_run_reranking(
+                                 const std::string& request_body,
+                                 std::string &query,
+                                 int *top_n,
+                                 std::vector<std::string> &documents
+                                 ) {
+    parse_request_reranking(request_body, query, top_n, documents);
 }
 
 static void before_run_embeddings(
@@ -1085,6 +1268,146 @@ static std::string mean_pooling_response(std::vector<Ort::Value>& outputs,
     return Json::writeString(writer, rootNode);
 }
 
+static std::string run_reranking(
+                                  Ort::Session *session,
+                                  std::vector<RerankItem>& items,
+                                  int max_position_embeddings,
+                                  int top_n,
+                                  std::vector<const char*>&  input_names_c_array,
+                                  size_t num_input_nodes,
+                                  std::vector<const char*>&   output_names_c_array,
+                                  size_t num_output_nodes,
+                                  PoolingMode pooling_mode) {
+
+    int batch_size = 1;
+
+    std::string reponseJson;
+    
+    std::vector<RerankResult> results;
+    results.reserve(items.size());
+    
+    try {
+        
+//        std::vector<int64_t> input_node_dims = {batch_size, (int64_t)input_ids.size()};
+        Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(
+                OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
+
+        int i = 0;
+        for(auto it = items.begin() ; it != items.end() ; it++)
+        {
+            std::vector<int64_t> ids = ConvertToInt64(it->ids);
+            std::vector<int64_t> type_ids = ConvertToInt64(it->type_ids);
+            
+            int batch_size = 1;
+            int seq_len = (int)ids.size();
+            
+            // Shape: [batch_size=1, sequence_length]
+            std::vector<int64_t> input_dims = {batch_size, seq_len};
+            
+            // Create Attention Mask (1 for real tokens)
+            std::vector<int64_t> attention_mask(seq_len, 1);
+                        
+            // Create Inputs Vector
+            std::vector<Ort::Value> input_tensors;
+            
+            // Mistral / Llama / Qwen: only need input_ids
+            input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                                                                      memory_info,
+                                                                      ids.data(),
+                                                                      ids.size(),
+                                                                      input_dims.data(),
+                                                                      input_dims.size()));
+            
+            if (num_input_nodes >1) {
+                // DistilBERT: only needs input_ids and attention_mask.
+                input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                                                                          memory_info,
+                                                                          attention_mask.data(),
+                                                                          attention_mask.size(),
+                                                                          input_dims.data(),
+                                                                          input_dims.size()));
+                if (num_input_nodes >2) {
+                    // BERT / RoBERTa / MiniLM: ALWAYS require token_type_ids
+                    input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                                                                              memory_info,
+                                                                              type_ids.data(),
+                                                                              type_ids.size(),
+                                                                              input_dims.data(),
+                                                                              input_dims.size()));
+                }
+        }
+            
+            auto outputs = session->Run(
+                                        Ort::RunOptions{nullptr},
+                                        input_names_c_array.data(),
+                                        input_tensors.data(),
+                                        num_input_nodes,
+                                        output_names_c_array.data(),
+                                        num_output_nodes
+                                        );
+        
+            // 4. Extract Score
+            // Output shape is usually [1, 1] (BGE) or [1, 2] (older BERT classifiers)
+            float* float_data = outputs.front().GetTensorMutableData<float>();
+            auto type_info = outputs.front().GetTensorTypeAndShapeInfo();
+            auto shape = type_info.GetShape();
+        
+            float raw_score = 0.0f;
+            
+            switch (shape[1]) {
+                case 1:
+                    // Case A: Model outputs single scalar (e.g. BGE-Reranker)
+                    // Often raw logits requiring Sigmoid, or already normalized
+                    raw_score = float_data[0];
+                    raw_score = sigmoid(raw_score); // Optional: depends on model training
+                    break;
+                case 2:
+                    // Case B: Model outputs [Not_Relevant, Relevant] logits
+                    // We want the score of class 1
+                    raw_score = float_data[1];
+                    break;
+                default:
+                    break;
+            }
+            
+            results.push_back({(int)i, raw_score/*, it->text*/});
+            i++;
+        }
+        
+        std::sort(results.begin(), results.end(), [](const RerankResult& a, const RerankResult& b) {
+            return a.score > b.score;
+        });
+        
+        if (top_n > 0 && top_n < results.size()) {
+            results.resize(top_n);
+        }
+        
+        Json::Value rootNode(Json::objectValue);
+                
+        Json::Value listNode(Json::arrayValue);
+        for (int j = 0; j < results.size(); ++j) {
+            RerankResult result = results[j];
+            Json::Value dataNode = Json::objectValue;
+            dataNode["index"] = result.index;
+//            dataNode["document"] = result.text;
+            dataNode["relevance_score"] = result.score;
+            listNode.append(dataNode);
+        }
+
+        rootNode["data"] = listNode;
+        rootNode["object"] = "list";
+        
+        Json::StreamWriterBuilder writer;
+        writer["indentation"] = "";
+        reponseJson = Json::writeString(writer, rootNode);
+        
+    } catch (const std::exception& e) {
+        throw;
+    }
+
+    return reponseJson;
+}
+
 static std::string run_embeddings(
                                   Ort::Session *session,
                                   std::vector<int>& ids,
@@ -1262,9 +1585,11 @@ int main(int argc, OPTARG_T argv[]) {
 #ifdef WIN32
     std::wstring model_path_u16;
     std::wstring embedding_model_path_u16;
+    std::wstring reranker_model_path_u16;
 #endif
     std::string model_path;           // -m
     std::string embedding_model_path; // -e
+    std::string reranker_model_path;  // -r
     std::string chat_template;        // -j
     OPTARG_T input_path  = NULL;      // -i
     OPTARG_T output_path = NULL;      // -o
@@ -1297,6 +1622,14 @@ int main(int argc, OPTARG_T argv[]) {
                 embedding_model_path = wchar_to_utf8(embedding_model_path_u16.c_str());
 #else
                 embedding_model_path = optarg;
+#endif
+                break;
+            case 'r':
+#ifdef WIN32
+                reranker_model_path_u16 = optarg;
+                reranker_model_path = wchar_to_utf8(reranker_model_path_u16.c_str());
+#else
+                reranker_model_path = optarg;
 #endif
                 break;
             case 'i':
@@ -1455,6 +1788,80 @@ int main(int argc, OPTARG_T argv[]) {
                     embeddings_tokenizer = LoadTokenizer(fs::path(embedding_model_path).parent_path());
 #endif
                     embedding_model_created = get_created_timestamp();
+                } catch (const std::exception& e) {
+                    std::cerr << "Failed to load model: " << e.what() << std::endl;
+                    return 1;
+                }
+            }
+        }
+    }
+    
+    std::string reranking_fingerprint;
+    long long reranking_model_created = 0;
+    std::string reranking_modelName;
+    std::unique_ptr<Ort::Session> rerank_session;
+    std::unique_ptr<Ort::Env> rerank_env;
+    size_t num_reranking_input_nodes = 0;
+    size_t num_reranking_output_nodes = 0;
+    std::vector<std::string> reranking_input_node_names;
+    std::vector<std::string> reranking_output_node_names;
+    Ort::AllocatorWithDefaultOptions rerank_allocator;
+    std::vector<int64_t> reranking_input_shape = {1}; // Batch size 1
+    std::vector<const char*> reranking_input_names_c_array;
+    std::vector<const char*> reranking_output_names_c_array;
+    std::unique_ptr<Tokenizer> rerank_tokenizer;
+    int max_position_embeddings;
+    RerankingMode ranking_mode;
+    
+    if (reranker_model_path.length() != 0) {
+        if (fs::exists(reranker_model_path)) {
+            if (fs::is_regular_file(reranker_model_path)) {
+                // 1.b Initialize Reranking and Session (Load once)
+                std::cerr << "[Rerank] Loading from " << reranker_model_path << std::endl;
+                reranking_fingerprint = get_system_fingerprint(reranker_model_path, "directml");
+                try {
+                    rerank_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "Embeddings");
+#ifdef WIN32
+                    reranking_modelName = get_model_name(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
+#else
+                    reranking_modelName = get_model_name(fs::path(reranker_model_path).parent_path());
+#endif
+                    Ort::SessionOptions session_options;
+                    session_options.SetIntraOpNumThreads(1);
+                    session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+                    Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
+#ifdef WIN32
+                    rerank_session = std::make_unique<Ort::Session>(*rerank_env, reranker_model_path_u16.c_str(), session_options);
+#else
+                    rerank_session = std::make_unique<Ort::Session>(*rerank_env, reranker_model_path.c_str(), session_options);
+#endif
+                    num_reranking_input_nodes = rerank_session->GetInputCount();
+                    num_reranking_output_nodes = rerank_session->GetOutputCount();
+                    for (size_t i = 0; i < num_reranking_input_nodes; i++) {
+                        auto input_name_ptr = rerank_session->GetInputNameAllocated(i, rerank_allocator);
+                        reranking_input_node_names.push_back(input_name_ptr.get());
+                    }
+                    for (size_t i = 0; i < num_reranking_output_nodes; i++) {
+                        auto output_name_ptr = rerank_session->GetOutputNameAllocated(i, rerank_allocator);
+                        reranking_output_node_names.push_back(output_name_ptr.get());
+                    }
+                    for (const auto& name : reranking_input_node_names) {
+                        reranking_input_names_c_array.push_back(name.c_str());
+                    }
+                    for (const auto& name : reranking_output_node_names) {
+                        reranking_output_names_c_array.push_back(name.c_str());
+                    }
+#ifdef WIN32
+                    rerank_tokenizer = LoadTokenizer(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
+                    max_position_embeddings = LoadMaxPositionEmbeddings(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
+                    ranking_mode = LoadRerankingMode(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
+#else
+                    rerank_tokenizer = LoadTokenizer(fs::path(reranker_model_path).parent_path());
+                    max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(reranker_model_path).parent_path());
+                    ranking_mode = LoadRerankingMode(fs::path(reranker_model_path).parent_path());
+#endif
+                    std::cout << "[Rerank] max_position_embeddings: " << max_position_embeddings << std::endl;
+                    reranking_model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
                     std::cerr << "Failed to load model: " << e.what() << std::endl;
                     return 1;
@@ -1638,6 +2045,14 @@ int main(int argc, OPTARG_T argv[]) {
                 modelCard["owned_by"] = "system";
                 root["data"].append(modelCard);
             }
+            if(reranking_model_created != 0) {
+                Json::Value modelCard(Json::objectValue);
+                modelCard["id"] = reranking_modelName;
+                modelCard["object"] = "model";
+                modelCard["created"] = reranking_model_created;
+                modelCard["owned_by"] = "system";
+                root["data"].append(modelCard);
+            }
             // Serialize
             Json::StreamWriterBuilder writer;
             writer["indentation"] = ""; // Minified JSON
@@ -1645,6 +2060,125 @@ int main(int argc, OPTARG_T argv[]) {
             // Respond
             res.set_content(json_str, "application/json");
             res.status = 200;
+        });
+        
+        // Route: /v1/rerank
+        svr.Post("/v1/rerank", [&](const httplib::Request& req, httplib::Response& res) {
+            
+            std::cout << "[Server] /v1/rerank request received." << std::endl;
+            
+            try {
+                
+                if(reranking_model_created == 0) {
+                    throw std::invalid_argument("[Embedding] Model not loaded.");
+                }
+                
+                std::string query;
+                int top_n = -1;
+                std::vector<std::string> documents;
+                before_run_reranking(req.body, query, &top_n, documents);
+                
+                std::string response_json;
+                    
+                std::vector<RerankItem>items;
+                
+                switch (pooling_mode) {
+                    case POOLING_E2E:
+                        break;
+                        
+                    default:
+                    {
+                        if (rerank_tokenizer != NULL) {
+                            for (size_t i = 0; i < documents.size(); ++i) {
+                                std::vector<int> ids;
+                                std::vector<int> type_ids;
+                                
+                                switch (pooling_mode) {
+                                    case POOLING_CLS:
+                                    {
+                                        std::vector<int> q = rerank_tokenizer->Encode(query);
+                                        std::vector<int> d = rerank_tokenizer->Encode(documents[i]);
+                                        
+                                        if(ranking_mode == RERANKING_ROBERTA) {
+                                            ids.reserve(q.size() + d.size() + 4);
+                                            ids.push_back(0); // <s>
+                                            ids.insert(ids.end(), q.begin(), q.end());
+                                            ids.push_back(2); // </s>
+                                            ids.push_back(2); // </s>
+                                            ids.insert(ids.end(), d.begin(), d.end());
+                                            ids.push_back(2); // </s>
+                                            type_ids.resize(ids.size(), 0);
+                                        }
+                                        
+                                        if(ranking_mode == RERANKING_BERT) {
+                                            ids.reserve(q.size() + d.size() + 3);
+                                            type_ids.reserve(ids.capacity());
+                                            ids.push_back(101); // [CLS]
+                                            type_ids.push_back(0);
+                                            for(int x : q) { ids.push_back(x); type_ids.push_back(0); }
+                                            ids.push_back(102); // [SEP]
+                                            type_ids.push_back(0);
+                                            for(int x : d) { ids.push_back(x); type_ids.push_back(1); }
+                                            ids.push_back(102); // [SEP]
+                                            type_ids.push_back(1);
+                                        }
+                                    }
+                                        break;
+                                    default:
+                                    {
+                                        ids = rerank_tokenizer->Encode(query + "\n" + documents[i]);
+                                    }
+                                        break;
+                                }
+                                
+                                if (ids.size() > max_position_embeddings) {
+                                    ids.resize(max_position_embeddings - 1);
+                                    int end_token_id = 2; // Default (RoBERTa/Llama)
+                                    if (ranking_mode == RERANKING_BERT) end_token_id = 102;
+                                    ids.push_back(end_token_id);
+                                    if (!type_ids.empty()) {
+                                        type_ids.resize(max_position_embeddings - 1);
+                                        int end_type_id = (ranking_mode == RERANKING_BERT) ? 1 : 0;
+                                        type_ids.push_back(end_type_id);
+                                    }
+                                }
+                                items.emplace_back(RerankItem(ids, type_ids/*, documents[i]*/));
+                            }
+                            response_json = run_reranking(
+                                                          rerank_session.get(),
+                                                          items, max_position_embeddings, top_n,
+                                                          reranking_input_names_c_array,
+                                                          num_reranking_input_nodes,
+                                                          reranking_output_names_c_array,
+                                                          num_reranking_output_nodes,
+                                                          pooling_mode);
+                            
+                        }
+                    }
+                        break;
+                }
+                
+                res.set_content(response_json, "application/json");
+                res.status = 200;
+            } catch (const std::exception& e) {
+                
+                // Build Error JSON
+                Json::Value rootNode(Json::objectValue);
+                Json::Value errorNode(Json::objectValue);
+                errorNode["message"] = e.what();
+                errorNode["type"] = "invalid_request_error";
+                errorNode["param"] = Json::nullValue;
+                errorNode["code"] = Json::nullValue;
+                rootNode["error"] = errorNode;
+                
+                Json::StreamWriterBuilder writer;
+                writer["indentation"] = "";
+                std::string error_str = Json::writeString(writer, rootNode);
+                
+                res.set_content(error_str, "application/json");
+                res.status = 400; // Bad Request as per requirement
+                std::cerr << "[Server] Error: " << e.what() << std::endl;
+            }
         });
         
         // Route: /v1/embeddings

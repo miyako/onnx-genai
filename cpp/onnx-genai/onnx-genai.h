@@ -111,6 +111,12 @@ enum PoolingMode {
     POOLING_E2E
 };
 
+enum RerankingMode {
+    RERANKING_BERT,       // MiniLM, TinyBERT
+    RERANKING_ROBERTA,    // BGE-M3, BGE-Reranker, XLM)
+    RERANKING_LLM
+};
+
 #pragma mark -
 
 static std::string create_stream_chunk(int n,
