@@ -1387,7 +1387,7 @@ static std::string run_reranking(
             listNode.append(dataNode);
         }
 
-        rootNode["data"] = listNode;
+        rootNode["results"] = listNode;
         rootNode["object"] = "list";
         
         Json::StreamWriterBuilder writer;
