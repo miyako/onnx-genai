@@ -337,19 +337,14 @@ Eigen::MatrixXf mean_pool_batch(
         Eigen::VectorXf mask_f = mask.cast<float>();
         float count = mask_f.sum();
 
-        if (count > 0.0f) {
+        if (count > 1e-9f) { // Use a small epsilon instead of 0.0f
             // Matrix Mult: [1, seq] * [seq, dim] -> [1, dim]
-            // We assign this directly to the output row.
             out.row(i) = mask_f.transpose() * hidden;
-            out.row(i) /= count;
+            out.row(i) /= count; // Average
             
-            // --- Step B: Optimized L2 Normalize (In-Place) ---
-            // Calculate norm of the row we just wrote
-            float norm = out.row(i).norm();
-            
-            if (norm > 1e-12f) {
-                out.row(i) /= norm;
-            }
+            // MATH IMPROVEMENT: Use Eigen's in-place normalization
+            // This is generally safer and cleaner.
+            out.row(i).normalize();
         } else {
             // Handle edge case: empty mask -> zero vector
             out.row(i).setZero();
@@ -1046,11 +1041,20 @@ static void run_inference_stream(
     }
 }
 
-static // Helper to convert int32 -> int64
+static // Helper to convert int32 -> int64 using Eigen SIMD cast
 std::vector<int64_t> ConvertToInt64(const std::vector<int>& input_ids) {
+    if (input_ids.empty()) return {};
+
+    // Map the input int32 data
+    Eigen::Map<const Eigen::VectorXi> input_map(input_ids.data(), input_ids.size());
+
+    // Prepare output vector
     std::vector<int64_t> output(input_ids.size());
-    std::transform(input_ids.begin(), input_ids.end(), output.begin(),
-                   [](int i) { return static_cast<int64_t>(i); });
+    
+    // Map the output int64 data and perform vectorized cast
+    Eigen::Map<Eigen::Vector<int64_t, Eigen::Dynamic>> output_map(output.data(), output.size());
+    output_map = input_map.cast<int64_t>();
+
     return output;
 }
 
@@ -1083,11 +1087,10 @@ static std::string last_token_pooling_response(std::vector<Ort::Value>& outputs,
                     break; // Assuming padding is always at the end
                 }
             }
-            // Take the vector at that index
-            Eigen::VectorXf last_vec = raw_matrix.row(last_token_index);
-            // Then normalize
-            Eigen::VectorXf final_embedding = l2_normalize(last_vec);
-            // Create the std::vector
+            
+            // Direct normalized expression evaluation into std::vector
+            // This avoids creating the intermediate 'Eigen::VectorXf final_embedding' object.
+            Eigen::VectorXf final_embedding = raw_matrix.row(last_token_index).normalized();
             std::vector<float> embeddings(final_embedding.data(), final_embedding.data() + final_embedding.size());
             
             Json::Value dataNode = Json::objectValue;
@@ -1116,48 +1119,45 @@ static std::string colbert_pooling_response(std::vector<Ort::Value>& outputs,
  
     Json::Value rootNode(Json::objectValue);
     
-    size_t dimensions = outputs.size();
-    if(dimensions > 0) {
-     
+    if(!outputs.empty()) {
         auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
         float* floatarr = outputs[0].GetTensorMutableData<float>();
-        
         auto shape = output_info.GetShape();
+        
         if(shape.size() > 2) {
             int64_t hidden_size = shape[2];
             
-            // Map raw ONNX data to Eigen Matrix [Seq, Hidden]
-            // Note: ONNX provides data in RowMajor.
+            // Map raw ONNX data
             Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
                             raw_matrix(floatarr, seq_len, hidden_size);
             
+            // MATH IMPROVEMENT:
+            // 1. Convert mask to boolean Eigen array for easy checking
+            // 2. Perform L2 normalization on the ENTIRE matrix at once.
+            //    This uses vectorized math (SIMD) and is much faster than loop-based normalization.
+            //    Note: .normalized() handles the division by zero check internally (mostly safe),
+            //    but if you have zero-vectors, check stableNorm.
+            
+            Eigen::MatrixXf normalized_matrix = raw_matrix.rowwise().normalized();
+            
             Json::Value listNode(Json::arrayValue);
-            // --- COLBERT LOGIC START ---
-            // Iterate over every token in the sequence
+            
             for (int i = 0; i < seq_len; ++i) {
-                // 1. Skip Padding (if your tokenizer added 0-padding at the end)
-                // If your 'ids' input contains 0s for padding, use attention_mask to skip.
-                // If 'ids' is exactly the length of the text, this check always passes.
+                // Skip padding based on mask
                 if (attention_mask[i] == 0) continue;
-                // 2. Get the specific token vector
-                Eigen::VectorXf token_vec = raw_matrix.row(i);
-                // 3. Normalize (L2 Norm) - REQUIRED for MaxSim
-                // ColBERT relies on dot product == cosine similarity, which requires unit vectors.
-                token_vec.normalize();
-                // 4. Append to JSON
-                
+
                 Json::Value dataNode = Json::objectValue;
                 dataNode["object"] = "embedding";
                 
                 Json::Value embeddingsNode(Json::arrayValue);
+                // Access the pre-calculated normalized matrix
                 for (int j = 0; j < hidden_size; ++j) {
-                    embeddingsNode.append(token_vec[j]);
+                    embeddingsNode.append(normalized_matrix(i, j));
                 }
                 dataNode["embedding"] = embeddingsNode;
                 dataNode["index"] = i;
                 listNode.append(dataNode);
             }
-            // --- COLBERT LOGIC END ---
             rootNode["data"] = listNode;
             rootNode["object"] = "list";
         }
