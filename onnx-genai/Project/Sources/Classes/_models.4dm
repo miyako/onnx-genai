@@ -57,6 +57,9 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 				: ($huggingface.domain="embedding")
 					This:C1470.options.embeggings_model:=$huggingface.folder
 					This:C1470.options.embeggings_model_name:=$huggingface.name
+				: ($huggingface.domain="rerank")
+					This:C1470.options.rerank_model:=$huggingface.folder
+					This:C1470.options.rerank_model_name:=$huggingface.name
 			End case 
 			This:C1470.offline:=True:C214
 			continue

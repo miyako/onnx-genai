@@ -29,6 +29,14 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		$command+=" "
 	End if 
 	
+	If (Value type:C1509($option.rerank)=Is object:K8:27)\
+		 && (OB Instance of:C1731($option.rerank; 4D:C1709.Folder))\
+		 && ($option.rerank_model.exists)
+		$command+=" -r "
+		$command+=This:C1470.escape(This:C1470.expand($option.rerank_model).file($option.rerank_model_name).path)
+		$command+=" "
+	End if 
+	
 	$command+=" -p "
 	$command+=String:C10($option.port)
 	$command+=" "
@@ -68,7 +76,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	For each ($arg; OB Entries:C1720($option))
 		Case of 
-			: (["m"; "e"; "i"; "o"; "h"; "host"; "p"; "port"; "j"; "chat_template"; "pooling"; "embeggings_model_name"; "HF_TOKEN"].includes($arg.key))
+			: (["m"; "e"; "i"; "o"; "h"; "r"; "rerank"; "host"; "p"; "port"; "j"; "chat_template"; "pooling"; "embeggings_model_name"; "HF_TOKEN"].includes($arg.key))
 				continue
 		End case 
 		$valueType:=Value type:C1509($arg.value)
