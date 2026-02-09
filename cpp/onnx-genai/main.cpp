@@ -1291,11 +1291,18 @@ static std::string run_reranking(
         int i = 0;
         for(auto it = items.begin() ; it != items.end() ; it++)
         {
+            // 1. Convert IDs
             std::vector<int64_t> ids = ConvertToInt64(it->ids);
+            // 2. Prepare type_ids (Safety Check)
             std::vector<int64_t> type_ids = ConvertToInt64(it->type_ids);
             
-            int batch_size = 1;
             int seq_len = (int)ids.size();
+            
+            if (num_input_nodes > 2 && type_ids.empty()) {
+                type_ids.resize(seq_len, 0); // Fill with 0s (Standard BERT behavior for single sentences)
+            }
+            
+            int batch_size = 1;
             
             // Shape: [batch_size=1, sequence_length]
             std::vector<int64_t> input_dims = {batch_size, seq_len};
@@ -1306,14 +1313,14 @@ static std::string run_reranking(
             // Create Inputs Vector
             std::vector<Ort::Value> input_tensors;
             
-            // Mistral / Llama / Qwen: only need input_ids
+            // Input 1: Input IDs
             input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
                                                                       memory_info,
                                                                       ids.data(),
                                                                       ids.size(),
                                                                       input_dims.data(),
                                                                       input_dims.size()));
-            
+            // Input 2: Attention Mask
             if (num_input_nodes >1) {
                 input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
                                                                           memory_info,
@@ -1321,6 +1328,7 @@ static std::string run_reranking(
                                                                           attention_mask.size(),
                                                                           input_dims.data(),
                                                                           input_dims.size()));
+                // Input 3: Token Type IDs
                 if (num_input_nodes >2) {
                     input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
                                                                               memory_info,
