@@ -7,6 +7,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 
  -m path     : chat completion model
  -e path     : embedding model (pooling=mean)
+ -r path     : rerank model
  -j          : read chat template from stdin
  -t path     : read chat template from path
  -d          : pooling=e2e (Universal Sentence Encoder)
@@ -23,6 +24,10 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 - `/v1/models`
 - `/v1/chat/completions`
 - `/v1/embeddings`
+
+## Cohere Compatible Endpoints
+
+- `/v1/rerank`
 
 ## Converted ONNX Models
 
