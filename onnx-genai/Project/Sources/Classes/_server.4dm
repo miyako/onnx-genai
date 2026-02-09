@@ -29,8 +29,8 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		$command+=" "
 	End if 
 	
-	If (Value type:C1509($option.rerank)=Is object:K8:27)\
-		 && (OB Instance of:C1731($option.rerank; 4D:C1709.Folder))\
+	If (Value type:C1509($option.rerank_model)=Is object:K8:27)\
+		 && (OB Instance of:C1731($option.rerank_model; 4D:C1709.Folder))\
 		 && ($option.rerank_model.exists)
 		$command+=" -r "
 		$command+=This:C1470.escape(This:C1470.expand($option.rerank_model).file($option.rerank_model_name).path)
@@ -76,7 +76,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	For each ($arg; OB Entries:C1720($option))
 		Case of 
-			: (["m"; "e"; "i"; "o"; "h"; "r"; "rerank"; "host"; "p"; "port"; "j"; "chat_template"; "pooling"; "embeggings_model_name"; "HF_TOKEN"].includes($arg.key))
+			: (["m"; "e"; "i"; "o"; "h"; "r"; "rerank"; "host"; "p"; "port"; "j"; "chat_template"; "pooling"; "rerank_model_name"; "embeggings_model_name"; "HF_TOKEN"].includes($arg.key))
 				continue
 		End case 
 		$valueType:=Value type:C1509($arg.value)
@@ -98,7 +98,5 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	End for each 
 	
 	//SET TEXT TO PASTEBOARD($command)
-	
-	//ALERT($command)
 	
 	return This:C1470.controller.execute($command; $chat_template#"" ? $chat_template : Null:C1517).worker

@@ -57,14 +57,14 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
 	
 	Case of 
-		: (True:C214)  //mean
+		: (False:C215)  //mean
 			$folder:=$homeFolder.folder("multilingual-e5-base")
 			$path:="multilingual-e5-base-onnx"
 			$URL:="keisuke-miyako/multilingual-e5-base-onnx"
 			$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
 			$options:={pooling: "mean"}
-		: (True:C214)  //e2e
+		: (False:C215)  //e2e
 			$folder:=$homeFolder.folder("universal-sentence-encoder-multilingual")
 			$path:="universal-sentence-encoder-multilingual-onnx"
 			$URL:="keisuke-miyako/universal-sentence-encoder-multilingual-onnx"
@@ -72,6 +72,16 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
 			$options:={pooling: "e2e"}
 	End case 
+	
+	$homeFolder:=Folder:C1567(fk home folder:K87:24).folder(".ONNX")
+	$port:=8081
+	
+	$folder:=$homeFolder.folder("bge-reranker-v2-m3")  //where to keep the repo
+	$path:="bge-reranker-v2-m3-onnx"  //path to the file
+	$URL:="keisuke-miyako/bge-reranker-v2-m3-onnx"  //path to the repo
+	
+	$huggingface:=cs:C1710.event.huggingface.new($folder; $URL; $path; "rerank"; "model_quantized.onnx")
+	$huggingfaces:=cs:C1710.event.huggingfaces.new([$huggingface])
 	
 	$ONNX:=cs:C1710.ONNX.new($port; $huggingfaces; $homeFolder; $options; $event)
 	
