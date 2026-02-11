@@ -55,13 +55,13 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`intfloat/e5-small-v2`|[`66`](https://huggingface.co/keisuke-miyako/e5-small-v2-onnx-fp16)|[`133`](https://huggingface.co/keisuke-miyako/e5-small-v2-onnx-fp32)
 |`intfloat/e5-base-v2`|[`218`](https://huggingface.co/keisuke-miyako/e5-base-v2-onnx-fp16)|[`435`](https://huggingface.co/keisuke-miyako/e5-base-v2-onnx-fp32)
 |`intfloat/e5-large-v2`|[`668`](https://huggingface.co/keisuke-miyako/e5-large-v2-onnx-fp16)|[`1340`](https://huggingface.co/keisuke-miyako/e5-large-v2-onnx-fp32)
-|`intfloat/multilingual-e5-small`||[`470`](https://huggingface.co/keisuke-miyako/multilingual-e5-small-onnx-fp32)
+|`intfloat/multilingual-e5-small`|[`235`](https://huggingface.co/keisuke-miyako/multilingual-e5-small-onnx-fp16)|[`470`](https://huggingface.co/keisuke-miyako/multilingual-e5-small-onnx-fp32)
 |`intfloat/multilingual-e5-base`|[`555`](https://huggingface.co/keisuke-miyako/multilingual-e5-base-onnx-fp16)|[`1110`](https://huggingface.co/keisuke-miyako/multilingual-e5-base-onnx-fp32)
 |`intfloat/multilingual-e5-large`|[`1120`](https://huggingface.co/keisuke-miyako/multilingual-e5-large-onnx-fp16)|[`2240`](https://huggingface.co/keisuke-miyako/multilingual-e5-large-onnx-fp32)
 |`nomic-ai/nomic-embed-text-v1`
 |`nomic-ai/nomic-embed-text-v1.5`
-|`Snowflake/snowflake-arctic-embed-s`
-|`Snowflake/snowflake-arctic-embed-l`|
+|`Snowflake/snowflake-arctic-embed-s`||[`133`](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-onnx-fp32)|[`33`](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-onnx-int8)
+|`Snowflake/snowflake-arctic-embed-l`||[`1340`](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-onnx-fp32)|[`336`](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-onnx-int8)
 |`sentence-transformers/all-MiniLM-L6-v2`
 |`sentence-transformers/all-MiniLM-L12-v2`
 |`google/embeddinggemma-300m`
