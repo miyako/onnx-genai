@@ -81,8 +81,8 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`cl-nagoya/ruri-v3-70m`||[`280`](https://huggingface.co/keisuke-miyako/ruri-v3-70m-onnx-fp32)|[`70`](https://huggingface.co/keisuke-miyako/ruri-v3-70m-onnx-int8)
 |`cl-nagoya/ruri-v3-130m`|[`264`](https://huggingface.co/keisuke-miyako/ruri-v3-130m-onnx-fp16)|[`529`](https://huggingface.co/keisuke-miyako/ruri-v3-130m-onnx-fp32)|[`133`](https://huggingface.co/keisuke-miyako/ruri-v3-130m-onnx-int8)
 |`cl-nagoya/ruri-v3-310m`|[`629`](https://huggingface.co/keisuke-miyako/ruri-v3-310m-onnx-fp16)|[`1260`](https://huggingface.co/keisuke-miyako/ruri-v3-310m-onnx-fp32)|[`316`](https://huggingface.co/keisuke-miyako/ruri-v3-310m-onnx-int8)
-|`cl-nagoya/ruri-base-v2`
-|`cl-nagoya/ruri-large-v2`
+|`cl-nagoya/ruri-base-v2`|[`221`](https://huggingface.co/keisuke-miyako/ruri-base-v2-onnx-fp16)|[`442`](https://huggingface.co/keisuke-miyako/ruri-base-v2-onnx-fp32)|[`111`](https://huggingface.co/keisuke-miyako/ruri-base-v2-onnx-int8)
+|`cl-nagoya/ruri-large-v2`|[`673`](https://huggingface.co/keisuke-miyako/ruri-large-v2-onnx-fp16)|[`1350`](https://huggingface.co/keisuke-miyako/ruri-large-v2-onnx-fp32)|[`338`](https://huggingface.co/keisuke-miyako/ruri-large-v2-onnx-int8)
 |`ibm-granite/granite-embedding-small-english-r2`||[`190`](https://huggingface.co/keisuke-miyako/granite-embedding-small-english-r2-onnx-fp32)|[`48`](https://huggingface.co/keisuke-miyako/granite-embedding-small-english-r2-onnx-int8)
 |`ibm-granite/granite-embedding-english-r2`|[`298`](https://huggingface.co/keisuke-miyako/granite-embedding-english-r2-onnx-fp16)|[`596`](https://huggingface.co/keisuke-miyako/granite-embedding-english-r2-onnx-fp32)|[`150`](https://huggingface.co/keisuke-miyako/granite-embedding-english-r2-onnx-int8)
 |`ibm-granite/granite-embedding-30m-english`|[`60`](https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-onnx-fp16)|[`120`](https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-onnx-fp32)|[`30`](https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-onnx-int8)
