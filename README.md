@@ -71,8 +71,8 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`Alibaba-NLP/gte-large-en-v1.5`
 |`Alibaba-NLP/gte-multilingual-base`
 |`Alibaba-NLP/gte-modernbert-base`
-|`Alibaba-NLP/gte-Qwen2-1.5B-instruct`|||`1680`
-|`Alibaba-NLP/gte-Qwen2-7B-instruct`|||`7210`|
+|`Alibaba-NLP/gte-Qwen2-1.5B-instruct`|||[`1680`](https://huggingface.co/keisuke-miyako/gte-Qwen2-1.5B-instruct-onnx-int8)
+|`Alibaba-NLP/gte-Qwen2-7B-instruct`|||[`7210`](https://huggingface.co/keisuke-miyako/gte-Qwen2-7B-instruct-onnx-int8)|
 |`sbintuitions/modernbert-ja-30m`
 |`sbintuitions/modernbert-ja-70m`
 |`sbintuitions/modernbert-ja-130m`
@@ -89,5 +89,5 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`ibm-granite/granite-embedding-125m-english`
 |`ibm-granite/granite-embedding-107m-multilingual`
 |`ibm-granite/granite-embedding-278m-multilingual`
-|`sbintuitions/sarashina-embedding-v1-1b`|||`1230`
-|`sbintuitions/sarashina-embedding-v2-1b`|||`1230`
+|`sbintuitions/sarashina-embedding-v1-1b`|||[`1230`](https://huggingface.co/keisuke-miyako/sarashina-embedding-v1-1b-onnx-int8)
+|`sbintuitions/sarashina-embedding-v2-1b`|||[`1230`](https://huggingface.co/keisuke-miyako/sarashina-embedding-v2-1b-onnx-int8)
