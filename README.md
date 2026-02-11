@@ -89,14 +89,14 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`ibm-granite/granite-embedding-278m-multilingual`
 |`gte-Qwen2-1.5B-instruct`|||`1680`
 |`gte-Qwen2-7B-instruct`|||`7210`|
-
+|`sarashina-embedding-v1-1b`|||`1230`
+|`sarashina-embedding-v2-1b`|||`1230`
 
 
 - https://huggingface.co/keisuke-miyako/universal-sentence-encoder-onnx
 - https://huggingface.co/keisuke-miyako/universal-sentence-encoder-large-onnx
 - https://huggingface.co/keisuke-miyako/universal-sentence-encoder-multilingual-onnx
 - https://huggingface.co/keisuke-miyako/universal-sentence-encoder-multilingual-large-onnx
-- https://huggingface.co/keisuke-miyako/sarashina-embedding-v1-1b-onnx
-- https://huggingface.co/keisuke-miyako/sarashina-embedding-v2-1b-onnx
+
 
 
