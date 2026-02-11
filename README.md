@@ -43,19 +43,6 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`jinaai/jina-reranker-v1-turbo-en`||`151`
 |`mixedbread-ai/mxbai-rerank-xsmall-v1`||`284`
 |`ibm-granite/granite-embedding-reranker-english-r2`|`299`|`599`
-|`Snowflake/snowflake-arctic-embed-s`
-|`Snowflake/snowflake-arctic-embed-l`
-|`nomic-ai/nomic-embed-text-v1`
-|`nomic-ai/nomic-embed-text-v1.5`
-|`sentence-transformers/all-MiniLM-L6-v2`
-|`sentence-transformers/all-MiniLM-L12-v2`
-|`google/embeddinggemma-300m`
-|`retrieva-jp/amber-base`
-|`retrieva-jp/amber-large`
-|`Alibaba-NLP/gte-base-en-v1.5`
-|`Alibaba-NLP/gte-large-en-v1.5`
-|`Alibaba-NLP/gte-multilingual-base`
-|`Alibaba-NLP/gte-modernbert-base`
 
 ### Embedding
 
@@ -85,6 +72,8 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`Alibaba-NLP/gte-modernbert-base`
 |`Alibaba-NLP/gte-base-en-v1.5`
 |`Alibaba-NLP/gte-large-en-v1.5`
+|`Alibaba-NLP/gte-multilingual-base`
+|`Alibaba-NLP/gte-modernbert-base`
 |`retrieva-jp/amber-base`
 |`retrieva-jp/amber-large`
 |`google/embeddinggemma-300m`
@@ -94,6 +83,13 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`nomic-ai/nomic-embed-text-v1.5`
 |`Snowflake/snowflake-arctic-embed-s`
 |`Snowflake/snowflake-arctic-embed-l`|
+|`Snowflake/snowflake-arctic-embed-s`
+|`Snowflake/snowflake-arctic-embed-l`
+|`nomic-ai/nomic-embed-text-v1`
+|`nomic-ai/nomic-embed-text-v1.5`
+
+
+
 
 
 
