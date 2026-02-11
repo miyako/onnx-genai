@@ -51,7 +51,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`BAAI/bge-small-en-v1.5`||[`133`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-fp32)|[`33`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-int8)
 |`BAAI/bge-base-en-v1.5`||[`435`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-fp32)|[`116`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-int8)
 |`BAAI/bge-large-en-v1.5`||[`1340`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-fp32)|[`335`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-int8)
-|`BAAI/bge-m3`|[``](https://huggingface.co/keisuke-miyako/bge-m3-onnx-fp16)|[`2270`](https://huggingface.co/keisuke-miyako/bge-m3-onnx-fp32)
+|`BAAI/bge-m3`|[`1130`](https://huggingface.co/keisuke-miyako/bge-m3-onnx-fp16)|[`2270`](https://huggingface.co/keisuke-miyako/bge-m3-onnx-fp32)
 |`intfloat/e5-small-v2`||[`133`](https://huggingface.co/keisuke-miyako/e5-small-v2-onnx-fp32)
 |`intfloat/e5-base-v2`||[`435`](https://huggingface.co/keisuke-miyako/e5-base-v2-onnx-fp32)
 |`intfloat/e5-large-v2`|[`668`](https://huggingface.co/keisuke-miyako/e5-large-v2-onnx-fp16)|[`1340`](https://huggingface.co/keisuke-miyako/e5-large-v2-onnx-fp32)
