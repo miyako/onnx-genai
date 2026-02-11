@@ -81,8 +81,12 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`cl-nagoya/ruri-v3-310m`
 |`cl-nagoya/ruri-base-v2`
 |`cl-nagoya/ruri-large-v2`
-
-
+|`ibm-granite/granite-embedding-small-english-r2`
+|`ibm-granite/granite-embedding-english-r2`
+|`ibm-granite/granite-embedding-30m-english`
+|`ibm-granite/granite-embedding-125m-english`
+|`ibm-granite/granite-embedding-107m-multilingual`
+|`ibm-granite/granite-embedding-278m-multilingual`
 
 
 
@@ -93,12 +97,6 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 - https://huggingface.co/keisuke-miyako/universal-sentence-encoder-large-onnx
 - https://huggingface.co/keisuke-miyako/universal-sentence-encoder-multilingual-onnx
 - https://huggingface.co/keisuke-miyako/universal-sentence-encoder-multilingual-large-onnx
-- https://huggingface.co/keisuke-miyako/granite-embedding-small-english-r2-onnx
-- https://huggingface.co/keisuke-miyako/granite-embedding-english-r2-onnx
-- https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-onnx
-- https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-onnx
-- https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-onnx
-- https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-onnx
 - https://huggingface.co/keisuke-miyako/sarashina-embedding-v1-1b-onnx
 - https://huggingface.co/keisuke-miyako/sarashina-embedding-v2-1b-onnx
 
