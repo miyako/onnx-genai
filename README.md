@@ -33,8 +33,8 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 
 ### Rerank
 
-|Model|fp16|fp32|
-|-|-|-:|
+|Model|fp16|fp32|int8
+|-|-:|-:|-:
 |`cross-encoder/ms-marco-MiniLM-L6-v2`||`91`|
 |`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`||`471`
 |`BAAI/bge-reranker-v2-m3`||`2270`
