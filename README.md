@@ -91,7 +91,3 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`ibm-granite/granite-embedding-278m-multilingual`
 |`sbintuitions/sarashina-embedding-v1-1b`|||`1230`
 |`sbintuitions/sarashina-embedding-v2-1b`|||`1230`
-|`universal-sentence-encoder`|||`589`
-|`universal-sentence-encoder-large`|||`589`
-|`universal-sentence-encoder-multilingual`|||`279`
-|`universal-sentence-encoder-multilingual-large`|||`340`
