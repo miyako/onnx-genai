@@ -43,6 +43,19 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`jinaai/jina-reranker-v1-turbo-en`||`151`
 |`mixedbread-ai/mxbai-rerank-xsmall-v1`||`284`
 |`ibm-granite/granite-embedding-reranker-english-r2`|`299`|`599`
+|`Snowflake/snowflake-arctic-embed-s`
+|`Snowflake/snowflake-arctic-embed-l`
+|`nomic-ai/nomic-embed-text-v1`
+|`nomic-ai/nomic-embed-text-v1.5`
+|`sentence-transformers/all-MiniLM-L6-v2`
+|`sentence-transformers/all-MiniLM-L12-v2`
+|`google/embeddinggemma-300m`
+|`retrieva-jp/amber-base`
+|`retrieva-jp/amber-large`
+|`Alibaba-NLP/gte-base-en-v1.5`
+|`Alibaba-NLP/gte-large-en-v1.5`
+|`Alibaba-NLP/gte-multilingual-base`
+|`Alibaba-NLP/gte-modernbert-base`
 
 ### Embedding
 
@@ -59,19 +72,8 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`intfloat/multilingual-e5-base`|`555`|`1110`
 |`intfloat/multilingual-e5-large`||`2240`
 
-- https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-onnx
-- https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-onnx
-- https://huggingface.co/keisuke-miyako/nomic-embed-text-v1-onnx
-- https://huggingface.co/keisuke-miyako/nomic-embed-text-v1.5-onnx
-- https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-onnx
-- https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-onnx
-- https://huggingface.co/keisuke-miyako/embeddinggemma-300m-onnx
-- https://huggingface.co/keisuke-miyako/amber-base-onnx
-- https://huggingface.co/keisuke-miyako/amber-large-onnx
-- https://huggingface.co/keisuke-miyako/gte-base-en-v1.5-onnx
-- https://huggingface.co/keisuke-miyako/gte-large-en-v1.5-onnx
-- https://huggingface.co/keisuke-miyako/gte-multilingual-base-onnx
-- https://huggingface.co/keisuke-miyako/gte-modernbert-base-onnx
+
+
 - https://huggingface.co/keisuke-miyako/gte-Qwen2-1.5B-instruct-onnx
 - https://huggingface.co/keisuke-miyako/gte-Qwen2-7B-instruct-onnx
 - https://huggingface.co/keisuke-miyako/universal-sentence-encoder-onnx
