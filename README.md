@@ -87,12 +87,11 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`ibm-granite/granite-embedding-125m-english`
 |`ibm-granite/granite-embedding-107m-multilingual`
 |`ibm-granite/granite-embedding-278m-multilingual`
+|`gte-Qwen2-1.5B-instruct`|||`1680`
+|`gte-Qwen2-7B-instruct`|||`7210`|
 
 
 
-
-- https://huggingface.co/keisuke-miyako/gte-Qwen2-1.5B-instruct-onnx
-- https://huggingface.co/keisuke-miyako/gte-Qwen2-7B-instruct-onnx
 - https://huggingface.co/keisuke-miyako/universal-sentence-encoder-onnx
 - https://huggingface.co/keisuke-miyako/universal-sentence-encoder-large-onnx
 - https://huggingface.co/keisuke-miyako/universal-sentence-encoder-multilingual-onnx
