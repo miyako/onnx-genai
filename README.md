@@ -71,6 +71,30 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`intfloat/multilingual-e5-small`||`470`
 |`intfloat/multilingual-e5-base`|`555`|`1110`
 |`intfloat/multilingual-e5-large`||`2240`
+|`cl-nagoya/ruri-base-v2`
+|`cl-nagoya/ruri-large-v2`
+|`cl-nagoya/ruri-v3-30m`
+|`cl-nagoya/ruri-v3-70m`
+|`cl-nagoya/ruri-v3-130m`
+|`cl-nagoya/ruri-v3-310m`
+|`sbintuitions/modernbert-ja-30m`
+|`sbintuitions/modernbert-ja-70m`
+|`sbintuitions/modernbert-ja-130m`
+|`sbintuitions/modernbert-ja-310m`
+|`Alibaba-NLP/gte-multilingual-base`
+|`Alibaba-NLP/gte-modernbert-base`
+|`Alibaba-NLP/gte-base-en-v1.5`
+|`Alibaba-NLP/gte-large-en-v1.5`
+|`retrieva-jp/amber-base`
+|`retrieva-jp/amber-large`
+|`google/embeddinggemma-300m`
+|`sentence-transformers/all-MiniLM-L6-v2`
+|`sentence-transformers/all-MiniLM-L12-v2`
+|`nomic-ai/nomic-embed-text-v1`
+|`nomic-ai/nomic-embed-text-v1.5`
+|`Snowflake/snowflake-arctic-embed-s`
+|`Snowflake/snowflake-arctic-embed-l`|
+
 
 
 
@@ -88,13 +112,5 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 - https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-onnx
 - https://huggingface.co/keisuke-miyako/sarashina-embedding-v1-1b-onnx
 - https://huggingface.co/keisuke-miyako/sarashina-embedding-v2-1b-onnx
-- https://huggingface.co/keisuke-miyako/ruri-base-v2-onnx
-- https://huggingface.co/keisuke-miyako/ruri-large-v2-onnx
-- https://huggingface.co/keisuke-miyako/ruri-v3-30m-onnx
-- https://huggingface.co/keisuke-miyako/ruri-v3-70m-onnx
-- https://huggingface.co/keisuke-miyako/ruri-v3-130m-onnx
-- https://huggingface.co/keisuke-miyako/ruri-v3-310m-onnx
-- https://huggingface.co/keisuke-miyako/modernbert-ja-30m-onnx
-- https://huggingface.co/keisuke-miyako/modernbert-ja-70m-onnx
-- https://huggingface.co/keisuke-miyako/modernbert-ja-130m-onnx
-- https://huggingface.co/keisuke-miyako/modernbert-ja-310m-onnx
+
+
