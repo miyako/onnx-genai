@@ -39,10 +39,10 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`|[`235`](https://huggingface.co/keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-onnx-fp16)|[`470`](https://huggingface.co/keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-onnx-fp32)
 |`BAAI/bge-reranker-v2-m3`||[`2270`](https://huggingface.co/keisuke-miyako/bge-reranker-v2-m3-onnx-fp32)
 |`BAAI/bge-reranker-base`|[`556`](https://huggingface.co/keisuke-miyako/bge-reranker-base-onnx-fp16)|[`1110`](https://huggingface.co/keisuke-miyako/bge-reranker-base-onnx-fp32)
-|`BAAI/bge-reranker-large`||`2240`
-|`jinaai/jina-reranker-v1-turbo-en`||`151`
-|`mixedbread-ai/mxbai-rerank-xsmall-v1`||`284`
-|`ibm-granite/granite-embedding-reranker-english-r2`|`299`|`599`
+|`BAAI/bge-reranker-large`||[`2240`](https://huggingface.co/keisuke-miyako/bge-reranker-large-onnx-fp32)
+|`jinaai/jina-reranker-v1-turbo-en`||[`151`](https://huggingface.co/keisuke-miyako/jina-reranker-v1-turbo-en-onnx-fp32)
+|`mixedbread-ai/mxbai-rerank-xsmall-v1`||[`284`](https://huggingface.co/keisuke-miyako/mxbai-rerank-xsmall-v1-onnx-fp32)
+|`ibm-granite/granite-embedding-reranker-english-r2`|[`299`](https://huggingface.co/keisuke-miyako/granite-embedding-reranker-english-r2-onnx-fp16)|[`599`](https://huggingface.co/keisuke-miyako/granite-embedding-reranker-english-r2-onnx-fp32)
 
 ### Embedding
 
