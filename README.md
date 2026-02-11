@@ -71,6 +71,8 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`Alibaba-NLP/gte-large-en-v1.5`
 |`Alibaba-NLP/gte-multilingual-base`
 |`Alibaba-NLP/gte-modernbert-base`
+|`Alibaba-NLP/gte-Qwen2-1.5B-instruct`|||`1680`
+|`Alibaba-NLP/gte-Qwen2-7B-instruct`|||`7210`|
 |`sbintuitions/modernbert-ja-30m`
 |`sbintuitions/modernbert-ja-70m`
 |`sbintuitions/modernbert-ja-130m`
@@ -87,10 +89,8 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`ibm-granite/granite-embedding-125m-english`
 |`ibm-granite/granite-embedding-107m-multilingual`
 |`ibm-granite/granite-embedding-278m-multilingual`
-|`gte-Qwen2-1.5B-instruct`|||`1680`
-|`gte-Qwen2-7B-instruct`|||`7210`|
-|`sarashina-embedding-v1-1b`|||`1230`
-|`sarashina-embedding-v2-1b`|||`1230`
+|`sbintuitions/sarashina-embedding-v1-1b`|||`1230`
+|`sbintuitions/sarashina-embedding-v2-1b`|||`1230`
 |`universal-sentence-encoder`|||`589`
 |`universal-sentence-encoder-large`|||`1030`
 |`universal-sentence-encoder-multilingual`|||`279`
