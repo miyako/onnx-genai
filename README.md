@@ -73,10 +73,10 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`Alibaba-NLP/gte-modernbert-base`|[`298`](https://huggingface.co/keisuke-miyako/gte-modernbert-base-onnx-fp16)|[`596`](https://huggingface.co/keisuke-miyako/gte-modernbert-base-onnx-fp32)|[`150`](https://huggingface.co/keisuke-miyako/gte-modernbert-base-onnx-int8)
 |`Alibaba-NLP/gte-Qwen2-1.5B-instruct`|||[`1680`](https://huggingface.co/keisuke-miyako/gte-Qwen2-1.5B-instruct-onnx-int8)
 |`Alibaba-NLP/gte-Qwen2-7B-instruct`|||[`7210`](https://huggingface.co/keisuke-miyako/gte-Qwen2-7B-instruct-onnx-int8)|
-|`sbintuitions/modernbert-ja-30m`
-|`sbintuitions/modernbert-ja-70m`
-|`sbintuitions/modernbert-ja-130m`
-|`sbintuitions/modernbert-ja-310m`
+|`sbintuitions/modernbert-ja-30m`|[`73`](https://huggingface.co/keisuke-miyako/modernbert-ja-30m-onnx-fp16)|[`147`](https://huggingface.co/keisuke-miyako/modernbert-ja-30m-onnx-fp32)|[`37`](https://huggingface.co/keisuke-miyako/modernbert-ja-30m-onnx-int8)
+|`sbintuitions/modernbert-ja-70m`|[`140`](https://huggingface.co/keisuke-miyako/modernbert-ja-70m-onnx-fp16)|[`280`](https://huggingface.co/keisuke-miyako/modernbert-ja-70m-onnx-fp32)|[`70`](https://huggingface.co/keisuke-miyako/modernbert-ja-70m-onnx-int8)
+|`sbintuitions/modernbert-ja-130m`|[`264`](https://huggingface.co/keisuke-miyako/modernbert-ja-130m-onnx-fp16)|[`529`](https://huggingface.co/keisuke-miyako/modernbert-ja-130m-onnx-fp32)|[`133`](https://huggingface.co/keisuke-miyako/modernbert-ja-130m-onnx-int8)
+|`sbintuitions/modernbert-ja-310m`|[`629`](https://huggingface.co/keisuke-miyako/modernbert-ja-310m-onnx-fp16)|[`1260`](https://huggingface.co/keisuke-miyako/modernbert-ja-310m-onnx-fp32)|[`316`](https://huggingface.co/keisuke-miyako/modernbert-ja-310m-onnx-int8)
 |`cl-nagoya/ruri-v3-30m`|[`73`](https://huggingface.co/keisuke-miyako/ruri-v3-30m-onnx-fp16)|[`147`](https://huggingface.co/keisuke-miyako/ruri-v3-30m-onnx-fp32)|[`37`](https://huggingface.co/keisuke-miyako/ruri-v3-30m-onnx-int8)
 |`cl-nagoya/ruri-v3-70m`|[`140`](https://huggingface.co/keisuke-miyako/ruri-v3-70m-onnx-fp16)|[`280`](https://huggingface.co/keisuke-miyako/ruri-v3-70m-onnx-fp32)|[`70`](https://huggingface.co/keisuke-miyako/ruri-v3-70m-onnx-int8)
 |`cl-nagoya/ruri-v3-130m`|[`264`](https://huggingface.co/keisuke-miyako/ruri-v3-130m-onnx-fp16)|[`529`](https://huggingface.co/keisuke-miyako/ruri-v3-130m-onnx-fp32)|[`133`](https://huggingface.co/keisuke-miyako/ruri-v3-130m-onnx-int8)
