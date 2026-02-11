@@ -48,8 +48,8 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 
 |Model|fp16|fp32|int8
 |-|-:|-:|-:
-|`BAAI/bge-small-en-v1.5`||[`133`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-fp32)|[`33`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-int8)
-|`BAAI/bge-base-en-v1.5`||[`435`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-fp32)|[`116`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-int8)
+|`BAAI/bge-small-en-v1.5`|[`66`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-fp16)|[`133`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-fp32)|[`33`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-int8)
+|`BAAI/bge-base-en-v1.5`|[`278`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-fp16)|[`435`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-fp32)|[`116`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-int8)
 |`BAAI/bge-large-en-v1.5`|[`668`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-fp16)|[`1340`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-fp32)|[`335`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-int8)
 |`BAAI/bge-m3`|[`1130`](https://huggingface.co/keisuke-miyako/bge-m3-onnx-fp16)|[`2270`](https://huggingface.co/keisuke-miyako/bge-m3-onnx-fp32)
 |`intfloat/e5-small-v2`|[`66`](https://huggingface.co/keisuke-miyako/e5-small-v2-onnx-fp16)|[`133`](https://huggingface.co/keisuke-miyako/e5-small-v2-onnx-fp32)
@@ -58,12 +58,12 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`intfloat/multilingual-e5-small`|[`235`](https://huggingface.co/keisuke-miyako/multilingual-e5-small-onnx-fp16)|[`470`](https://huggingface.co/keisuke-miyako/multilingual-e5-small-onnx-fp32)
 |`intfloat/multilingual-e5-base`|[`555`](https://huggingface.co/keisuke-miyako/multilingual-e5-base-onnx-fp16)|[`1110`](https://huggingface.co/keisuke-miyako/multilingual-e5-base-onnx-fp32)
 |`intfloat/multilingual-e5-large`|[`1120`](https://huggingface.co/keisuke-miyako/multilingual-e5-large-onnx-fp16)|[`2240`](https://huggingface.co/keisuke-miyako/multilingual-e5-large-onnx-fp32)
-|`nomic-ai/nomic-embed-text-v1`||[`547`](https://huggingface.co/keisuke-miyako/nomic-embed-text-v1-onnx-fp32)|[`138`](https://huggingface.co/keisuke-miyako/nomic-embed-text-v1-onnx-int8)
-|`nomic-ai/nomic-embed-text-v1.5`||[`547`](https://huggingface.co/keisuke-miyako/nomic-embed-text-v1.5-onnx-fp32)|[`138`](https://huggingface.co/keisuke-miyako/nomic-embed-text-v1.5-onnx-int8)
+|`nomic-ai/nomic-embed-text-v1`|[`274`](https://huggingface.co/keisuke-miyako/nomic-embed-text-v1-onnx-fp16)|[`547`](https://huggingface.co/keisuke-miyako/nomic-embed-text-v1-onnx-fp32)|[`138`](https://huggingface.co/keisuke-miyako/nomic-embed-text-v1-onnx-int8)
+|`nomic-ai/nomic-embed-text-v1.5`|[`274`](https://huggingface.co/keisuke-miyako/nomic-embed-text-v1.5-onnx-fp16)|[`547`](https://huggingface.co/keisuke-miyako/nomic-embed-text-v1.5-onnx-fp32)|[`138`](https://huggingface.co/keisuke-miyako/nomic-embed-text-v1.5-onnx-int8)
 |`Snowflake/snowflake-arctic-embed-s`|[`66`](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-onnx-fp16)|[`133`](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-onnx-fp32)|[`33`](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-onnx-int8)
 |`Snowflake/snowflake-arctic-embed-l`|[`668`](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-onnx-fp16)|[`1340`](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-onnx-fp32)|[`336`](https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-onnx-int8)
 |`sentence-transformers/all-MiniLM-L6-v2`|[`45`](https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-onnx-fp16)|[`90`](https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-onnx-fp32)|[`22`](https://huggingface.co/keisuke-miyako/all-MiniLM-L6-v2-onnx-int8)
-|`sentence-transformers/all-MiniLM-L12-v2`||[`133`](https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-onnx-fp32)|[`33`](https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-onnx-int8)
+|`sentence-transformers/all-MiniLM-L12-v2`|[`66`](https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-onnx-fp16)|[`133`](https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-onnx-fp32)|[`33`](https://huggingface.co/keisuke-miyako/all-MiniLM-L12-v2-onnx-int8)
 |`google/embeddinggemma-300m`|[`607`](https://huggingface.co/keisuke-miyako/embeddinggemma-300m-onnx-fp16)|[`1210`](https://huggingface.co/keisuke-miyako/embeddinggemma-300m-onnx-fp32)|[`309`](https://huggingface.co/keisuke-miyako/embeddinggemma-300m-onnx-int8)
 |`retrieva-jp/amber-base`|[`264`](https://huggingface.co/keisuke-miyako/amber-base-onnx-fp16)|[`529`](https://huggingface.co/keisuke-miyako/amber-base-onnx-fp32)|[`133`](https://huggingface.co/keisuke-miyako/amber-base-onnx-int8)
 |`retrieva-jp/amber-large`|[`629`](https://huggingface.co/keisuke-miyako/amber-large-onnx-fp16)|[`1260`](https://huggingface.co/keisuke-miyako/amber-large-onnx-fp32)|[`316`](https://huggingface.co/keisuke-miyako/amber-large-onnx-int8)
@@ -78,12 +78,12 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`sbintuitions/modernbert-ja-130m`
 |`sbintuitions/modernbert-ja-310m`
 |`cl-nagoya/ruri-v3-30m`||[`147`](https://huggingface.co/keisuke-miyako/ruri-v3-30m-onnx-fp32)|[`37`](https://huggingface.co/keisuke-miyako/ruri-v3-30m-onnx-int8)
-|`cl-nagoya/ruri-v3-70m`||[`280`](https://huggingface.co/keisuke-miyako/ruri-v3-70m-onnx-fp32)|[`70`](https://huggingface.co/keisuke-miyako/ruri-v3-70m-onnx-int8)
+|`cl-nagoya/ruri-v3-70m`|[`140`](https://huggingface.co/keisuke-miyako/ruri-v3-70m-onnx-fp16)|[`280`](https://huggingface.co/keisuke-miyako/ruri-v3-70m-onnx-fp32)|[`70`](https://huggingface.co/keisuke-miyako/ruri-v3-70m-onnx-int8)
 |`cl-nagoya/ruri-v3-130m`|[`264`](https://huggingface.co/keisuke-miyako/ruri-v3-130m-onnx-fp16)|[`529`](https://huggingface.co/keisuke-miyako/ruri-v3-130m-onnx-fp32)|[`133`](https://huggingface.co/keisuke-miyako/ruri-v3-130m-onnx-int8)
 |`cl-nagoya/ruri-v3-310m`|[`629`](https://huggingface.co/keisuke-miyako/ruri-v3-310m-onnx-fp16)|[`1260`](https://huggingface.co/keisuke-miyako/ruri-v3-310m-onnx-fp32)|[`316`](https://huggingface.co/keisuke-miyako/ruri-v3-310m-onnx-int8)
 |`cl-nagoya/ruri-base-v2`|[`221`](https://huggingface.co/keisuke-miyako/ruri-base-v2-onnx-fp16)|[`442`](https://huggingface.co/keisuke-miyako/ruri-base-v2-onnx-fp32)|[`111`](https://huggingface.co/keisuke-miyako/ruri-base-v2-onnx-int8)
 |`cl-nagoya/ruri-large-v2`|[`673`](https://huggingface.co/keisuke-miyako/ruri-large-v2-onnx-fp16)|[`1350`](https://huggingface.co/keisuke-miyako/ruri-large-v2-onnx-fp32)|[`338`](https://huggingface.co/keisuke-miyako/ruri-large-v2-onnx-int8)
-|`ibm-granite/granite-embedding-small-english-r2`||[`190`](https://huggingface.co/keisuke-miyako/granite-embedding-small-english-r2-onnx-fp32)|[`48`](https://huggingface.co/keisuke-miyako/granite-embedding-small-english-r2-onnx-int8)
+|`ibm-granite/granite-embedding-small-english-r2`|[`95`](https://huggingface.co/keisuke-miyako/granite-embedding-small-english-r2-onnx-fp16)|[`190`](https://huggingface.co/keisuke-miyako/granite-embedding-small-english-r2-onnx-fp32)|[`48`](https://huggingface.co/keisuke-miyako/granite-embedding-small-english-r2-onnx-int8)
 |`ibm-granite/granite-embedding-english-r2`|[`298`](https://huggingface.co/keisuke-miyako/granite-embedding-english-r2-onnx-fp16)|[`596`](https://huggingface.co/keisuke-miyako/granite-embedding-english-r2-onnx-fp32)|[`150`](https://huggingface.co/keisuke-miyako/granite-embedding-english-r2-onnx-int8)
 |`ibm-granite/granite-embedding-30m-english`|[`60`](https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-onnx-fp16)|[`120`](https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-onnx-fp32)|[`30`](https://huggingface.co/keisuke-miyako/granite-embedding-30m-english-onnx-int8)
 |`ibm-granite/granite-embedding-125m-english`|[`248`](https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-onnx-fp16)|[`496`](https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-onnx-fp32)|[`125`](https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-onnx-int8)
