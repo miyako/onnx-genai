@@ -44,19 +44,21 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`mixedbread-ai/mxbai-rerank-xsmall-v1`||`284`
 |`ibm-granite/granite-embedding-reranker-english-r2`|`299`|`599`
 
+### Embedding
 
-https://huggingface.co/collections/keisuke-miyako/onnx-runtime
+|Model|fp16|fp32|int8
+|-|-:|-:|-:
+|`BAAI/bge-small-en-v1.5`|
+|`BAAI/bge-base-en-v1.5`
+|`BAAI/bge-large-en-v1.5`
+|`BAAI/bge-m3`
+|`intfloat/e5-small-v2`||`133`
+|`intfloat/e5-base-v2`||`435`
+|`intfloat/e5-large-v2`|`668`|`1340`
+|`intfloat/multilingual-e5-small`||`470`
+|`intfloat/multilingual-e5-base`|`555`|`1110`
+|`intfloat/multilingual-e5-large`||`2240`
 
-- https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx
-- https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx
-- https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx
-- https://huggingface.co/keisuke-miyako/bge-m3-onnx
-- https://huggingface.co/keisuke-miyako/e5-small-v2-onnx
-- https://huggingface.co/keisuke-miyako/e5-base-v2-onnx
-- https://huggingface.co/keisuke-miyako/e5-large-v2-onnx
-- https://huggingface.co/keisuke-miyako/multilingual-e5-small-onnx
-- https://huggingface.co/keisuke-miyako/multilingual-e5-base-onnx
-- https://huggingface.co/keisuke-miyako/multilingual-e5-large-onnx
 - https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-s-onnx
 - https://huggingface.co/keisuke-miyako/snowflake-arctic-embed-l-onnx
 - https://huggingface.co/keisuke-miyako/nomic-embed-text-v1-onnx
