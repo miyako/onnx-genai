@@ -72,8 +72,6 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`Alibaba-NLP/gte-modernbert-base`
 |`Alibaba-NLP/gte-base-en-v1.5`
 |`Alibaba-NLP/gte-large-en-v1.5`
-|`Alibaba-NLP/gte-multilingual-base`
-|`Alibaba-NLP/gte-modernbert-base`
 |`retrieva-jp/amber-base`
 |`retrieva-jp/amber-large`
 |`google/embeddinggemma-300m`
@@ -85,8 +83,6 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`Snowflake/snowflake-arctic-embed-l`|
 |`Snowflake/snowflake-arctic-embed-s`
 |`Snowflake/snowflake-arctic-embed-l`
-|`nomic-ai/nomic-embed-text-v1`
-|`nomic-ai/nomic-embed-text-v1.5`
 
 
 
