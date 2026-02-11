@@ -50,7 +50,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |-|-:|-:|-:
 |`BAAI/bge-small-en-v1.5`||[`133`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-fp32)|[`33`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-int8)
 |`BAAI/bge-base-en-v1.5`||[`435`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-fp32)|[`116`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-int8)
-|`BAAI/bge-large-en-v1.5`||[`1340`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-fp32)|[`335`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-int8)
+|`BAAI/bge-large-en-v1.5`|[`668`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-fp16)|[`1340`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-fp32)|[`335`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-int8)
 |`BAAI/bge-m3`|[`1130`](https://huggingface.co/keisuke-miyako/bge-m3-onnx-fp16)|[`2270`](https://huggingface.co/keisuke-miyako/bge-m3-onnx-fp32)
 |`intfloat/e5-small-v2`|[`66`](https://huggingface.co/keisuke-miyako/e5-small-v2-onnx-fp16)|[`133`](https://huggingface.co/keisuke-miyako/e5-small-v2-onnx-fp32)
 |`intfloat/e5-base-v2`|[`218`](https://huggingface.co/keisuke-miyako/e5-base-v2-onnx-fp16)|[`435`](https://huggingface.co/keisuke-miyako/e5-base-v2-onnx-fp32)
@@ -69,8 +69,8 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`retrieva-jp/amber-large`|[`629`](https://huggingface.co/keisuke-miyako/amber-large-onnx-fp16)|[`1260`](https://huggingface.co/keisuke-miyako/amber-large-onnx-fp32)|[`316`](https://huggingface.co/keisuke-miyako/amber-large-onnx-int8)
 |`Alibaba-NLP/gte-base-en-v1.5`|[`278`](https://huggingface.co/keisuke-miyako/gte-base-en-v1.5-onnx-fp16)|[`556`](https://huggingface.co/keisuke-miyako/gte-base-en-v1.5-onnx-fp32)|[`146`](https://huggingface.co/keisuke-miyako/gte-base-en-v1.5-onnx-int8)
 |`Alibaba-NLP/gte-large-en-v1.5`|[`873`](keisuke-miyako/gte-large-en-v1.5-onnx-fp16)|[`1750`](https://huggingface.co/keisuke-miyako/gte-large-en-v1.5-onnx-fp32)|[`445`](https://huggingface.co/keisuke-miyako/gte-large-en-v1.5-onnx-int8)
-|`Alibaba-NLP/gte-multilingual-base`||[`1260`](https://huggingface.co/keisuke-miyako/gte-multilingual-base-onnx-fp32)|[`340`](https://huggingface.co/keisuke-miyako/gte-multilingual-base-onnx-int8)
-|`Alibaba-NLP/gte-modernbert-base`||[`596`](https://huggingface.co/keisuke-miyako/gte-modernbert-base-onnx-fp32)|[`150`](https://huggingface.co/keisuke-miyako/gte-modernbert-base-onnx-int8)
+|`Alibaba-NLP/gte-multilingual-base`|[`628`](https://huggingface.co/keisuke-miyako/gte-multilingual-base-onnx-fp16)|[`1260`](https://huggingface.co/keisuke-miyako/gte-multilingual-base-onnx-fp32)|[`340`](https://huggingface.co/keisuke-miyako/gte-multilingual-base-onnx-int8)
+|`Alibaba-NLP/gte-modernbert-base`|[`298`](https://huggingface.co/keisuke-miyako/gte-modernbert-base-onnx-fp16)|[`596`](https://huggingface.co/keisuke-miyako/gte-modernbert-base-onnx-fp32)|[`150`](https://huggingface.co/keisuke-miyako/gte-modernbert-base-onnx-int8)
 |`Alibaba-NLP/gte-Qwen2-1.5B-instruct`|||[`1680`](https://huggingface.co/keisuke-miyako/gte-Qwen2-1.5B-instruct-onnx-int8)
 |`Alibaba-NLP/gte-Qwen2-7B-instruct`|||[`7210`](https://huggingface.co/keisuke-miyako/gte-Qwen2-7B-instruct-onnx-int8)|
 |`sbintuitions/modernbert-ja-30m`
