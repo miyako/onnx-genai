@@ -35,10 +35,10 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 
 |Model|fp16|fp32|int8
 |-|-:|-:|-:
-|`cross-encoder/ms-marco-MiniLM-L6-v2`||`91`|
-|`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`|`235`|`470`
-|`BAAI/bge-reranker-v2-m3`||`2270`
-|`BAAI/bge-reranker-base`|`556`|`1110`
+|`cross-encoder/ms-marco-MiniLM-L6-v2`||[`91`](https://huggingface.co/keisuke-miyako/ms-marco-MiniLM-L6-v2-onnx-fp32)|
+|`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`|[`235`](https://huggingface.co/keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-onnx-fp16)|[`470`](https://huggingface.co/keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-onnx-fp32)
+|`BAAI/bge-reranker-v2-m3`||[`2270`](https://huggingface.co/keisuke-miyako/bge-reranker-v2-m3-onnx-fp32)
+|`BAAI/bge-reranker-base`|[`556`](https://huggingface.co/keisuke-miyako/bge-reranker-base-onnx-fp16)|[`1110`](https://huggingface.co/keisuke-miyako/bge-reranker-base-onnx-fp32)
 |`BAAI/bge-reranker-large`||`2240`
 |`jinaai/jina-reranker-v1-turbo-en`||`151`
 |`mixedbread-ai/mxbai-rerank-xsmall-v1`||`284`
