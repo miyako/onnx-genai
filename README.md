@@ -51,7 +51,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`BAAI/bge-small-en-v1.5`|
 |`BAAI/bge-base-en-v1.5`
 |`BAAI/bge-large-en-v1.5`
-|`BAAI/bge-m3`
+|`BAAI/bge-m3`||`2270`
 |`intfloat/e5-small-v2`||`133`
 |`intfloat/e5-base-v2`||`435`
 |`intfloat/e5-large-v2`|`668`|`1340`
