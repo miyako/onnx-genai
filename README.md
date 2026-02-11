@@ -48,10 +48,10 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 
 |Model|fp16|fp32|int8
 |-|-:|-:|-:
-|`BAAI/bge-small-en-v1.5`|
-|`BAAI/bge-base-en-v1.5`
-|`BAAI/bge-large-en-v1.5`
-|`BAAI/bge-m3`||`2270`
+|`BAAI/bge-small-en-v1.5`||[``](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-fp32)|[`33`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-int8)
+|`BAAI/bge-base-en-v1.5`||[``](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-fp32)|[`116`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-int8)
+|`BAAI/bge-large-en-v1.5`||[``](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-fp32)|[``](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-int8)
+|`BAAI/bge-m3`|[``](https://huggingface.co/keisuke-miyako/bge-m3-onnx-fp16)|[`2270`](https://huggingface.co/keisuke-miyako/bge-m3-onnx-fp32)
 |`intfloat/e5-small-v2`||`133`
 |`intfloat/e5-base-v2`||`435`
 |`intfloat/e5-large-v2`|`668`|`1340`
