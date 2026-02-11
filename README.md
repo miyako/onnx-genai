@@ -38,8 +38,8 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |`cross-encoder/ms-marco-MiniLM-L6-v2`||`91`|
 |`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`|`235`|`470`
 |`BAAI/bge-reranker-v2-m3`||`2270`
-|`BAAI/bge-reranker-large`||`2240`
 |`BAAI/bge-reranker-base`|`556`|`1110`
+|`BAAI/bge-reranker-large`||`2240`
 |`jinaai/jina-reranker-v1-turbo-en`||`151`
 |`mixedbread-ai/mxbai-rerank-xsmall-v1`||`284`
 |`ibm-granite/granite-embedding-reranker-english-r2`|`299`|`599`
