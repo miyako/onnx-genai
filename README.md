@@ -36,10 +36,10 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 > [!TIP]
 > It does not make much sense to use an inprecise `int8` model for reranking.
 
-||`fp16`|`fp32`|`int8`|`model_type`|`max_position_embeddings`
-|-|-:|-:|-:|-:|-:
-|[`cross-encoder/ms-marco-MiniLM-L6-v2`](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L6-v2)|[`45`](https://huggingface.co/keisuke-miyako/ms-marco-MiniLM-L6-v2-onnx-fp16)|[`91`](https://huggingface.co/keisuke-miyako/ms-marco-MiniLM-L6-v2-onnx-fp32)||`bert`|`512`
-|`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`|[`235`](https://huggingface.co/keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-onnx-fp16)|[`470`](https://huggingface.co/keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-onnx-fp32)
+||`fp16`|`fp32`|`max_position_embeddings`
+|-|-:|-:|-:
+|[`cross-encoder/ms-marco-MiniLM-L6-v2`](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L6-v2)|[`45`](https://huggingface.co/keisuke-miyako/ms-marco-MiniLM-L6-v2-onnx-fp16)|[`91`](https://huggingface.co/keisuke-miyako/ms-marco-MiniLM-L6-v2-onnx-fp32)|`512`
+|[`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`](https://huggingface.co/cross-encoder/mmarco-mMiniLMv2-L12-H384-v1)|[`235`](https://huggingface.co/keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-onnx-fp16)|[`470`](https://huggingface.co/keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-onnx-fp32)|`514`
 |`BAAI/bge-reranker-v2-m3`|[`1140`](https://huggingface.co/keisuke-miyako/bge-reranker-v2-m3-onnx-fp16)|[`2270`](https://huggingface.co/keisuke-miyako/bge-reranker-v2-m3-onnx-fp32)
 |`BAAI/bge-reranker-base`|[`556`](https://huggingface.co/keisuke-miyako/bge-reranker-base-onnx-fp16)|[`1110`](https://huggingface.co/keisuke-miyako/bge-reranker-base-onnx-fp32)
 |`BAAI/bge-reranker-large`|[`1120`](https://huggingface.co/keisuke-miyako/bge-reranker-large-onnx-fp16)|[`2240`](https://huggingface.co/keisuke-miyako/bge-reranker-large-onnx-fp32)
@@ -48,9 +48,9 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 
 ### Embedding
 
-|Model|`fp16`|`fp32`|`int8`|`model_type`
-|-|-:|-:|-:|-|
-|`BAAI/bge-small-en-v1.5`|[`66`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-fp16)|[`133`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-fp32)|[`33`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-int8)||
+|Model|`fp16`|`fp32`|`int8`|`max_position_embeddings`|`pooling`
+|-|-:|-:|-:|-:|-:
+|[`BAAI/bge-small-en-v1.5`](https://huggingface.co/BAAI/bge-small-en-v1.5)|[`66`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-fp16)|[`133`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-fp32)|[`33`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-int8)|`512`|`cls`
 |`BAAI/bge-base-en-v1.5`|[`278`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-fp16)|[`435`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-fp32)|[`116`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-int8)
 |`BAAI/bge-large-en-v1.5`|[`668`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-fp16)|[`1340`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-fp32)|[`335`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-int8)
 |`BAAI/bge-m3`|[`1130`](https://huggingface.co/keisuke-miyako/bge-m3-onnx-fp16)|[`2270`](https://huggingface.co/keisuke-miyako/bge-m3-onnx-fp32)|[`568`](https://huggingface.co/keisuke-miyako/bge-m3-onnx-int8)
