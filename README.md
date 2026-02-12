@@ -34,7 +34,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 ### Rerank
 
 > [!TIP]
-> It does not make much sense to use an inprecise `int8` model for renking.
+> It does not make much sense to use an inprecise `int8` model for reranking.
 
 |Model|fp16|fp32|int8
 |-|-:|-:|-:
