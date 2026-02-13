@@ -42,12 +42,6 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |[`BAAI/bge-reranker-large`](https://huggingface.co/BAAI/bge-reranker-large)|[`1120`](https://huggingface.co/keisuke-miyako/bge-reranker-large-onnx-fp16)|[`2240`](https://huggingface.co/keisuke-miyako/bge-reranker-large-onnx-fp32)|[`561`](https://huggingface.co/keisuke-miyako/bge-reranker-large-onnx-int8)|`8192`|`1024`|`24`
 |[`jinaai/jina-reranker-v1-turbo-en`](https://huggingface.co/jinaai/jina-reranker-v1-turbo-en)|[`75`](https://huggingface.co/keisuke-miyako/jina-reranker-v1-turbo-en-onnx-fp16)|[`151`](https://huggingface.co/keisuke-miyako/jina-reranker-v1-turbo-en-onnx-fp32)|[`38`](https://huggingface.co/keisuke-miyako/jina-reranker-v1-turbo-en-onnx-int8)|`8192`|`384`|`6`
 |[`ibm-granite/granite-embedding-reranker-english-r2`](https://huggingface.co/ibm-granite/granite-embedding-reranker-english-r2)|[`299`](https://huggingface.co/keisuke-miyako/granite-embedding-reranker-english-r2-onnx-fp16)|[`599`](https://huggingface.co/keisuke-miyako/granite-embedding-reranker-english-r2-onnx-fp32)|[`150`](https://huggingface.co/keisuke-miyako/granite-embedding-reranker-english-r2-onnx-int8)|`8192`|`768`|`22`
-
-
-### Rerank (decoder based)
-
-||`fp16`|`fp32`|`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
-|-|-:|-:|-:|-:|-:|-:
 |[`jinaai/jina-reranker-v3`](https://huggingface.co/jinaai/jina-reranker-v3)|||[`598`](https://huggingface.co/keisuke-miyako/jina-reranker-v3-onnx-int8)|`131072`|`1024`|`28`|
 |[`Qwen/Qwen3-Reranker-0.6B`](https://huggingface.co/Qwen/Qwen3-Reranker-0.6B)|||[`598`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-onnx-int8)|`32768`|`1024`|`28`|
 |[`Qwen/Qwen3-Reranker-4B`](https://huggingface.co/Qwen/Qwen3-Reranker-4B)|||[`4030`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-4B-onnx-int8)|`40960`|`2560`|`36`|
@@ -96,12 +90,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |[`ibm-granite/granite-embedding-125m-english`](https://huggingface.co/ibm-granite/granite-embedding-125m-english)|[`248`](https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-onnx-fp16)|[`496`](https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-onnx-fp32)|[`125`](https://huggingface.co/keisuke-miyako/granite-embedding-125m-english-onnx-int8)|`512`|`768`|`12`|`cls`
 |[`ibm-granite/granite-embedding-107m-multilingual`](https://huggingface.co/ibm-granite/granite-embedding-107m-multilingual)|[`213`](https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-onnx-fp16)|[`427`](https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-onnx-fp32)|[`107`](https://huggingface.co/keisuke-miyako/granite-embedding-107m-multilingual-onnx-int8)|`512`|`384`|`6`|`cls`
 |[`ibm-granite/granite-embedding-278m-multilingual`](https://huggingface.co/ibm-granite/granite-embedding-278m-multilingual)|[`555`](https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-onnx-fp16)|[`1110`](https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-onnx-fp32)|[`278`](https://huggingface.co/keisuke-miyako/granite-embedding-278m-multilingual-onnx-int8)|`512`|`768`|`12`|`cls`
-
-### Embedding (decoder based)
-
-||`fp16`|`fp32`|`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`|`pooling`
-|-|-:|-:|-:|-:|-:|-:|-:
-|[`Alibaba-NLP/gte-Qwen2-1.5B-instruct`](https://huggingface.co/Alibaba-NLP/gte-Qwen2-1.5B-instruct)||||`32768`|`1536`|`28`|`last-token`
-|[`Alibaba-NLP/gte-Qwen2-7B-instruct`](https://huggingface.co/Alibaba-NLP/gte-Qwen2-7B-instruct)||||`32768`|`3584`|`28`|`last-token`
-|[`sbintuitions/sarashina-embedding-v1-1b`](https://huggingface.co/sbintuitions/sarashina-embedding-v1-1b)||||`8192`|`1792`|`24`|`last-token`
-|[`sbintuitions/sarashina-embedding-v2-1b`](https://huggingface.co/sbintuitions/sarashina-embedding-v2-1b)||||`8192`|`1792`|`24`|`last-token`
+|[`Alibaba-NLP/gte-Qwen2-1.5B-instruct`](https://huggingface.co/Alibaba-NLP/gte-Qwen2-1.5B-instruct)|||[`1680`](https://huggingface.co/keisuke-miyako/gte-Qwen2-1.5B-instruct-onnx-int8)|`32768`|`1536`|`28`|`last-token`
+|[`Alibaba-NLP/gte-Qwen2-7B-instruct`](https://huggingface.co/Alibaba-NLP/gte-Qwen2-7B-instruct)|||[``](https://huggingface.co/keisuke-miyako/gte-Qwen2-7B-instruct-onnx-int8)|`32768`|`3584`|`28`|`last-token`
+|[`sbintuitions/sarashina-embedding-v1-1b`](https://huggingface.co/sbintuitions/sarashina-embedding-v1-1b)|||[``](https://huggingface.co/keisuke-miyako/sarashina-embedding-v1-1b-onnx-int8)|`8192`|`1792`|`24`|`last-token`
+|[`sbintuitions/sarashina-embedding-v2-1b`](https://huggingface.co/sbintuitions/sarashina-embedding-v2-1b)|||[``](https://huggingface.co/keisuke-miyako/sarashina-embedding-v2-1b-onnx-int8)|`8192`|`1792`|`24`|`last-token`
