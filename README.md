@@ -44,7 +44,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |[`jinaai/jina-reranker-v3`](https://huggingface.co/jinaai/jina-reranker-v3)||[`2380`](https://huggingface.co/keisuke-miyako/jina-reranker-v3-onnx-fp32)|[`598`](https://huggingface.co/keisuke-miyako/jina-reranker-v3-onnx-int8)|`131072`|`1024`|`28`|
 |[`ibm-granite/granite-embedding-reranker-english-r2`](https://huggingface.co/ibm-granite/granite-embedding-reranker-english-r2)|[`299`](https://huggingface.co/keisuke-miyako/granite-embedding-reranker-english-r2-onnx-fp16)|[`599`](https://huggingface.co/keisuke-miyako/granite-embedding-reranker-english-r2-onnx-fp32)||`8192`|`768`|`22`
 |[`Qwen/Qwen3-Reranker-0.6B`](https://huggingface.co/Qwen/Qwen3-Reranker-0.6B)|[`1190`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-onnx-fp16)|[`2380`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-onnx-fp32)|[`598`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-onnx-int8)|`32768`|`1024`|`28`|
-|[`Qwen/Qwen3-Reranker-4B`](https://huggingface.co/Qwen/Qwen3-Reranker-4B)|||[`4030`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-4B-onnx-int8)|`32768`|`2560`|`36`|
+|[`Qwen/Qwen3-Reranker-4B`](https://huggingface.co/Qwen/Qwen3-Reranker-4B)|||[`4030`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-4B-onnx-int8)|`40960`|`2560`|`36`|
 |[`zeroentropy/zerank-2`](https://huggingface.co/zeroentropy/zerank-2)|||[`4030`](https://huggingface.co/keisuke-miyako/zerank-2-onnx-int8)|`40960`|`2560`|`36`
 
 ### Embedding
