@@ -50,7 +50,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |-|-:|-:|-:|-:|-:|-:
 |[`jinaai/jina-reranker-v3`](https://huggingface.co/jinaai/jina-reranker-v3)|||[`598`](https://huggingface.co/keisuke-miyako/jina-reranker-v3-onnx-int8)|`131072`|`1024`|`28`|
 |[`Qwen/Qwen3-Reranker-0.6B`](https://huggingface.co/Qwen/Qwen3-Reranker-0.6B)|||[`598`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-onnx-int8)|`32768`|`1024`|`28`|
-|[`Qwen/Qwen3-Reranker-4B`](https://huggingface.co/Qwen/Qwen3-Reranker-4B)|||[``](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-4B-onnx-int8)|`40960`|`2560`|`36`|
+|[`Qwen/Qwen3-Reranker-4B`](https://huggingface.co/Qwen/Qwen3-Reranker-4B)|||[`4030`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-4B-onnx-int8)|`40960`|`2560`|`36`|
 |[`zeroentropy/zerank-2`](https://huggingface.co/zeroentropy/zerank-2)|||[`4030`](https://huggingface.co/keisuke-miyako/zerank-2-onnx-int8)|`40960`|`2560`|`36`
 
 ### Embedding
