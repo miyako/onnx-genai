@@ -55,7 +55,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 
 ### Embedding
 
-|Model|`fp16`|`fp32`|`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`|`pooling`
+||`fp16`|`fp32`|`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`|`pooling`
 |-|-:|-:|-:|-:|-:|-:|-:
 |[`BAAI/bge-small-en-v1.5`](https://huggingface.co/BAAI/bge-small-en-v1.5)|[`66`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-fp16)|[`133`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-fp32)|[`33`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-int8)|`512`|`384`||`cls`
 |[`BAAI/bge-base-en-v1.5`](https://huggingface.co/BAAI/bge-base-en-v1.5)|[`278`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-fp16)|[`435`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-fp32)|[`116`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-int8)|`512`|`768`||`cls`
