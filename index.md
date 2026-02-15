@@ -137,6 +137,25 @@ If ($ChatCompletionsResult.success)
 End if 
 ```
 
+To test the `/rerank` endpoint:
+
+```
+curl --request POST \
+  --url http://127.0.0.1:8080/v1/rerank \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "model": "rerank-english-v3.0",
+    "query": "What is the capital of the United States?",
+    "top_n": 3,
+    "documents": [
+      "Carson City is the capital city of the American state of Nevada.",
+      "The Commonwealth of the Northern Mariana Islands is a group of islands in the Pacific Ocean. Its capital is Saipan.",
+      "Washington, D.C. (also known as simply Washington or D.C., and officially as the District of Columbia) is the capital of the United States. It is a federal district.",
+      "Capital punishment (the death penalty) has existed in the United States since before the United States was a country."
+    ]
+  }'
+```
+
 Finally to terminate the server:
 
 ```4d
@@ -227,9 +246,9 @@ drive.mount('/content/drive')
   --output "/content/drive/My Drive/Alibaba-NLP/gte-Qwen2-1.5B-instruct-onnx" --avx2
   ```
 
-You need to place a `tokenizer.model` file for old Google models (T5, ALBERT) or a `tokenizer.json` file for model Hugging Face models (Qwen, GPT, BERT) next to the ONNX file.
+You need to place a `tokenizer.model` file for old Google models (T5, ALBERT) or a `tokenizer.json` file for Hugging Face models (Qwen, GPT, BERT) next to the ONNX file.
 
-The runtime will use this file to tokenise the input, run ONNX inference, mean pool, L2 noemalise the embeddings.
+The runtime will use this file to tokenise the input, run ONNX inference, apply pooling, and L2 noemalise the embeddings.
 
 > At its core, ONNX is a frameworks for maths, not text. An E2E model typically uses 
 **`onnxruntime-extensions`** to handle string. However, the text processing is not as powerful as specialised tokenisers. It is normally better to use ONNX for the vector maths and handle string manipulation outside of ONNX.
