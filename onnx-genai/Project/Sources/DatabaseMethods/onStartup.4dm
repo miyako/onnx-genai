@@ -32,41 +32,21 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$options:={}
 	var $huggingfaces : cs:C1710.event.huggingfaces
 	
-	$folder:=$homeFolder.folder("Qwen3-4B-Instruct-2507")
-	$path:="Qwen3-4B-Instruct-2507-onnx-int4-cpu"
-	$URL:="keisuke-miyako/Qwen3-4B-Instruct-2507-onnx-int4-cpu"
+	$folder:=$homeFolder.folder("Phi-4-mini-reasoning")
+	$path:="Phi-4-mini-reasoning-onnx-int4"
+	$URL:="keisuke-miyako/Phi-4-mini-reasoning-onnx-int4"
 	
-	//$folder:=$homeFolder.folder("Qwen3-4B-Thinking-2507")
-	//$path:="Qwen3-4B-Thinking-2507-onnx-int4-cpu"
-	//$URL:="keisuke-miyako/Qwen3-4B-Thinking-2507-onnx-int4-cpu"
+	$huggingface:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion"; "model.onnx")
+	$huggingfaces:=cs:C1710.event.huggingfaces.new([$huggingface])
 	
-	//$folder:=$homeFolder.folder("translategemma-4b-it")
-	//$path:="translategemma-4b-it-onnx-int4-cpu"
-	//$URL:="keisuke-miyako/translategemma-4b-it-onnx-int4-cpu"
+	$ONNX:=cs:C1710.ONNX.new($port; $huggingfaces; $homeFolder; $options; $event)
 	
-	//$folder:=$homeFolder.folder("gemma-3-4b-it")
-	//$path:="gemma-3-4b-it-onnx-int4-cpu"
-	//$URL:="keisuke-miyako/gemma-3-4b-it-onnx-int4-cpu"
-	
-	//$folder:=$homeFolder.folder("Ministral-3-3B-Instruct")
-	//$path:="Ministral-3-3B-Instruct-2512-ONNX"
-	//$URL:="mistralai/Ministral-3-3B-Instruct-2512-ONNX"
-	
-	//$chat:=cs.event.huggingface.new($folder; $URL; $path; "chat.completion")
-	
-	$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat])
-	
-	Case of 
-		: (False:C215)  //e2e
-			$folder:=$homeFolder.folder("universal-sentence-encoder-multilingual")
-			$path:="universal-sentence-encoder-multilingual-onnx"
-			$URL:="keisuke-miyako/universal-sentence-encoder-multilingual-onnx"
-			$embeddings:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
-			$huggingfaces:=cs:C1710.event.huggingfaces.new([$chat; $embeddings])
-			$options:={pooling: "e2e"}
-	End case 
-	
-	If (False:C215)  //embedding
+	If (False:C215)  //embedding 
+		
+		$folder:=$homeFolder.folder("universal-sentence-encoder-multilingual")
+		$path:="universal-sentence-encoder-multilingual-onnx"
+		$URL:="keisuke-miyako/universal-sentence-encoder-multilingual-onnx"
+		$options:={pooling: "e2e"}
 		
 		$folder:=$homeFolder.folder("bge-small-en-v1.5")
 		$path:="bge-small-en-v1.5-onnx-fp16"
@@ -123,10 +103,10 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 		
 	End if 
 	
-	If (True:C214)  //rerank
+	If (False:C215)  //rerank
 		
 		$homeFolder:=Folder:C1567(fk home folder:K87:24).folder(".ONNX")
-		$port:=8081
+		$port:=8080
 		
 		$folder:=$homeFolder.folder("ms-marco-MiniLM-L6-v2")  //where to keep the repo
 		$path:="ms-marco-MiniLM-L6-v2-onnx-fp16"  //path to the file
@@ -160,7 +140,27 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 		$path:="bge-reranker-v2-m3-onnx-fp16"  //path to the file
 		$URL:="keisuke-miyako/bge-reranker-v2-m3-onnx-fp16"  //path to the repo
 		
-		$huggingface:=cs:C1710.event.huggingface.new($folder; $URL; $path; "rerank"; "model.onnx")
+		$folder:=$homeFolder.folder("bge-reranker-v2-m3")  //where to keep the repo
+		$path:="bge-reranker-v2-m3-onnx-fp32"  //path to the file
+		$URL:="keisuke-miyako/bge-reranker-v2-m3-onnx-fp32"  //path to the repo
+		
+		$folder:=$homeFolder.folder("Qwen3-Reranker-0.6B")  //where to keep the repo
+		$path:="Qwen3-Reranker-0.6B-onnx-int8"  //path to the file
+		$URL:="keisuke-miyako/Qwen3-Reranker-0.6B-onnx-int8"  //path to the repo
+		
+		$folder:=$homeFolder.folder("jina-reranker-v3")  //where to keep the repo
+		$path:="jina-reranker-v3-onnx-int8"  //path to the file
+		$URL:="keisuke-miyako/jina-reranker-v3-onnx-int8"  //path to the repo
+		
+		$folder:=$homeFolder.folder("zerank-2")  //where to keep the repo
+		$path:="zerank-2-onnx-int8"  //path to the file
+		$URL:="keisuke-miyako/zerank-2-onnx-int8"  //path to the repo
+		
+		$folder:=$homeFolder.folder("Qwen3-Reranker-4B")  //where to keep the repo
+		$path:="Qwen3-Reranker-4B-onnx-int8"  //path to the file
+		$URL:="keisuke-miyako/Qwen3-Reranker-4B-onnx-int8"  //path to the repo
+		
+		$huggingface:=cs:C1710.event.huggingface.new($folder; $URL; $path; "rerank"; "model_quantized.onnx")
 		$huggingfaces:=cs:C1710.event.huggingfaces.new([$huggingface])
 		
 		$ONNX:=cs:C1710.ONNX.new($port; $huggingfaces; $homeFolder; $options; $event)
