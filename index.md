@@ -339,7 +339,7 @@ An "End-to-End" (E2E) model that takes raw string as input and returns vectors a
 |🇯🇵|[Baku&nbsp;2B](https://huggingface.co/keisuke-miyako/gemma-2-baku-2b-it-onnx-int4-cpu)|`2.6`|`4.04`|`8192`|`256000`|`Japanese`&nbsp;`English`
 |🇯🇵|[Youri&nbsp;7B&nbsp;Instruct](https://huggingface.co/keisuke-miyako/youri-7b-instruction-onnx-int4-cpu)|`7.0`|`4.66`|`4096`|`32000`|`Japanese`&nbsp;`English`
 |🇯🇵|[Youri&nbsp;7B&nbsp;Chat](https://huggingface.co/keisuke-miyako/youri-7b-chat-onnx-int4-cpu)|`7.0`|`4.66`|`4096`|`32000`|`Japanese`&nbsp;`English`
-|🇯🇵|[Calm2&nbsp;7B&nbsp;Chat](https://huggingface.co/keisuke-miyako/calm2-7b-chat-onnx)|`7.0`|``|`32768`|`65024`|`Japanese`&nbsp;`English`
+|🇯🇵|[Calm2&nbsp;7B&nbsp;Chat](https://huggingface.co/keisuke-miyako/calm2-7b-chat-onnx)|`7.0`|`5.3`|`32768`|`65024`|`Japanese`&nbsp;`English`
 
 #### Not Compatible
 
