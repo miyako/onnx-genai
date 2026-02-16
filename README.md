@@ -36,7 +36,6 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 ||`int4`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
 |-|-:|-:|-:|-:|
 |[`microsoft/Phi-4-mini-reasoning`](https://huggingface.co/microsoft/Phi-4-mini-reasoning)|[`4860`](https://huggingface.co/keisuke-miyako/Phi-4-mini-reasoning-onnx-int4)|`131072`|`3072`|`32`|
-|[`mistralai/Ministral-3-3B-Instruct-2512`](https://huggingface.co/mistralai/Ministral-3-3B-Instruct-2512)||`262144`|`3072`|`24`
 
 ### Rerank
 
