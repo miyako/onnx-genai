@@ -346,7 +346,6 @@ An "End-to-End" (E2E) model that takes raw string as input and returns vectors a
 ||Model|Parameters|Size|Context&nbsp;Length|Vocabulary|Languages|
 |-|-|-:|-:|-:|-:|:-:|
 |⚠️|[Ministral&nbsp;3B](https://huggingface.co/mistralai/Ministral-3-3B-Instruct-2512-ONNX)|`3.4`|`2.29`|`256000`|`131072`|`European`
-|⚠️|[Gemma&nbsp;3&nbsp;1B](https://huggingface.co/onnx-community/gemma-3-1b-it-ONNX)|`1.0`|`1.41`|`32768`|`262144`|`140`|
 |⚠️|[Danube&nbsp;3](https://huggingface.co/keisuke-miyako/h2o-danube3-4b-chat-onnx-int4-cpu)|`4.0`|`2.9`|`8192`|`32000`|`English`
 |⚠️|[Danube&nbsp;3.1](https://huggingface.co/keisuke-miyako/h2o-danube3.1-4b-chat-onnx-int4-cpu)|`4.0`|`2.9`|`8192`|`32000`|`English`
 |⚠️|[CroissantLLMChat](https://huggingface.co/keisuke-miyako/CroissantLLMChat-v0.1-onnx-int4-cpu)|`1.3`|`1.07`|`2048`|`32000`|`French` 
