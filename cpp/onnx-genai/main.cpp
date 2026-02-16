@@ -1355,6 +1355,8 @@ static std::string run_reranking(
             auto shape = type_info.GetShape();
         
             float raw_score = 0.0f;
+            float logit_neg = 0.0f;
+            float logit_pos = 0.0f;
             
             switch (shape[1]) {
                 case 1:
@@ -1364,9 +1366,11 @@ static std::string run_reranking(
                     raw_score = sigmoid(raw_score); // Optional: depends on model training
                     break;
                 case 2:
-                    // Case B: Model outputs [Not_Relevant, Relevant] logits
-                    // We want the score of class 1
-                    raw_score = float_data[1];
+                    // Case B: [Logit_Negative, Logit_Positive]
+                    // Raw logits require softmax to get probability of class 1
+                    logit_neg = float_data[0];
+                    logit_pos = float_data[1];
+                    raw_score = 1.0f / (1.0f + std::exp(logit_neg - logit_pos));
                     break;
                 default:
                     break;
