@@ -1833,16 +1833,16 @@ int main(int argc, OPTARG_T argv[]) {
                     
                     // 4. Create Model from the Config
 //#if defined(_WIN32)
-                    try{
-                        model = OgaModel::Create(*config);
-                    } catch (const std::exception& e) {
-                        std::cerr << e.what() << std::endl;
-                        std::cerr << "This is probably a bug in the CoreML Execution Provider." << std::endl;
-                    }
+//                    try{
+//                        model = OgaModel::Create(*config);
+//                    } catch (const std::exception& e) {
+//                        std::cerr << e.what() << std::endl;
+//                        std::cerr << "This is probably a bug in the CoreML Execution Provider." << std::endl;
+//                    }
 //#endif
-                    if(model == nullptr) {
+//                    if(model == nullptr) {
                         model = OgaModel::Create(model_path.c_str());
-                    }
+//                    }
                     
                     // 5. Create Tokenizer
                     tokenizer = OgaTokenizer::Create(*model);
@@ -1897,7 +1897,6 @@ int main(int argc, OPTARG_T argv[]) {
 //                    provider_options["RequireStaticShapes"] = "0";
 //                    provider_options["EnableSubgraphs"] = "0";
 //                    session_options.AppendExecutionProvider("CoreML", provider_options);
-//https://onnxruntime.ai/docs/execution-providers/CoreML-ExecutionProvider.html#requirements
 #endif
 
                     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
@@ -1980,7 +1979,6 @@ int main(int argc, OPTARG_T argv[]) {
 //                    provider_options["RequireStaticInputShapes"] = "0";
 //                    provider_options["EnableOnSubgraphs"] = "0";
 //                    session_options.AppendExecutionProvider("CoreML", provider_options);
-//https://onnxruntime.ai/docs/execution-providers/CoreML-ExecutionProvider.html#requirements
 #endif
                     
                     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
@@ -2228,7 +2226,7 @@ int main(int argc, OPTARG_T argv[]) {
             try {
                 
                 if(reranking_model_created == 0) {
-                    throw std::invalid_argument("[Embedding] Model not loaded.");
+                    throw std::invalid_argument("[Rerank] Model not loaded.");
                 }
                 
                 std::string query;
