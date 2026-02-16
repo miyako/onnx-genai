@@ -2505,5 +2505,7 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
+    OgaShutdown();
+    
     return 0;
 }
