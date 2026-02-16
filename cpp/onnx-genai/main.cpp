@@ -1806,12 +1806,13 @@ int main(int argc, OPTARG_T argv[]) {
                     
                     // 2. Dynamic Provider Loading Logic
 #if defined(_WIN32)
-                    try{
-                        config->AppendProvider("DML");
-                        active_provider = "DML";
-                    } catch (const std::exception& e) {
-                        std::cerr << "Failed append provider: " << e.what() << std::endl;
-                    }
+//                    try{
+//                        config->AppendProvider("DML");
+//                        active_provider = "DML";
+//                    } catch (const std::exception& e) {
+//                        std::cerr << "Failed append provider: " << e.what() << std::endl;
+//                    }
+//https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html#configuration-options
 #elif defined(__APPLE__)
                     try{
                         config->AppendProvider("CoreML");
@@ -1824,13 +1825,14 @@ int main(int argc, OPTARG_T argv[]) {
                     fingerprint = get_system_fingerprint(model_path, active_provider);
                     
                     // 4. Create Model from the Config
-#if defined(_WIN32)
+//#if defined(_WIN32)
                     try{
                         model = OgaModel::Create(*config);
                     } catch (const std::exception& e) {
                         std::cerr << e.what() << std::endl;
+                        std::cerr << "This is probably a bug in the CoreML Execution Provider." << std::endl;
                     }
-#endif
+//#endif
                     if(model == nullptr) {
                         model = OgaModel::Create(model_path.c_str());
                     }
@@ -1880,6 +1882,16 @@ int main(int argc, OPTARG_T argv[]) {
 #endif
                     Ort::SessionOptions session_options;
                     session_options.SetIntraOpNumThreads(intra_op_threads);
+                    
+#if defined(__APPLE__)
+                    std::unordered_map<std::string, std::string> provider_options;
+                    provider_options["ModelFormat"] = "MLProgram";
+                    provider_options["MLComputeUnits"] = "ALL";
+                    provider_options["RequireStaticShapes"] = "0";
+                    provider_options["EnableSubgraphs"] = "0";
+                    session_options.AppendExecutionProvider("CoreML", provider_options);
+#endif
+
                     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
                     
                     session_options.AddConfigEntry("session.intra_op.allow_spinning", "0");
@@ -1952,6 +1964,17 @@ int main(int argc, OPTARG_T argv[]) {
 #endif
                     Ort::SessionOptions session_options;
                     session_options.SetIntraOpNumThreads(intra_op_threads);
+                    
+#if defined(__APPLE__)
+//                    std::unordered_map<std::string, std::string> provider_options;
+//                    provider_options["ModelFormat"] = "MLProgram";
+//                    provider_options["MLComputeUnits"] = "ALL";
+//                    provider_options["RequireStaticInputShapes"] = "0";
+//                    provider_options["EnableOnSubgraphs"] = "0";
+//                    session_options.AppendExecutionProvider("CoreML", provider_options);
+//https://onnxruntime.ai/docs/execution-providers/CoreML-ExecutionProvider.html#requirements
+#endif
+                    
                     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
                     
                     session_options.AddConfigEntry("session.intra_op.allow_spinning", "0");
