@@ -59,6 +59,12 @@ extern "C" {
 #define DEFAULT_repetition_penalty 1.1
 #define DEFAULT_n 1
 
+// Platform-specific headers
+#if defined(__APPLE__)
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
+
 #ifdef __GNUC__
 #define _fopen fopen
 #define _fseek fseek

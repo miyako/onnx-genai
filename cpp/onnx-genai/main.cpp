@@ -7,6 +7,58 @@
 
 #include "onnx-genai.h"
 
+static int GetOptimalIntraOpThreads() {
+    int threads = 0;
+
+    // --- macOS Implementation ---
+    #if defined(__APPLE__)
+        int32_t core_count = 0;
+        size_t size = sizeof(core_count);
+        
+        // 1. Try to get "Performance Level 0" cores (P-Cores on Apple Silicon)
+        // This is critical for M1/M2/M3 to avoid using slow E-Cores.
+        if (sysctlbyname("hw.perflevel0.physicalcpu", &core_count, &size, NULL, 0) == 0) {
+            threads = core_count;
+        }
+        // 2. Fallback: Standard Physical Cores (Intel Mac or if perflevel fails)
+        else if (sysctlbyname("hw.physicalcpu", &core_count, &size, NULL, 0) == 0) {
+            threads = core_count;
+        }
+        else {
+            // Absolute fallback
+            threads = std::thread::hardware_concurrency();
+        }
+
+    // --- Windows Implementation ---
+    #elif defined(_WIN32)
+        // Getting strictly physical cores on Windows is complex (requires iterating SYSTEM_LOGICAL_PROCESSOR_INFORMATION).
+        // For a simple implementation, hardware_concurrency (Logical Cores) is often acceptable,
+        // but dividing by 2 is a common heuristic for Hyper-threaded Intel/AMD CPUs to estimate physical cores.
+        
+        unsigned int logical_cores = std::thread::hardware_concurrency();
+        // Heuristic: If we have many cores, assume Hyper-threading and divide by 2.
+        // Otherwise, use all.
+        if (logical_cores > 4) {
+            threads = logical_cores / 2;
+        } else {
+            threads = logical_cores;
+        }
+
+    // --- Linux / Generic Implementation ---
+    #else
+        // Similar heuristic for Linux
+        unsigned int logical_cores = std::thread::hardware_concurrency();
+        if (logical_cores > 4) {
+             threads = logical_cores / 2;
+        } else {
+             threads = logical_cores;
+        }
+    #endif
+
+    // Safety clamp: Ensure we have at least 1 thread and not an insane amount (cap at 16 for client devices)
+    return std::max(1, std::min(threads, 16));
+}
+
 namespace fs = std::filesystem;
 using namespace tokenizers; // mlc-ai namespace
 
@@ -1722,6 +1774,9 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
+    int intra_op_threads = GetOptimalIntraOpThreads();
+    std::cout << "Detected " << intra_op_threads << " Intra-Op threads." << std::endl;
+    
     std::string fingerprint;
     long long model_created = 0;
     std::string modelName;
@@ -1779,8 +1834,11 @@ int main(int argc, OPTARG_T argv[]) {
                     embedding_modelName = get_model_name(fs::path(embedding_model_path).parent_path());
 #endif
                     Ort::SessionOptions session_options;
-                    session_options.SetIntraOpNumThreads(1);
+                    session_options.SetIntraOpNumThreads(intra_op_threads);
                     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+                    
+                    session_options.AddConfigEntry("session.intra_op.allow_spinning", "0");
+
                     Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
 #ifdef WIN32
                     embeddings_session = std::make_unique<Ort::Session>(*embeddings_env, embedding_model_path_u16.c_str(), session_options);
@@ -1848,8 +1906,11 @@ int main(int argc, OPTARG_T argv[]) {
                     reranking_modelName = get_model_name(fs::path(reranker_model_path).parent_path());
 #endif
                     Ort::SessionOptions session_options;
-                    session_options.SetIntraOpNumThreads(1);
+                    session_options.SetIntraOpNumThreads(intra_op_threads);
                     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+                    
+                    session_options.AddConfigEntry("session.intra_op.allow_spinning", "0");
+                    
                     Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
 #ifdef WIN32
                     rerank_session = std::make_unique<Ort::Session>(*rerank_env, reranker_model_path_u16.c_str(), session_options);
