@@ -11,7 +11,7 @@ layout: default
 
 #### Abstract
 
-[**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. It allows models trained in one framework (e.g. PyTorch) to be used in another framework (e.g. TensorFlow) with native hardware acceleration (NVIDIA, AMD, Intel, Apple Silicon, Qualcomm). The inference engine used in this component is primarily configured to primarily run on CPU cores, for maximum compatibility. 
+[**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. It allows models trained in one framework (e.g. PyTorch) to be used in another framework (e.g. TensorFlow) with native hardware acceleration (NVIDIA, AMD, Intel, Apple Silicon, Qualcomm). The inference engine used in this component is configured to primarily run on CPU cores, for maximum compatibility. 
 
 #### Usage
 
