@@ -1280,65 +1280,61 @@ static std::string run_reranking(
 
     std::string reponseJson;
     
+    // We will store indices and calculated scores here
     std::vector<RerankResult> results;
     results.reserve(items.size());
-    
+
+    // Optimize: Store all raw logits contiguously to apply Eigen SIMD later
+    // We assume max 2 outputs per item to reserve memory safely
+    std::vector<float> all_raw_logits;
+    all_raw_logits.reserve(items.size() * 2);
+
+    int output_dim = 0; // Detected on first inference run
+
     try {
-        
         Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(
                 OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
 
         int i = 0;
         for(auto it = items.begin() ; it != items.end() ; it++)
         {
-            // 1. Convert IDs
+            // --- PREPROCESSING ---
             std::vector<int64_t> ids = ConvertToInt64(it->ids);
-            // 2. Prepare type_ids (Safety Check)
             std::vector<int64_t> type_ids = ConvertToInt64(it->type_ids);
             
             int seq_len = (int)ids.size();
             
+            // Safety: Truncate if exceeding model limits (prevents crash)
+            if (seq_len > max_position_embeddings) {
+                seq_len = max_position_embeddings;
+                ids.resize(seq_len);
+                if (!type_ids.empty()) type_ids.resize(seq_len);
+            }
+
             if (num_input_nodes > 2 && type_ids.empty()) {
-                type_ids.resize(seq_len, 0); // Fill with 0s (Standard BERT behavior for single sentences)
+                type_ids.resize(seq_len, 0);
             }
             
             int batch_size = 1;
-            
-            // Shape: [batch_size=1, sequence_length]
             std::vector<int64_t> input_dims = {batch_size, seq_len};
-            
-            // Create Attention Mask (1 for real tokens)
             std::vector<int64_t> attention_mask(seq_len, 1);
                         
-            // Create Inputs Vector
             std::vector<Ort::Value> input_tensors;
             
-            // Input 1: Input IDs
             input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-                                                                      memory_info,
-                                                                      ids.data(),
-                                                                      ids.size(),
-                                                                      input_dims.data(),
-                                                                      input_dims.size()));
-            // Input 2: Attention Mask
-            if (num_input_nodes >1) {
+                    memory_info, ids.data(), ids.size(), input_dims.data(), input_dims.size()));
+
+            if (num_input_nodes > 1) {
                 input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-                                                                          memory_info,
-                                                                          attention_mask.data(),
-                                                                          attention_mask.size(),
-                                                                          input_dims.data(),
-                                                                          input_dims.size()));
-                // Input 3: Token Type IDs
-                if (num_input_nodes >2) {
+                        memory_info, attention_mask.data(), attention_mask.size(), input_dims.data(), input_dims.size()));
+                
+                if (num_input_nodes > 2) {
                     input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-                                                                              memory_info,
-                                                                              type_ids.data(),
-                                                                              type_ids.size(),
-                                                                              input_dims.data(),
-                                                                              input_dims.size()));
+                            memory_info, type_ids.data(), type_ids.size(), input_dims.data(), input_dims.size()));
                 }
-        }
+            }
             
+            // --- INFERENCE ---
             auto outputs = session->Run(
                                         Ort::RunOptions{nullptr},
                                         input_names_c_array.data(),
@@ -1348,38 +1344,59 @@ static std::string run_reranking(
                                         num_output_nodes
                                         );
         
-            // 4. Extract Score
-            // Output shape is usually [1, 1] (BGE) or [1, 2] (older BERT classifiers)
+            // --- DATA COLLECTION ---
             float* float_data = outputs.front().GetTensorMutableData<float>();
             auto type_info = outputs.front().GetTensorTypeAndShapeInfo();
             auto shape = type_info.GetShape();
-        
-            float raw_score = 0.0f;
-            float logit_neg = 0.0f;
-            float logit_pos = 0.0f;
             
-            switch (shape[1]) {
-                case 1:
-                    // Case A: Model outputs single scalar (e.g. BGE-Reranker)
-                    // Often raw logits requiring Sigmoid, or already normalized
-                    raw_score = float_data[0];
-                    raw_score = sigmoid(raw_score); // Optional: depends on model training
-                    break;
-                case 2:
-                    // Case B: [Logit_Negative, Logit_Positive]
-                    // Raw logits require softmax to get probability of class 1
-                    logit_neg = float_data[0];
-                    logit_pos = float_data[1];
-                    raw_score = 1.0f / (1.0f + std::exp(logit_neg - logit_pos));
-                    break;
-                default:
-                    break;
+            // On first run, detect if model outputs 1 scalar or 2 logits
+            if (output_dim == 0) {
+                output_dim = (int)shape[1];
             }
             
-            results.push_back({(int)i, raw_score/*, it->text*/});
+            // Copy raw data out immediately (Ort::Value output dies at end of loop)
+            for(int k = 0; k < output_dim; ++k) {
+                all_raw_logits.push_back(float_data[k]);
+            }
+            
             i++;
         }
+                
+        Eigen::ArrayXf final_scores(items.size());
         
+        // 2. Map input data.
+               // We use Matrix map initially to easily access columns (.col),
+               // but we will cast to .array() immediately for the math.
+       Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+           logits_mat(all_raw_logits.data(), items.size(), output_dim);
+        
+        if (output_dim == 2) {
+            // Case B: [Logit_Negative, Logit_Positive]
+            // Logic: 1.0 / (1.0 + exp(Neg - Pos))
+            
+            // Fix:
+            // 1. (col(0) - col(1)) creates a Vector (Matrix type)
+            // 2. .array() converts it to an Array
+            // 3. .exp() is now element-wise
+            // 4. .inverse() is element-wise reciprocal
+            
+            final_scores = (1.0f + (logits_mat.col(0) - logits_mat.col(1)).array().exp()).inverse();
+        }
+        else {
+            // Case A: Single Scalar
+            // Logic: 1.0 / (1.0 + exp(-x))
+            
+            // Fix: Cast to .array() before exp()
+            final_scores = (1.0f + (-logits_mat.col(0)).array().exp()).inverse();
+        }
+        
+        // --- PACK RESULTS ---
+        // Eigen Array can be accessed just like std::vector or C-array using []
+        for (int j = 0; j < items.size(); ++j) {
+            results.push_back({(int)j, final_scores[j]}); // Note: cast j to int if struct expects int
+        }
+        
+        // --- SORTING AND JSON ---
         std::sort(results.begin(), results.end(), [](const RerankResult& a, const RerankResult& b) {
             return a.score > b.score;
         });
@@ -1389,10 +1406,9 @@ static std::string run_reranking(
         }
         
         Json::Value rootNode(Json::objectValue);
-                
         Json::Value listNode(Json::arrayValue);
-        for (int j = 0; j < results.size(); ++j) {
-            RerankResult result = results[j];
+        
+        for (const auto& result : results) {
             Json::Value dataNode = Json::objectValue;
             dataNode["index"] = result.index;
             dataNode["relevance_score"] = result.score;
