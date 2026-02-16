@@ -31,7 +31,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 
 ## Converted ONNX Models
 
-### Chat
+### Chat Completion
 
 ||`int4`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
 |-|-:|-:|-:|-:|
