@@ -96,7 +96,7 @@ std::string LoadChatTemplate(const std::string& model_path) {
     }
     
     if (fs::exists(chat_template_path) && chat_template_path.extension() == ".jinja") {
-        std::cout << "Loading jinja from: " << chat_template_path << std::endl;
+//        std::cout << "[Chat] Loading jinja from: " << chat_template_path << std::endl;
         return LoadBytesFromFile(chat_template_path.string());
     }
     
@@ -1484,6 +1484,7 @@ static std::string run_reranking(
 static std::string run_embeddings(
                                   Ort::Session *session,
                                   std::vector<int>& ids,
+                                  int max_position_embeddings,
                                   std::vector<const char*>&  input_names_c_array,
                                   size_t num_input_nodes,
                                   std::vector<const char*>&   output_names_c_array,
@@ -1491,6 +1492,12 @@ static std::string run_embeddings(
                                   PoolingMode pooling_mode) {
 
     int batch_size = 1;
+    
+    // 1. Safety: Truncate BEFORE any other operations
+    if (ids.size() > static_cast<size_t>(max_position_embeddings)) {
+        ids.resize(max_position_embeddings);
+    }
+    
     std::vector<int64_t> input_ids = ConvertToInt64(ids);
     int seq_len = (int)ids.size();
     
@@ -1814,12 +1821,12 @@ int main(int argc, OPTARG_T argv[]) {
 //                    }
 //https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html#configuration-options
 #elif defined(__APPLE__)
-                    try{
-                        config->AppendProvider("CoreML");
-                        active_provider = "CoreML";
-                    } catch (const std::exception& e) {
-                        std::cerr << "Failed to load model: " << e.what() << std::endl;
-                    }
+//                    try{
+//                        config->AppendProvider("CoreML");
+//                        active_provider = "CoreML";
+//                    } catch (const std::exception& e) {
+//                        std::cerr << "Failed to load model: " << e.what() << std::endl;
+//                    }
 #endif
                     // 3. Update Fingerprint with actual provider used
                     fingerprint = get_system_fingerprint(model_path, active_provider);
@@ -1884,12 +1891,13 @@ int main(int argc, OPTARG_T argv[]) {
                     session_options.SetIntraOpNumThreads(intra_op_threads);
                     
 #if defined(__APPLE__)
-                    std::unordered_map<std::string, std::string> provider_options;
-                    provider_options["ModelFormat"] = "MLProgram";
-                    provider_options["MLComputeUnits"] = "ALL";
-                    provider_options["RequireStaticShapes"] = "0";
-                    provider_options["EnableSubgraphs"] = "0";
-                    session_options.AppendExecutionProvider("CoreML", provider_options);
+//                    std::unordered_map<std::string, std::string> provider_options;
+//                    provider_options["ModelFormat"] = "MLProgram";
+//                    provider_options["MLComputeUnits"] = "ALL";
+//                    provider_options["RequireStaticShapes"] = "0";
+//                    provider_options["EnableSubgraphs"] = "0";
+//                    session_options.AppendExecutionProvider("CoreML", provider_options);
+//https://onnxruntime.ai/docs/execution-providers/CoreML-ExecutionProvider.html#requirements
 #endif
 
                     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
@@ -2371,7 +2379,7 @@ int main(int argc, OPTARG_T argv[]) {
                             }
                             response_json = run_embeddings(
                                                            embeddings_session.get(),
-                                                           ids, input_names_c_array,
+                                                           ids, max_position_embeddings, input_names_c_array,
                                                            num_input_nodes,
                                                            output_names_c_array,
                                                            num_output_nodes,
