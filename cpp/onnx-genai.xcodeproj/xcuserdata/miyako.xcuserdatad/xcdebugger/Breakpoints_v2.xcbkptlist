@@ -34,36 +34,6 @@
             endingLineNumber = "1817"
             landmarkName = "main(argc, argv)"
             landmarkType = "9">
-            <Locations>
-               <Location
-                  uuid = "59BE7CFC-9112-4DDA-AD2C-258EB7AB140D - f3122bac58054544"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "main"
-                  moduleName = "onnx-genai"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/miyako/Documents/GitHub/onnx-genai/cpp/onnx-genai/main.cpp"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "1817"
-                  endingLineNumber = "1817">
-               </Location>
-               <Location
-                  uuid = "59BE7CFC-9112-4DDA-AD2C-258EB7AB140D - f3122bac58054563"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "main"
-                  moduleName = "onnx-genai"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/miyako/Documents/GitHub/onnx-genai/cpp/onnx-genai/main.cpp"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "1818"
-                  endingLineNumber = "1818">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

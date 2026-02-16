@@ -31,7 +31,7 @@
       shouldAutocreateTestPlan = "YES">
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Release"
+      buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
@@ -54,7 +54,11 @@
       <CommandLineArguments>
          <CommandLineArgument
             argument = "-m"
-            isEnabled = "NO">
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/.onnx/Qwen3-0.6B"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-e"
@@ -69,7 +73,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/miyako/.onnx/bge-reranker-v2-m3/model.onnx"
+            argument = "/Users/miyako/.onnx/zerank-2/model_quantized.onnx"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
@@ -94,7 +98,7 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-c"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-p"
