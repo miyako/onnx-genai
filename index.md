@@ -13,7 +13,7 @@ layout: default
 
 [**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. It allows models trained in one framework (e.g. PyTorch) to be used in another framework (e.g. TensorFlow) with native hardware acceleration (NVIDIA, AMD, Intel, Apple Silicon, Qualcomm). 
 
-#### ONNX performance on Apple Silicon
+#### ONNX chat completion performance on Apple Silicon
 
 You will likely notice the CPU usage jump to `400%` on M1. This means all `4` performance cores are running at full speed. This is because the ONNX Runtime generic `cpu` provider is not fully optimised for the ARM64 NEON instruction set used by Apple Silicon. The CPU can't perform the math fast enough for the `GeLU` activation functions and `RoPE` rotary embeddings. 
 
