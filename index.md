@@ -15,7 +15,7 @@ layout: default
 
 #### ONNX performance on Apple Silicon
 
-You will likely notice the CPU usage jump to `400%` on M1. This means all `4` performance cores are running at full power. This is because the ONNX Runtime generic `cpu` provider is not fully optimised for the ARM64 NEON instruction set used by Apple Silicon. In particular, CPU can't perform the math fast enough for the `GeLU` activation functions and `RoPE` rotary embeddings. 
+You will likely notice the CPU usage jump to `400%` on M1. This means all `4` performance cores are running at full speed. This is because the ONNX Runtime generic `cpu` provider is not fully optimised for the ARM64 NEON instruction set used by Apple Silicon. In particular, CPU can't perform the math fast enough for the `GeLU` activation functions and `RoPE` rotary embeddings. 
 
 That means the CPU must de-quantise the small blocks of `Int4` data to `Float32`, do the matrix multiplication math, and re-quantise or move to the next block. That would amount to about `4` to `8` tokens per second on M1.
 
