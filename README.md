@@ -37,7 +37,9 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |-|-:|-:|-:|-:|
 |[`microsoft/Phi-4-mini-reasoning`](https://huggingface.co/microsoft/Phi-4-mini-reasoning)|[`4860`](https://huggingface.co/keisuke-miyako/Phi-4-mini-reasoning-onnx-int4)|`131072`|`3072`|`32`|
 |[`google/gemma-3-4b-it`](https://huggingface.co/google/gemma-3-4b-it)|[`5380`](https://huggingface.co/keisuke-miyako/gemma-3-4b-it-onnx-int4)|`131072`|`2560`|`34`|
+|[`google/gemma-3-1b-it`](https://huggingface.co/google/gemma-3-1b-it)|[`1900`](https://huggingface.co/keisuke-miyako/gemma-3-4b-it-onnx-int4)|`32768`|`1152`|`26`|
 |[`google/translategemma-4b-it`](https://huggingface.co/google/translategemma-4b-it)|[`5380`](https://huggingface.co/keisuke-miyako/translategemma-4b-it-onnx-int4)|`131072`|`2560`|`34`|
+
 
 ### Rerank
 
