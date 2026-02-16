@@ -13,7 +13,7 @@ layout: default
 
 [**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. It allows models trained in one framework (e.g. PyTorch) to be used in another framework (e.g. TensorFlow) with native hardware acceleration (NVIDIA, AMD, Intel, Apple Silicon, Qualcomm). 
 
-> The inference engine used in this component is primarily configured to run on CPU. The **DirectML** (windows) and **CoreML** (macOS) execution prividers each have compatibility issues. See ONNX Runtime documentation for details.
+> The inference engine used in this component is primarily configured to run on CPU. The **DirectML** (windows) and **CoreML** (macOS) execution prividers each have portability barriers; weights must be `fp16`, shapes must be static, etc. See ONNX Runtime documentation for details.
 
 #### ONNX chat completion performance on Apple Silicon
 
