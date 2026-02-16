@@ -1782,24 +1782,69 @@ int main(int argc, OPTARG_T argv[]) {
     std::string modelName;
     std::unique_ptr<OgaModel> model;
     std::unique_ptr<OgaTokenizer> tokenizer;
+    std::unique_ptr<OgaConfig> config;
     
     if (model_path.length() != 0) {
         if (fs::exists(model_path)) {
             if (fs::is_directory(model_path)) {
+                
+                while (!model_path.empty() && (model_path.back() == '/' || model_path.back() == '\\')) {
+                    model_path.pop_back();
+                }
+                                
                 // 1.a Initialize Model and Tokenizer (Load once)
                 std::cerr << "[Chat] Loading from " << model_path << std::endl;
-                fingerprint = get_system_fingerprint(model_path, "directml");
                 modelName = get_model_name(model_path);
+
+                // We determine the provider dynamically now, so we track it for the fingerprint
+                std::string active_provider = "CPU";
+                                
                 try {
-                    model = OgaModel::Create(model_path.c_str());
+                    // 1. Create the Config Object
+                    config = OgaConfig::Create(model_path.c_str());
+                    config->ClearProviders();
+                    
+                    // 2. Dynamic Provider Loading Logic
+#if defined(_WIN32)
+                    try{
+                        config->AppendProvider("DML");
+                        active_provider = "DML";
+                    } catch (const std::exception& e) {
+                        std::cerr << "Failed append provider: " << e.what() << std::endl;
+                    }
+#elif defined(__APPLE__)
+                    try{
+                        config->AppendProvider("CoreML");
+                        active_provider = "CoreML";
+                    } catch (const std::exception& e) {
+                        std::cerr << "Failed to load model: " << e.what() << std::endl;
+                    }
+#endif
+                    // 3. Update Fingerprint with actual provider used
+                    fingerprint = get_system_fingerprint(model_path, active_provider);
+                    
+                    // 4. Create Model from the Config
+#if defined(_WIN32)
+                    try{
+                        model = OgaModel::Create(*config);
+                    } catch (const std::exception& e) {
+                        std::cerr << e.what() << std::endl;
+                    }
+#endif
+                    if(model == nullptr) {
+                        model = OgaModel::Create(model_path.c_str());
+                    }
+                    
+                    // 5. Create Tokenizer
                     tokenizer = OgaTokenizer::Create(*model);
+                                        
+                    // 7. Load Templates
                     if(chat_template == "") {
                         chat_template = LoadChatTemplate(model_path);
                     }
                     model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
                     std::cerr << "Failed to load model: " << e.what() << std::endl;
-                    return 1;
                 }
             }
         }
