@@ -31,8 +31,8 @@ cmake -S . -B build_arm \
   -DACCELERATE_FRAMEWORK=ON \
   -DBLAS=Accelerate \
   -DCMAKE_C_FLAGS="-O3 -mcpu=apple-m1"\
-  -DCMAKE_CXX_FLAGS="-O3 -mcpu=apple-m1" \
-cmake --build build_arm --config Release \
+  -DCMAKE_CXX_FLAGS="-O3 -mcpu=apple-m1" 
+cmake --build build_arm --config Release 
 ```  
 
 ## Xcode
