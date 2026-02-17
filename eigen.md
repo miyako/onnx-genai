@@ -18,6 +18,7 @@ cmake -S . -B build_amd \
   -DCMAKE_OSX_ARCHITECTURES=x86_64 \
   -DCMAKE_C_FLAGS="-O3 -march=haswell" \
   -DCMAKE_CXX_FLAGS="-O3 -march=haswell" \
+  -DUSE_CUDA=FALSE -DUSE_ROCM=FALSE \
   -DCMAKE_Fortran_COMPILER=/usr/local/bin/gfortran
 cmake --build build_amd --config Release  
 ```
@@ -30,6 +31,7 @@ cmake -S . -B build_arm \
   -DCMAKE_OSX_ARCHITECTURES=arm64 \
   -DACCELERATE_FRAMEWORK=ON \
   -DBLAS=Accelerate \
+  -DUSE_CUDA=FALSE -DUSE_ROCM=FALSE \
   -DCMAKE_C_FLAGS="-O3 -mcpu=apple-m1"\
   -DCMAKE_CXX_FLAGS="-O3 -mcpu=apple-m1" 
 cmake --build build_arm --config Release 
