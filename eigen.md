@@ -25,14 +25,14 @@ cmake --build build_amd --config Release
 ## Apple Silicon
 
 ```
-cmake -S . -B build_arm 
-  -DCMAKE_BUILD_TYPE=Release 
-  -DCMAKE_OSX_ARCHITECTURES=arm64
-  -DACCELERATE_FRAMEWORK=ON
-  -DBLAS=Accelerate
-  -DCMAKE_C_FLAGS="-O3 -mcpu=apple-m1" 
-  -DCMAKE_CXX_FLAGS="-O3 -mcpu=apple-m1"
-cmake --build build_arm --config Release  
+cmake -S . -B build_arm \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_OSX_ARCHITECTURES=arm64 \
+  -DACCELERATE_FRAMEWORK=ON \
+  -DBLAS=Accelerate \
+  -DCMAKE_C_FLAGS="-O3 -mcpu=apple-m1"\
+  -DCMAKE_CXX_FLAGS="-O3 -mcpu=apple-m1" \
+cmake --build build_arm --config Release \
 ```  
 
 ## Xcode
