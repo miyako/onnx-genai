@@ -43,12 +43,12 @@ cmake --build build_arm --config Release
 # Tokenizers
 
 ```
-cmake -S . -B build_arm  
-    -DCMAKE_OSX_ARCHITECTURES=arm64 
-    -DCMAKE_BUILD_TYPE=Release 
-    -DMLC_ENABLE_SENTENCEPIECE_TOKENIZER=ON  
-    -DCMAKE_CXX_FLAGS=-O3  
-    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+cmake -S . -B build_arm \ 
+    -DCMAKE_OSX_ARCHITECTURES=arm64 \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DMLC_ENABLE_SENTENCEPIECE_TOKENIZER=ON \
+    -DCMAKE_CXX_FLAGS=-O3 \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 
 cmake --build build_arm --config Release
 ```
 
