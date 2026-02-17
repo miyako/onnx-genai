@@ -73,12 +73,12 @@ rustup default stable-x86_64-pc-windows-msvc
 # 1. Tell Cargo to build for x64, not the native ARM64
 $Env:CARGO_BUILD_TARGET = "x86_64-pc-windows-msvc"
 # 2. Run CMake with the x64 Architecture flag
-cmake -S . -B build  `
-    -G "Visual Studio 17 2022" `
+cmake -S . -B build ^
+    -G "Visual Studio 17 2022" ^
     -A x64 `
-    -DCMAKE_CXX_FLAGS="/bigobj /openmp /O2 /fp:fast /arch:AVX2 /Ob2" `
-    -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" `
-    -DCMAKE_BUILD_TYPE=Release `
+    -DCMAKE_CXX_FLAGS="/bigobj /openmp /O2 /fp:fast /arch:AVX2 /Ob2" ^
+    -DCMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" ^
+    -DCMAKE_BUILD_TYPE=Release ^
     -DCMAKE_POLICY_VERSION_MINIMUM="3.5" 
 cmake --build build --config Release
 ```
