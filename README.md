@@ -56,17 +56,23 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |[`google/functiongemma-270m-it`](https://huggingface.co/google/functiongemma-270m-it)|[`906`](https://huggingface.co/keisuke-miyako/functiongemma-270m-it-onnx-int4)|`32768`|`640`|`18`|
 |[`google/gemma-2-2b-it`](https://huggingface.co/google/gemma-2-2b-it)|[`4010`](https://huggingface.co/keisuke-miyako/gemma-2-2B-it-onnx-int4)|`8192`|`2304`|`26`|
 |[`google/gemma-2-2b-jpn-it`](https://huggingface.co/google/gemma-2-2b-jpn-it)|[`4010`](https://huggingface.co/keisuke-miyako/gemma-2-2b-jpn-it-onnx-int4)|`8192`|`2304`|`26`|
-|[`OpenLLM-France/Lucie-7B-Instruct-v1.1`](https://huggingface.co/OpenLLM-France/Lucie-7B-Instruct-v1.1)|[`5110`](https://huggingface.co/keisuke-miyako/Lucie-7B-Instruct-v1.1-onnx-int4)|`32000`|`4096`|`32`|
-|[`HuggingFaceTB/SmolLM2-1.7B`](https://huggingface.co/HuggingFaceTB/SmolLM2-1.7B)|[`1470`](https://huggingface.co/keisuke-miyako/SmolLM2-1.7B-onnx-int4)|`8192`|`2048`|`24`|
 |[`ibm-granite/granite-3.0-2b-instruct`](https://huggingface.co/ibm-granite/granite-3.0-2b-instruct)|[`1990`](https://huggingface.co/keisuke-miyako/granite-3.0-2b-instruct-onnx-int4)|`4096`|`2048`|`40`|
 |[`ibm-granite/granite-3.3-2b-instruct`](https://huggingface.co/ibm-granite/granite-3.3-2b-instruct)|[`2020`](https://huggingface.co/keisuke-miyako/granite-3.3-2b-instruct-onnx-int4)|`131072`|`2048`|`40`|
+|[`ibm-granite/granite-3.1-8b-instruct`](https://huggingface.co/ibm-granite/granite-3.1-8b-instruct)|[`5980`](https://huggingface.co/keisuke-miyako/granite-3.1-8b-instruct-onnx-int4)|`131072`|`4096`|`40`|
+|[`ibm-granite/granite-3.2-8b-instruct`](https://huggingface.co/ibm-granite/granite-3.2-8b-instruct)|[`5980`](https://huggingface.co/keisuke-miyako/granite-3.2-8b-instruct-onnx-int4)|`131072`|`4096`|`40`|
+|[`ibm-granite/granite-3.3-8b-instruct`](https://huggingface.co/ibm-granite/granite-3.3-8b-instruct)|[`5980`](https://huggingface.co/keisuke-miyako/granite-3.3-8b-instruct-onnx-int4)|`131072`|`4096`|`40`|
+|[`ibm-granite/granite-3.2-2b-instruct`](https://huggingface.co/ibm-granite/granite-3.2-2b-instruct)|[`2020`](https://huggingface.co/keisuke-miyako/granite-3.2-2b-instruct-onnx-int4)|`131072`|`2048`|`40`|
+|[`ibm-granite/granite-3.1-2b-instruct`](https://huggingface.co/ibm-granite/granite-3.1-2b-instruct)|[`2020`](https://huggingface.co/keisuke-miyako/granite-3.1-2b-instruct-onnx-int4)|`131072`|`2048`|`40`|
+|[`ibm-granite/granite-3.0-8b-instruct`](https://huggingface.co/ibm-granite/granite-3.0-8b-instruct)|[`5920`](https://huggingface.co/keisuke-miyako/granite-3.0-8b-instruct-onnx-int4)|`4096`|`4096`|`40`|
 |[`utter-project/EuroLLM-1.7B-Instruct`](https://huggingface.co/utter-project/EuroLLM-1.7B-Instruct)|[`1920`](https://huggingface.co/keisuke-miyako/EuroLLM-1.7B-Instruct-onnx-int4)|`4096`|`2048`|`24`|
 |[`utter-project/EuroLLM-9B-Instruct`](https://huggingface.co/utter-project/EuroLLM-9B-Instruct)|[`7490`](https://huggingface.co/keisuke-miyako/EuroLLM-9B-Instruct-onnx-int4)|`4096`|`4096`|`42`|
 |[`h2oai/h2o-danube-1.8b-chat`](https://huggingface.co/h2oai/h2o-danube-1.8b-chat)|[`1430`](https://huggingface.co/keisuke-miyako/h2o-danube-1.8b-chat-onnx-int4)|`16384`|`2560`|`24`|
 |[`h2oai/h2o-danube2-1.8b-chat`](https://huggingface.co/h2oai/h2o-danube2-1.8b-chat)|[`1430`](https://huggingface.co/keisuke-miyako/h2o-danube2-1.8b-chat-onnx-int4)|`8192`|`2560`|`24`|
-|[`PleIAs/Pleias-RAG-1B`](https://huggingface.co/PleIAs/Pleias-RAG-1B)|[``](https://huggingface.co/keisuke-miyako/Pleias-RAG-1B-onnx-int4)|`4096`|`2048`|`22`|
+|[`PleIAs/Pleias-RAG-1B`](https://huggingface.co/PleIAs/Pleias-RAG-1B)|[`1290`](https://huggingface.co/keisuke-miyako/Pleias-RAG-1B-onnx-int4)|`4096`|`2048`|`22`|
 |[`PleIAs/Baguettotron`](https://huggingface.co/PleIAs/Baguettotron)|[`353`](https://huggingface.co/keisuke-miyako/Baguettotron-onnx-int4)|`4096`|`576`|`80`|
 |[`deepseek-ai/deepseek-coder-1.3b-instruct`](https://huggingface.co/deepseek-ai/deepseek-coder-1.3b-instruct)|[`1080`](https://huggingface.co/keisuke-miyako/deepseek-coder-1.3b-instruct-onnx-int4)|`16384`|`2048`|`24`|
+|[`OpenLLM-France/Lucie-7B-Instruct-v1.1`](https://huggingface.co/OpenLLM-France/Lucie-7B-Instruct-v1.1)|[`5110`](https://huggingface.co/keisuke-miyako/Lucie-7B-Instruct-v1.1-onnx-int4)|`32000`|`4096`|`32`|
+|[`HuggingFaceTB/SmolLM2-1.7B`](https://huggingface.co/HuggingFaceTB/SmolLM2-1.7B)|[`1470`](https://huggingface.co/keisuke-miyako/SmolLM2-1.7B-onnx-int4)|`8192`|`2048`|`24`|
 |[`01-ai/Yi-Coder-1.5B-Chat`](https://huggingface.co/01-ai/Yi-Coder-1.5B-Chat)|[`1440`](https://huggingface.co/keisuke-miyako/Yi-Coder-1.5B-Chat-onnx-int4)|`131072`|`2048`|`24`|
 |[`OpenLLM-France/Claire-7B-FR-Instruct-0.1`](https://huggingface.co/OpenLLM-France/Claire-7B-FR-Instruct-0.1)|[`6920`](https://huggingface.co/keisuke-miyako/Claire-7B-FR-Instruct-0.1-onnx-int4)|`2048`|`4544`|`32`|
 |[`tiiuae/Falcon3-7B-Instruct`](https://huggingface.co/tiiuae/Falcon3-7B-Instruct)|[`7460`](https://huggingface.co/keisuke-miyako/Falcon3-7B-Instruct-onnx-int4)|`32768`|`3072`|`28`|
@@ -81,6 +87,18 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |[`Qwen/Qwen2.5-7B`](https://huggingface.co/Qwen/Qwen2.5-7B)|[``](https://huggingface.co/keisuke-miyako/Qwen2.5-7B-onnx-int4)|`131072`|`3584`|`28`|
 |[`Qwen/Qwen3-1.7B`](https://huggingface.co/Qwen/Qwen3-1.7B)|[`2340`](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-onnx-int4)|`40960`|`2048`|`28`|
 |[`Qwen/Qwen3-4B-Thinking-2507`](https://huggingface.co/Qwen/Qwen3-4B-Thinking-2507)|[`4210`](https://huggingface.co/keisuke-miyako/Qwen3-4B-Thinking-2507-onnx-int4)|`262144`|`2560`|`36`|
+|[`elyza/Llama-3-ELYZA-JP-8B`](https://huggingface.co/elyza/Llama-3-ELYZA-JP-8B)|[`6800`](https://huggingface.co/keisuke-miyako/Llama-3-ELYZA-JP-8B-onnx-int4)|`8192`|`4096`|`32`|
+|[`tokyotech-llm/Llama-3.1-Swallow-8B-Instruct-v0.3`](https://huggingface.co/tokyotech-llm/Llama-3.1-Swallow-8B-Instruct-v0.3)|[`6800`](https://huggingface.co/keisuke-miyako/Llama-3.1-Swallow-8B-Instruct-v0.3-onnx-int4)|`8192`|`4096`|`32`|
+|[`Rakuten/RakutenAI-7B-chat`](https://huggingface.co/Rakuten/RakutenAI-7B-chat)|[`5290`](https://huggingface.co/keisuke-miyako/RakutenAI-7B-chat-onnx-int4)|`32768`|`4096`|`32`|
+|[`Rakuten/RakutenAI-7B-instruct`](https://huggingface.co/Rakuten/RakutenAI-7B-instruct)|[`5290`](https://huggingface.co/keisuke-miyako/RakutenAI-7B-instruct-onnx-int4)|`32768`|`4096`|`32`|
+|[`rinna/llama-3-youko-8b-instruct`](https://huggingface.co/rinna/llama-3-youko-8b-instruct)|[`6800`](https://huggingface.co/keisuke-miyako/llama-3-youko-8b-instruct-onnx-int4)|`8192`|`4096`|`32`|
+|[`rinna/gemma-2-baku-2b-it`](https://huggingface.co/rinna/gemma-2-baku-2b-it)|[`4010`](https://huggingface.co/keisuke-miyako/gemma-2-baku-2b-it-onnx-int4)|`8192`|`2304`|`26`|
+|[`rinna/youri-7b-instruction`](https://huggingface.co/rinna/youri-7b-instruction)|[`4660`](https://huggingface.co/keisuke-miyako/youri-7b-instruction-onnx-int4)|`4096`|`4096`|`32`|
+|[`rinna/youri-7b-chat`](https://huggingface.co/rinna/youri-7b-chat)|[`4660`](https://huggingface.co/keisuke-miyako/youri-7b-chat-onnx-int4)|`4096`|`4096`|`32`|
+|[`cyberagent/calm2-7b-chat`](https://huggingface.co/cyberagent/calm2-7b-chat)|[`5300`](https://huggingface.co/keisuke-miyako/calm2-7b-chat-onnx-int4)|`32768`|`4096`|`32`|
+|[`deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B`](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B)|[`1970`](https://huggingface.co/keisuke-miyako/DeepSeek-R1-Distill-Qwen-1.5B-onnx-int4)|`131072`|`1536`|`28`|
+|[`deepseek-ai/DeepSeek-R1-Distill-Qwen-7B`](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-7B)|[`6670`](https://huggingface.co/keisuke-miyako/DeepSeek-R1-Distill-Qwen-7B-onnx-int4)|`131072`|`3584`|`28`|
+|[`deepseek-ai/DeepSeek-R1-0528-Qwen3-8B`](https://huggingface.co/deepseek-ai/DeepSeek-R1-0528-Qwen3-8B)|[`7290`](https://huggingface.co/keisuke-miyako/DeepSeek-R1-0528-Qwen3-8B-onnx-int4)|`131072`|`4096`|`36`|
 
 ### Rerank
 
@@ -102,15 +120,6 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |[`Qwen/Qwen3-Reranker-0.6B`](https://huggingface.co/Qwen/Qwen3-Reranker-0.6B)|||[`598`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-onnx-int8)|`32768`|`1024`|`28`|
 |[`Qwen/Qwen3-Reranker-4B`](https://huggingface.co/Qwen/Qwen3-Reranker-4B)|||[`4030`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-4B-onnx-int8)|`40960`|`2560`|`36`|
 |[`zeroentropy/zerank-2`](https://huggingface.co/zeroentropy/zerank-2)|||[`4030`](https://huggingface.co/keisuke-miyako/zerank-2-onnx-int8)|`40960`|`2560`|`36`
-|[`elyza/Llama-3-ELYZA-JP-8B`](https://huggingface.co/elyza/Llama-3-ELYZA-JP-8B)|[`6800`](https://huggingface.co/keisuke-miyako/Llama-3-ELYZA-JP-8B-onnx-int4)|`8192`|`4096`|`32`|
-|[`tokyotech-llm/Llama-3.1-Swallow-8B-Instruct-v0.3`](https://huggingface.co/tokyotech-llm/Llama-3.1-Swallow-8B-Instruct-v0.3)|[`6800`](https://huggingface.co/keisuke-miyako/Llama-3.1-Swallow-8B-Instruct-v0.3-onnx-int4)|`8192`|`4096`|`32`|
-|[`Rakuten/RakutenAI-7B-chat`](https://huggingface.co/Rakuten/RakutenAI-7B-chat)|[`5290`](https://huggingface.co/keisuke-miyako/RakutenAI-7B-chat-onnx-int4)|`32768`|`4096`|`32`|
-|[`Rakuten/RakutenAI-7B-instruct`](https://huggingface.co/Rakuten/RakutenAI-7B-instruct)|[`5290`](https://huggingface.co/keisuke-miyako/RakutenAI-7B-instruct-onnx-int4)|`32768`|`4096`|`32`|
-|[`rinna/llama-3-youko-8b-instruct`](https://huggingface.co/rinna/llama-3-youko-8b-instruct)|[`6800`](https://huggingface.co/keisuke-miyako/llama-3-youko-8b-instruct-onnx-int4)|`8192`|`4096`|`32`|
-|[`rinna/gemma-2-baku-2b-it`](https://huggingface.co/rinna/gemma-2-baku-2b-it)|[`4010`](https://huggingface.co/keisuke-miyako/gemma-2-baku-2b-it-onnx-int4)|`8192`|`2304`|`26`|
-|[`rinna/youri-7b-instruction`](https://huggingface.co/rinna/youri-7b-instruction)|[`4660`](https://huggingface.co/keisuke-miyako/youri-7b-instruction-onnx-int4)|`4096`|`4096`|`32`|
-|[`rinna/youri-7b-chat`](https://huggingface.co/rinna/youri-7b-chat)|[`4660`](https://huggingface.co/keisuke-miyako/youri-7b-chat-onnx-int4)|`4096`|`4096`|`32`|
-|[`cyberagent/calm2-7b-chat`](https://huggingface.co/cyberagent/calm2-7b-chat)|[`5300`](https://huggingface.co/keisuke-miyako/calm2-7b-chat-onnx-int4)|`32768`|`4096`|`32`|
 
 ### Embedding
 
