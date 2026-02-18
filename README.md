@@ -19,6 +19,12 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
  -h host     : server host (default=127.0.0.1)    
 ```
 
+## Dependencies
+
+- `onnxruntime-genai-0.12.0`
+- `onnxruntime-extensions-0.14.0`
+- `onnxruntime-1.25.0`
+
 ## OpenAI Compatible Endpoints
 
 - `/v1/models`
