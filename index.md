@@ -313,14 +313,7 @@ else:
 
 An "End-to-End" (E2E) model that takes raw string as input and returns vectors as output. In this scenario, pre-processing, inference, and post processing are all baked into the model.
 
-#### Chat Completion Models
-
-||Model|Parameters|Size|Context&nbsp;Length|Vocabulary|Languages|
-|-|-|-:|-:|-:|-:|:-:|
-
-|🇯🇵|[Calm2&nbsp;7B&nbsp;Chat](https://huggingface.co/keisuke-miyako/calm2-7b-chat-onnx)|`7.0`|`5.3`|`32768`|`65024`|`Japanese`&nbsp;`English`
-
-#### Not Compatible
+#### Chat Completion Models Not Compatible
 
 ||Model|Parameters|Size|Context&nbsp;Length|Vocabulary|Languages|
 |-|-|-:|-:|-:|-:|:-:|
