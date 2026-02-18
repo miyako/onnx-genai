@@ -74,7 +74,7 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.onnx/ms-marco-MiniLM-L6-v2-fp16/model.onnx"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.onnx/ms-marco-MiniLM-L6-v2-fp32/model.onnx"
@@ -97,8 +97,8 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/miyako/.onnx/bge-reranker-v2-m3-int8/model_quantized.onnx"
-            isEnabled = "NO">
+            argument = "/Users/miyako/.onnx/bge-reranker-v2-m3/model_quantized.onnx"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.onnx/bge-reranker-v2-m3/model.onnx"
