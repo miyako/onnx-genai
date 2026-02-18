@@ -1445,12 +1445,16 @@ static std::string run_reranking(
         }
         
         // --- SORTING AND JSON ---
-        std::sort(results.begin(), results.end(), [](const RerankResult& a, const RerankResult& b) {
-            return a.score > b.score;
-        });
+        auto sorter = [](const RerankResult& a, const RerankResult& b) {
+            return a.score > b.score; // Descending
+        };
         
-        if (top_n > 0 && top_n < results.size()) {
+        if (top_n > 0 && top_n < (int)results.size()) {
+            // Partial sort is O(N * log(k)) - faster than full sort
+            std::partial_sort(results.begin(), results.begin() + top_n, results.end(), sorter);
             results.resize(top_n);
+        } else {
+            std::sort(results.begin(), results.end(), sorter);
         }
         
         Json::Value rootNode(Json::objectValue);
