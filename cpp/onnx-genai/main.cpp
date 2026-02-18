@@ -2241,6 +2241,7 @@ int main(int argc, OPTARG_T argv[]) {
                     default:
                     {
                         if (rerank_tokenizer != NULL) {
+                            std::vector<int> q = rerank_tokenizer->Encode(query);
                             for (size_t i = 0; i < documents.size(); ++i) {
                                 std::vector<int> ids;
                                 std::vector<int> type_ids;
@@ -2248,7 +2249,6 @@ int main(int argc, OPTARG_T argv[]) {
                                 switch (pooling_mode) {
                                     case POOLING_CLS:
                                     {
-                                        std::vector<int> q = rerank_tokenizer->Encode(query);
                                         std::vector<int> d = rerank_tokenizer->Encode(documents[i]);
                                         
                                         if(ranking_mode == RERANKING_ROBERTA) {
