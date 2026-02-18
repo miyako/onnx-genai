@@ -1323,8 +1323,7 @@ static std::string run_reranking(
                                   std::vector<const char*>&  input_names_c_array,
                                   size_t num_input_nodes,
                                   std::vector<const char*>&   output_names_c_array,
-                                  size_t num_output_nodes,
-                                  PoolingMode pooling_mode) {
+                                  size_t num_output_nodes) {
 
     std::string reponseJson;
     
@@ -2306,8 +2305,7 @@ int main(int argc, OPTARG_T argv[]) {
                                                           reranking_input_names_c_array,
                                                           num_reranking_input_nodes,
                                                           reranking_output_names_c_array,
-                                                          num_reranking_output_nodes,
-                                                          pooling_mode);
+                                                          num_reranking_output_nodes);
                             
                         }
                     }
