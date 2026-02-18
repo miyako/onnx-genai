@@ -66,8 +66,6 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |[`h2oai/h2o-danube2-1.8b-chat`](https://huggingface.co/h2oai/h2o-danube2-1.8b-chat)|[`1430`](https://huggingface.co/keisuke-miyako/h2o-danube2-1.8b-chat-onnx-int4)|`8192`|`2560`|`24`|
 |[`PleIAs/Pleias-RAG-1B`](https://huggingface.co/PleIAs/Pleias-RAG-1B)|[``](https://huggingface.co/keisuke-miyako/Pleias-RAG-1B-onnx-int4)|`4096`|`2048`|`22`|
 |[`PleIAs/Baguettotron`](https://huggingface.co/PleIAs/Baguettotron)|[`353`](https://huggingface.co/keisuke-miyako/Baguettotron-onnx-int4)|`4096`|`576`|`80`|
-|[`Qwen/Qwen3-1.7B`](https://huggingface.co/Qwen/Qwen3-1.7B)|[`2340`](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-onnx-int4)|`40960`|`2048`|`28`|
-|[`Qwen/Qwen3-4B-Thinking-2507`](https://huggingface.co/Qwen/Qwen3-4B-Thinking-2507)|[`4210`](https://huggingface.co/keisuke-miyako/Qwen3-4B-Thinking-2507-onnx-int4)|`262144`|`2560`|`36`|
 |[`deepseek-ai/deepseek-coder-1.3b-instruct`](https://huggingface.co/deepseek-ai/deepseek-coder-1.3b-instruct)|[`1080`](https://huggingface.co/keisuke-miyako/deepseek-coder-1.3b-instruct-onnx-int4)|`16384`|`2048`|`24`|
 |[`01-ai/Yi-Coder-1.5B-Chat`](https://huggingface.co/01-ai/Yi-Coder-1.5B-Chat)|[`1440`](https://huggingface.co/keisuke-miyako/Yi-Coder-1.5B-Chat-onnx-int4)|`131072`|`2048`|`24`|
 |[`OpenLLM-France/Claire-7B-FR-Instruct-0.1`](https://huggingface.co/OpenLLM-France/Claire-7B-FR-Instruct-0.1)|[`6920`](https://huggingface.co/keisuke-miyako/Claire-7B-FR-Instruct-0.1-onnx-int4)|`2048`|`4544`|`32`|
@@ -81,6 +79,8 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |[`Qwen/Qwen2.5-1.5B`](https://huggingface.co/Qwen/Qwen2.5-1.5B)|[`1920`](https://huggingface.co/keisuke-miyako/Qwen2.5-1.5B-onnx-int4)|`131072`|`1536`|`28`|
 |[`Qwen/Qwen2.5-3B`](https://huggingface.co/Qwen/Qwen2.5-3B)|[`3190`](https://huggingface.co/keisuke-miyako/Qwen2.5-3B-onnx-int4)|`32768`|`2048`|`36`|
 |[`Qwen/Qwen2.5-7B`](https://huggingface.co/Qwen/Qwen2.5-7B)|[``](https://huggingface.co/keisuke-miyako/Qwen2.5-7B-onnx-int4)|`131072`|`3584`|`28`|
+|[`Qwen/Qwen3-1.7B`](https://huggingface.co/Qwen/Qwen3-1.7B)|[`2340`](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-onnx-int4)|`40960`|`2048`|`28`|
+|[`Qwen/Qwen3-4B-Thinking-2507`](https://huggingface.co/Qwen/Qwen3-4B-Thinking-2507)|[`4210`](https://huggingface.co/keisuke-miyako/Qwen3-4B-Thinking-2507-onnx-int4)|`262144`|`2560`|`36`|
 
 ### Rerank
 
