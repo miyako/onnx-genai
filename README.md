@@ -41,7 +41,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 
 The `fp32` format is accurate but consumes `4` bytes per weight and pretty slow on a CPU. It is generally not suitable for production. You should only use it as a reference.
 
-The `fp16` format consumes `2` bytes per weight. The CPU backend may be forced to perform calculations in `float32` except on a CPU like Apple Silicon that has native 16-bit maths but not as fast as an NVIDIA GPU. It is usually best to avoid this format on a CPU.
+The `fp16` format consumes `2` bytes per weight. The CPU backend may be forced to perform calculations in `float32` except on a CPU like Apple Silicon that has native 16-bit maths which is not as fast as an NVIDIA GPU. It is usually best to avoid this format on a CPU.
 
 The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `AVX2` `AVX-512` `VNNI` instructions on Intel or AMD to **accelerate maths**. For encoders, the accuracy drop is said to be negligible ( less than `1%`). **You should always use the `int8` format on a PC or Mac with no GPU**. 
 
