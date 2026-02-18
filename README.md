@@ -45,7 +45,7 @@ The `fp16` format consumes `2` bytes per weight. The CPU backend may be forced t
 
 The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `AVX2` `AVX-512` `VNNI` instructions on Intel or AMD to **accelerate maths**. For encoders, the accuracy drop is said to be negligible ( less than `1%`). **You should always use the `int8` format on a PC or Mac with no GPU**. 
 
-The `int4` format is designed to compress large language models. Just as a reference, a `7B` parameter in native `float32` format would requires `28GB` of memory, and on a CPU the data must go through the processor for every single token generation. `int4` reduces the bandwidth by `8`. The format internally groups multiple weights (e.g. `32`) to share a scale factor to maintain accuracy. However the quantisation is less precise compare to a GGUF (llama.cpp) model of a similar size. 
+The `int4` format is designed to compress large language models. Just as a reference, a `7B` parameter in native `float32` format would requires `28GB` of memory, and on a CPU the data must go through the processor for every single token generation. `int4` reduces the bandwidth by `8`. The format internally groups multiple weights (e.g. `32`) to share a scale factor to maintain accuracy. However the quantisation is less precise compared to a GGUF (llama.cpp) model of a similar size. 
 
 ### Chat Completion
 
