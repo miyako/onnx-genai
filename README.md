@@ -45,22 +45,31 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 |[`microsoft/Phi-4-mini-instruct`](https://huggingface.co/microsoft/Phi-4-mini-instruct)|[`4860`](https://huggingface.co/keisuke-miyako/Phi-4-mini-instruct-onnx-int4)|`131072`|`3072`|`32`|
 |[`microsoft/Phi-3.5-mini-instruct`](https://huggingface.co/microsoft/Phi-3.5-mini-instruct)|[`2720`](https://huggingface.co/keisuke-miyako/Phi-3.5-mini-instruct-onnx-int4)|`131072`|`3072`|`32`|
 |[`microsoft/Phi-4-mini-reasoning`](https://huggingface.co/microsoft/Phi-4-mini-reasoning)|[`4860`](https://huggingface.co/keisuke-miyako/Phi-4-mini-reasoning-onnx-int4)|`131072`|`3072`|`32`|
+|[`microsoft/Phi-4-reasoning`](https://huggingface.co/microsoft/Phi-4-reasoning)|[`1090`](https://huggingface.co/keisuke-miyako/Phi-4-reasoning-onnx-int4)|`32768`|`5120`|`40`|
+|[`microsoft/phi-4`](https://huggingface.co/microsoft/phi-4)|[`1090`](https://huggingface.co/keisuke-miyako/Phi-4-onnx-int4)|`16384`|`5120`|`40`|
+|[`microsoft/Phi-4-reasoning-plus`](https://huggingface.co/microsoft/Phi-4-reasoning-plus)|[`1090`](keisuke-miyako/Phi-4-reasoning-plus-onnx-int4)|`32768`|`5120`|`40`|
 |[`google/gemma-3-4b-it`](https://huggingface.co/google/gemma-3-4b-it)|[`5380`](https://huggingface.co/keisuke-miyako/gemma-3-4b-it-onnx-int4)|`131072`|`2560`|`34`|
 |[`google/translategemma-4b-it`](https://huggingface.co/google/translategemma-4b-it)|[`5380`](https://huggingface.co/keisuke-miyako/translategemma-4b-it-onnx-int4)|`131072`|`2560`|`34`|
 |[`google/gemma-3-1b-it`](https://huggingface.co/google/gemma-3-1b-it)|[`1900`](https://huggingface.co/keisuke-miyako/gemma-3-1b-it-onnx-int4)|`32768`|`1152`|`26`|
 |[`google/gemma-3-270m-it`](https://huggingface.co/google/gemma-3-270m-it)|[`906`](https://huggingface.co/keisuke-miyako/gemma-3-270m-it-onnx-int4)|`32768`|`640`|`18`|
 |[`google/functiongemma-270m-it`](https://huggingface.co/google/functiongemma-270m-it)|[`906`](https://huggingface.co/keisuke-miyako/functiongemma-270m-it-onnx-int4)|`32768`|`640`|`18`|
 |[`google/gemma-2-2b-it`](https://huggingface.co/google/gemma-2-2b-it)|[`4010`](https://huggingface.co/keisuke-miyako/gemma-2-2B-it-onnx-int4)|`8192`|`2304`|`26`|
+|[`google/gemma-2-2b-jpn-it`](https://huggingface.co/google/gemma-2-2b-jpn-it)|[`4010`](https://huggingface.co/keisuke-miyako/gemma-2-2b-jpn-it-onnx-int4)|`8192`|`2304`|`26`|
 |[`OpenLLM-France/Lucie-7B-Instruct-v1.1`](https://huggingface.co/OpenLLM-France/Lucie-7B-Instruct-v1.1)|[`5110`](https://huggingface.co/keisuke-miyako/Lucie-7B-Instruct-v1.1-onnx-int4)|`32000`|`4096`|`32`|
 |[`HuggingFaceTB/SmolLM2-1.7B`](https://huggingface.co/HuggingFaceTB/SmolLM2-1.7B)|[`1470`](https://huggingface.co/keisuke-miyako/SmolLM2-1.7B-onnx-int4)|`8192`|`2048`|`24`|
 |[`ibm-granite/granite-3.0-2b-instruct`](https://huggingface.co/ibm-granite/granite-3.0-2b-instruct)|[`1990`](https://huggingface.co/keisuke-miyako/granite-3.0-2b-instruct-onnx-int4)|`4096`|`2048`|`40`|
+|[`ibm-granite/granite-3.3-2b-instruct`](https://huggingface.co/ibm-granite/granite-3.3-2b-instruct)|[`2020`](https://huggingface.co/keisuke-miyako/granite-3.3-2b-instruct-onnx-int4)|`131072`|`2048`|`40`|
 |[`utter-project/EuroLLM-1.7B-Instruct`](https://huggingface.co/utter-project/EuroLLM-1.7B-Instruct)|[`1920`](https://huggingface.co/keisuke-miyako/EuroLLM-1.7B-Instruct-onnx-int4)|`4096`|`2048`|`24`|
 |[`utter-project/EuroLLM-9B-Instruct`](https://huggingface.co/utter-project/EuroLLM-9B-Instruct)|[`7490`](https://huggingface.co/keisuke-miyako/EuroLLM-9B-Instruct-onnx-int4)|`4096`|`4096`|`42`|
 |[`h2oai/h2o-danube-1.8b-chat`](https://huggingface.co/h2oai/h2o-danube-1.8b-chat)|[`1430`](https://huggingface.co/keisuke-miyako/h2o-danube-1.8b-chat-onnx-int4)|`16384`|`2560`|`24`|
 |[`h2oai/h2o-danube2-1.8b-chat`](https://huggingface.co/h2oai/h2o-danube2-1.8b-chat)|[`1430`](https://huggingface.co/keisuke-miyako/h2o-danube2-1.8b-chat-onnx-int4)|`8192`|`2560`|`24`|
 |[`PleIAs/Baguettotron`](https://huggingface.co/PleIAs/Baguettotron)|[`353`](https://huggingface.co/keisuke-miyako/Baguettotron-onnx-int4)|`4096`|`576`|`80`|
 |[`Qwen/Qwen3-1.7B`](https://huggingface.co/Qwen/Qwen3-1.7B)|[`2340`](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-onnx-int4)|`40960`|`2048`|`28`|
+|[`Qwen/Qwen3-4B-Thinking-2507`](https://huggingface.co/Qwen/Qwen3-4B-Thinking-2507)|[`4210`](keisuke-miyako/Qwen3-4B-Thinking-2507-onnx-int4)|`262144`|`2560`|`36`|
 |[`Qwen/Qwen2.5-1.5B`](https://huggingface.co/Qwen/Qwen2.5-1.5B)|[`1920`](https://huggingface.co/keisuke-miyako/Qwen2.5-1.5B-onnx-int4)|`131072`|`1536`|`28`|
+|[`deepseek-ai/deepseek-coder-1.3b-instruct`](https://huggingface.co/deepseek-ai/deepseek-coder-1.3b-instruct)|[`1080`](https://huggingface.co/keisuke-miyako/deepseek-coder-1.3b-instruct-onnx-int4)|`16384`|`2048`|`24`|
+|[`01-ai/Yi-Coder-1.5B-Chat`](https://huggingface.co/01-ai/Yi-Coder-1.5B-Chat)|[`1440`](https://huggingface.co/keisuke-miyako/Yi-Coder-1.5B-Chat-onnx-int4)|`131072`|`2048`|`24`|
+|[`OpenLLM-France/Claire-7B-FR-Instruct-0.1`](https://huggingface.co/OpenLLM-France/Claire-7B-FR-Instruct-0.1)|[`6920`](https://huggingface.co/keisuke-miyako/Claire-7B-FR-Instruct-0.1-onnx-int4)|`2048`|`4544`|`32`|
 
 ### Rerank
 
