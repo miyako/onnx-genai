@@ -32,16 +32,22 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 	$options:={}
 	var $huggingfaces : cs:C1710.event.huggingfaces
 	
-	$folder:=$homeFolder.folder("Phi-4-mini-reasoning")
-	$path:="Phi-4-mini-reasoning-onnx-int4"
-	$URL:="keisuke-miyako/Phi-4-mini-reasoning-onnx-int4"
+	If (False:C215)
+		$folder:=$homeFolder.folder("Phi-4-mini-reasoning")
+		$path:="Phi-4-mini-reasoning-onnx-int4"
+		$URL:="keisuke-miyako/Phi-4-mini-reasoning-onnx-int4"
+		
+		$folder:=$homeFolder.folder("Qwen3-0.6B")
+		$path:="Qwen3-0.6B-onnx-int4"
+		$URL:="keisuke-miyako/Qwen3-0.6B-onnx-int4"
+		
+		$huggingface:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion"; "model.onnx")
+		$huggingfaces:=cs:C1710.event.huggingfaces.new([$huggingface])
+		
+		$ONNX:=cs:C1710.ONNX.new($port; $huggingfaces; $homeFolder; $options; $event)
+	End if 
 	
-	$huggingface:=cs:C1710.event.huggingface.new($folder; $URL; $path; "chat.completion"; "model.onnx")
-	$huggingfaces:=cs:C1710.event.huggingfaces.new([$huggingface])
-	
-	$ONNX:=cs:C1710.ONNX.new($port; $huggingfaces; $homeFolder; $options; $event)
-	
-	If (False:C215)  //embedding 
+	If (True:C214)  //embedding 
 		
 		$folder:=$homeFolder.folder("universal-sentence-encoder-multilingual")
 		$path:="universal-sentence-encoder-multilingual-onnx"
@@ -90,10 +96,10 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 		
 		$huggingface:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model.onnx")
 		
-		$folder:=$homeFolder.folder("gte-Qwen2-1.5B-instruct")
-		$path:="gte-Qwen2-1.5B-instruct-onnx-int8"
-		$URL:="keisuke-miyako/gte-Qwen2-1.5B-instruct-onnx-int8"
-		$options:={pooling: "last-token"}
+		//$folder:=$homeFolder.folder("gte-Qwen2-1.5B-instruct")
+		//$path:="gte-Qwen2-1.5B-instruct-onnx-int8"
+		//$URL:="keisuke-miyako/gte-Qwen2-1.5B-instruct-onnx-int8"
+		//$options:={pooling: "last-token"}
 		
 		$huggingface:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
 		

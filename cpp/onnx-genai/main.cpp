@@ -82,10 +82,6 @@ struct RerankItem {
     std::vector<int> type_ids;
 };
 
-float sigmoid(float x) {
-    return 1.0f / (1.0f + std::exp(-x));
-}
-
 static // Helper to read the template file from the model directory
 std::string LoadChatTemplate(const std::string& model_path) {
     fs::path path(model_path);
@@ -1963,7 +1959,7 @@ int main(int argc, OPTARG_T argv[]) {
                 std::cerr << "[Rerank] Loading from " << reranker_model_path << std::endl;
                 reranking_fingerprint = get_system_fingerprint(reranker_model_path, "directml");
                 try {
-                    rerank_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "Embeddings");
+                    rerank_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "Rerank");
 #ifdef WIN32
                     reranking_modelName = get_model_name(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
 #else
@@ -2245,6 +2241,7 @@ int main(int argc, OPTARG_T argv[]) {
                     default:
                     {
                         if (rerank_tokenizer != NULL) {
+                            std::vector<int> q = rerank_tokenizer->Encode(query);
                             for (size_t i = 0; i < documents.size(); ++i) {
                                 std::vector<int> ids;
                                 std::vector<int> type_ids;
@@ -2252,7 +2249,6 @@ int main(int argc, OPTARG_T argv[]) {
                                 switch (pooling_mode) {
                                     case POOLING_CLS:
                                     {
-                                        std::vector<int> q = rerank_tokenizer->Encode(query);
                                         std::vector<int> d = rerank_tokenizer->Encode(documents[i]);
                                         
                                         if(ranking_mode == RERANKING_ROBERTA) {

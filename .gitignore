@@ -49,3 +49,5 @@ onnx-genai/Project/DerivedData/CompiledCode/*
 onnx-genai/Project/DerivedData/webservices.json
 onnx-genai/Project/DerivedData/methodAttributes.json
 onnx-genai/Project/DerivedData/formAttributes.json
+onnxruntime-genai/*
+onnxruntime-extensions/*

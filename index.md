@@ -11,15 +11,7 @@ layout: default
 
 #### Abstract
 
-[**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. It allows models trained in one framework (e.g. PyTorch) to be used in another framework (e.g. TensorFlow) with native hardware acceleration (NVIDIA, AMD, Intel, Apple Silicon, Qualcomm). 
-
-> The inference engine used in this component is primarily configured to run on CPU. This is because the **DirectML** (windows) and **CoreML** (macOS) execution prividers each have significant portability barriers. See ONNX Runtime documentation for details.
-
-#### ONNX chat completion performance on Apple Silicon
-
-You will likely notice the CPU usage jump to `400%` on M1. This means all `4` performance cores are running at full speed. This is because the ONNX Runtime generic `cpu` provider is not fully optimised for the ARM64 NEON instruction set used by Apple Silicon. The CPU can't perform the math fast enough for the `GeLU` activation functions and `RoPE` rotary embeddings. 
-
-That means the CPU must de-quantise the small blocks of `Int4` data to `Float32`, do the matrix multiplication math, and re-quantise or move to the next block. That would amount to about `4` to `8` tokens per second on M1.
+[**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. It allows models trained in one framework (e.g. PyTorch) to be used in another framework (e.g. TensorFlow) with native hardware acceleration (NVIDIA, AMD, Intel, Apple Silicon, Qualcomm). The inference engine used in this component is configured to primarily run on CPU cores, for maximum compatibility. In general, you should use quantised models with integer weights. `fp16` weights are typically converted to `fp32` for maths on a CPU. 
 
 #### Usage
 
@@ -321,35 +313,7 @@ else:
 
 An "End-to-End" (E2E) model that takes raw string as input and returns vectors as output. In this scenario, pre-processing, inference, and post processing are all baked into the model.
 
-#### Chat Completion Models
-
-||Model|Parameters|Size|Context&nbsp;Length|Vocabulary|Languages|
-|-|-|-:|-:|-:|-:|:-:|
-|🇺🇸|[Llama&nbsp;3.2&nbsp;1B](https://huggingface.co/keisuke-miyako/Llama-3.2-1B-Instruct-onnx-int4-cpu)|`1.2`|`1.87`|`128000`|`128256`|`8`
-|🇺🇸|[Phi&nbsp;4&nbsp;Mini](https://huggingface.co/keisuke-miyako/Phi-4-mini-instruct-onnx-int4-cpu)|`1.2`|`4.93`|`128000`|`100352`|`24`|
-|🇺🇸|[Phi&nbsp;3.5&nbsp;Mini](https://huggingface.co/keisuke-miyako/Phi-3.5-mini-instruct-onnx-int4-cpu)|`3.8`|`2.78`|`128000`|`32064`|`20`|
-|🇺🇸|[Gemma&nbsp;2&nbsp;2B](https://huggingface.co/keisuke-miyako/gemma-2-2b-it-onnx-int4-cpu)|`2.6`|`4.04`|`8192`|`256128`|`English`|
-|🇫🇷|[Lucie&nbsp;7B](https://huggingface.co/keisuke-miyako/Lucie-7B-Instruct-v1.1-onnx-int4-cpu)|`7.0`|`5.11`|`32000`|`65024`|`French`
-|🇫🇷|[Baguettotron](https://huggingface.co/keisuke-miyako/Baguettotron-onnx-int4-cpu)|`0.3`|`1.79`|`8192`|`65000`|`European`
-|🇨🇳|[Qwen&nbsp;3&nbsp;1.7B](https://huggingface.co/keisuke-miyako/Qwen3-1.7B-onnx-int4-cpu)|`1.7`|`2.35`|`32768`|`151936`|`119`| 
-|🇨🇳|[Qwen&nbsp;2.5&nbsp;1.5B](https://huggingface.co/keisuke-miyako/Qwen2.5-1.5B-onnx-int4-cpu)|`1.5`|`1.94`|`128000`|`151936`|`29`| 
-|🇺🇸|[Danube](https://huggingface.co/keisuke-miyako/h2o-danube-1.8b-chat-onnx-int4-cpu)|`1.8`|`1.43`|`16384`|`32000`|`English` 
-|🇺🇸|[Danube&nbsp;2](https://huggingface.co/keisuke-miyako/h2o-danube2-1.8b-chat-onnx-int4-cpu)|`1.8`|`1.43`|`8192`|`32000`|`English`
-|🇪🇺|[EuroLLM&nbsp;9B](https://huggingface.co/keisuke-miyako/EuroLLM-9B-Instruct-onnx-int4-cpu)|`9.1`|`7.51`|`4096`|`128000`|`European`|
-|🇪🇺|[EuroLLM&nbsp;1.7B](https://huggingface.co/keisuke-miyako/EuroLLM-1.7B-Instruct-onnx-int4-cpu)|`1.7`|`1.94`|`4096`|`128000`|`European`|
-|🇺🇸|[SmolLM2&nbsp;1.7B](https://huggingface.co/keisuke-miyako/SmolLM2-1.7B-onnx-int4-cpu)|`1.7`|`1.48`|`8192`|`49152`|`6`
-|🇺🇸|[Granite&nbsp;3.0&nbsp;2B](https://huggingface.co/keisuke-miyako/granite-3.0-2b-instruct-onnx-int4-cpu)|`2.5`|`1.99`|`4096`|`49155`|`12`
-|🇯🇵|[ELYZA&nbsp;JP&nbsp;8B](https://huggingface.co/keisuke-miyako/Llama-3-ELYZA-JP-8B-onnx-int4-cpu)|`8.0`|`6.81`|`8192`|`128256`|`Japanese`&nbsp;`English`
-|🇯🇵|[Swallow&nbsp;8B](https://huggingface.co/keisuke-miyako/Llama-3.1-Swallow-8B-Instruct-v0.3-onnx-int4-cpu)|`8.0`|`6.81`|`8192`|`128256`|`Japanese`&nbsp;`English`
-|🇯🇵|[RakutenAI&nbsp;7B&nbsp;Chat](https://huggingface.co/keisuke-miyako/RakutenAI-7B-chat-onnx-int4-cpu)|`7.0`|`5.31`|`32768`|`48000`|`Japanese`&nbsp;`English`
-|🇯🇵|[RakutenAI&nbsp;7B&nbsp;Instruct](https://huggingface.co/keisuke-miyako/RakutenAI-7B-instruct-onnx-int-cpu)|`7.0`|`5.31`|`32768`|`48000`|`Japanese`&nbsp;`English`
-|🇯🇵|[Youko&nbsp;8B](https://huggingface.co/keisuke-miyako/llama-3-youko-8b-instruct-onnx-int4-cpu)|`8.0`|`6.81`|`8192`|`128256`|`Japanese`&nbsp;`English`
-|🇯🇵|[Baku&nbsp;2B](https://huggingface.co/keisuke-miyako/gemma-2-baku-2b-it-onnx-int4-cpu)|`2.6`|`4.04`|`8192`|`256000`|`Japanese`&nbsp;`English`
-|🇯🇵|[Youri&nbsp;7B&nbsp;Instruct](https://huggingface.co/keisuke-miyako/youri-7b-instruction-onnx-int4-cpu)|`7.0`|`4.66`|`4096`|`32000`|`Japanese`&nbsp;`English`
-|🇯🇵|[Youri&nbsp;7B&nbsp;Chat](https://huggingface.co/keisuke-miyako/youri-7b-chat-onnx-int4-cpu)|`7.0`|`4.66`|`4096`|`32000`|`Japanese`&nbsp;`English`
-|🇯🇵|[Calm2&nbsp;7B&nbsp;Chat](https://huggingface.co/keisuke-miyako/calm2-7b-chat-onnx)|`7.0`|`5.3`|`32768`|`65024`|`Japanese`&nbsp;`English`
-
-#### Not Compatible
+#### Chat Completion Models Not Compatible
 
 ||Model|Parameters|Size|Context&nbsp;Length|Vocabulary|Languages|
 |-|-|-:|-:|-:|-:|:-:|
