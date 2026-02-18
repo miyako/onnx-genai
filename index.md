@@ -11,7 +11,19 @@ layout: default
 
 #### Abstract
 
-[**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. It allows models trained in one framework (e.g. PyTorch) to be used in another framework (e.g. TensorFlow) with native hardware acceleration (NVIDIA, AMD, Intel, Apple Silicon, Qualcomm). The inference engine used in this component is configured to primarily run on CPU cores, for maximum compatibility. In general, you should use quantised models with integer weights. `fp16` weights are typically converted to `fp32` for maths on a CPU. 
+[**ONNX** (Open Neural Network eXchange)](https://github.com/onnx/onnx) is an open-source standard to represent machine learning models. It allows models trained in one framework (e.g. PyTorch) to be used in another framework (e.g. TensorFlow) with native hardware acceleration (NVIDIA, AMD, Intel, Apple Silicon, Qualcomm). 
+
+> The inference engine used in this component is configured to primarily run on CPU cores, for maximum compatibility. 
+
+#### Quantisation
+
+The `fp32` format is accurate but consumes `4` bytes per weight and pretty slow on a CPU. It is generally not suitable for production. You should only use it as a reference.
+
+The `fp16` format consumes `2` bytes per weight. The CPU backend may be forced to perform calculations in `float32` except on a CPU like Apple Silicon that has native 16-bit maths but not as fast as an NVIDIA GPU. It is usually best to avoid this format on a CPU.
+
+The `int8` format takes advantage of `NEON` instructions on Apple Silicon and `AVX2` `AVX-512` `VNNI` instructions on Intel or AMD to **accelerate maths**. For encoders, the accuracy drop is said to be negligible ( less than `1%`). **You should always use the `int8` format on a PC or Mac with no GPU**. 
+
+The `int4` format is designed to compress large language models. Just as a reference, a `7B` parameter in native `float32` format would requires `28GB` or memory, and on a CPU the data must go through the processor for every single token generation. `int4` reduces the bandwidth by `8`. The format internally groups multiple weights (e.g. `32`) to share a scale factor to maintain accuracy. However the quantisation is less precise compare to a GGUF (llama.cpp) model of a similar size. 
 
 #### Usage
 
