@@ -162,8 +162,31 @@ RerankingMode LoadRerankingMode(const std::string& model_path) {
                         std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
                         return RERANKING_LLM;
                     }
-                    
-                    
+                    if(model_type == "qwen2") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
+                        return RERANKING_LLM;
+                    }
+                    if(model_type == "mistral") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
+                        return RERANKING_LLM;
+                    }
+                    if(model_type == "llama") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
+                        return RERANKING_LLM;
+                    }
+                    if(model_type == "gemma") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
+                        return RERANKING_LLM;
+                    }
+                    if(model_type == "gemma2") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
+                        return RERANKING_LLM;
+                    }
+                    if(model_type == "phi3") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
+                        return RERANKING_LLM;
+                    }
+                    //
                 }
             }
         }
