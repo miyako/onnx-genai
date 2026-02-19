@@ -369,7 +369,8 @@
 				OTHER_CPLUSPLUSFLAGS = (
 					"-Xpreprocessor",
 					"-fopenmp",
-					"-march=native",
+					"-mavx2",
+					"-mfma",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (

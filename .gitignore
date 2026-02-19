@@ -51,3 +51,4 @@ onnx-genai/Project/DerivedData/methodAttributes.json
 onnx-genai/Project/DerivedData/formAttributes.json
 onnxruntime-genai/*
 onnxruntime-extensions/*
+onnxruntime/1.23.2/libonnxruntime.dylib

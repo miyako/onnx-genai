@@ -31,7 +31,7 @@
       shouldAutocreateTestPlan = "YES">
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Release"
+      buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
@@ -62,11 +62,11 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-e"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.onnx/multilingual-e5-small/model.onnx"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-r"
@@ -74,7 +74,7 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.onnx/ms-marco-MiniLM-L6-v2-fp16/model.onnx"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.onnx/ms-marco-MiniLM-L6-v2-fp32/model.onnx"
@@ -97,12 +97,8 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/miyako/.onnx/bge-reranker-v2-m3-int8/model_quantized.onnx"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "/Users/miyako/.onnx/bge-reranker-v2-m3/model.onnx"
-            isEnabled = "NO">
+            argument = "/Users/miyako/.onnx/bge-reranker-v2-m3/model_quantized.onnx"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-t"

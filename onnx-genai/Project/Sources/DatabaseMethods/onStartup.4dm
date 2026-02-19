@@ -109,7 +109,7 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 		
 	End if 
 	
-	If (False:C215)  //rerank
+	If (True:C214)  //rerank
 		
 		$homeFolder:=Folder:C1567(fk home folder:K87:24).folder(".ONNX")
 		$port:=8080
@@ -147,24 +147,24 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 		$URL:="keisuke-miyako/bge-reranker-v2-m3-onnx-fp16"  //path to the repo
 		
 		$folder:=$homeFolder.folder("bge-reranker-v2-m3")  //where to keep the repo
-		$path:="bge-reranker-v2-m3-onnx-fp32"  //path to the file
-		$URL:="keisuke-miyako/bge-reranker-v2-m3-onnx-fp32"  //path to the repo
+		$path:="bge-reranker-v2-m3-onnx-int8"  //path to the file
+		$URL:="keisuke-miyako/bge-reranker-v2-m3-onnx-int8"  //path to the repo
 		
-		$folder:=$homeFolder.folder("Qwen3-Reranker-0.6B")  //where to keep the repo
-		$path:="Qwen3-Reranker-0.6B-onnx-int8"  //path to the file
-		$URL:="keisuke-miyako/Qwen3-Reranker-0.6B-onnx-int8"  //path to the repo
+		//$folder:=$homeFolder.folder("Qwen3-Reranker-0.6B")  //where to keep the repo
+		//$path:="Qwen3-Reranker-0.6B-onnx-int8"  //path to the file
+		//$URL:="keisuke-miyako/Qwen3-Reranker-0.6B-onnx-int8"  //path to the repo
 		
-		$folder:=$homeFolder.folder("jina-reranker-v3")  //where to keep the repo
-		$path:="jina-reranker-v3-onnx-int8"  //path to the file
-		$URL:="keisuke-miyako/jina-reranker-v3-onnx-int8"  //path to the repo
+		//$folder:=$homeFolder.folder("jina-reranker-v3")  //where to keep the repo
+		//$path:="jina-reranker-v3-onnx-int8"  //path to the file
+		//$URL:="keisuke-miyako/jina-reranker-v3-onnx-int8"  //path to the repo
 		
-		$folder:=$homeFolder.folder("zerank-2")  //where to keep the repo
-		$path:="zerank-2-onnx-int8"  //path to the file
-		$URL:="keisuke-miyako/zerank-2-onnx-int8"  //path to the repo
+		//$folder:=$homeFolder.folder("zerank-2")  //where to keep the repo
+		//$path:="zerank-2-onnx-int8"  //path to the file
+		//$URL:="keisuke-miyako/zerank-2-onnx-int8"  //path to the repo
 		
-		$folder:=$homeFolder.folder("Qwen3-Reranker-4B")  //where to keep the repo
-		$path:="Qwen3-Reranker-4B-onnx-int8"  //path to the file
-		$URL:="keisuke-miyako/Qwen3-Reranker-4B-onnx-int8"  //path to the repo
+		//$folder:=$homeFolder.folder("Qwen3-Reranker-4B")  //where to keep the repo
+		//$path:="Qwen3-Reranker-4B-onnx-int8"  //path to the file
+		//$URL:="keisuke-miyako/Qwen3-Reranker-4B-onnx-int8"  //path to the repo
 		
 		$huggingface:=cs:C1710.event.huggingface.new($folder; $URL; $path; "rerank"; "model_quantized.onnx")
 		$huggingfaces:=cs:C1710.event.huggingfaces.new([$huggingface])
