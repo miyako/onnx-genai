@@ -23,7 +23,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
 
 - `onnxruntime-genai-0.12.0`
 - `onnxruntime-extensions-0.14.0`
-- `onnxruntime-1.23.1` (`1.25.0` broken)
+- `onnxruntime-1.23.2` (`1.25.0` broken)
 
 ## OpenAI Compatible Endpoints
 
