@@ -158,6 +158,10 @@ RerankingMode LoadRerankingMode(const std::string& model_path) {
                         std::cout << "[Rerank] model_type: " << model_type << " (bert)" << std::endl;
                         return RERANKING_BERT;
                     }
+                    if(model_type == "modernbert") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (bert)" << std::endl;
+                        return RERANKING_BERT;
+                    }
                     if(model_type == "qwen3") {
                         std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
                         return RERANKING_LLM;
