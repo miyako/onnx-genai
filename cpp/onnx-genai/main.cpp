@@ -2237,79 +2237,67 @@ int main(int argc, OPTARG_T argv[]) {
                     
                 std::vector<RerankItem>items;
                 
-                switch (pooling_mode) {
-                    case POOLING_E2E:
-                        break;
+                /*
+                 pooling_mode should have no impact on reranking
+                 */
+                
+                if (rerank_tokenizer != NULL) {
+                    std::vector<int> q = rerank_tokenizer->Encode(query);
+                    for (size_t i = 0; i < documents.size(); ++i) {
+                        std::vector<int> ids;
+                        std::vector<int> type_ids;
                         
-                    default:
-                    {
-                        if (rerank_tokenizer != NULL) {
-                            std::vector<int> q = rerank_tokenizer->Encode(query);
-                            for (size_t i = 0; i < documents.size(); ++i) {
-                                std::vector<int> ids;
-                                std::vector<int> type_ids;
-                                
-                                switch (pooling_mode) {
-                                    case POOLING_CLS:
-                                    {
-                                        std::vector<int> d = rerank_tokenizer->Encode(documents[i]);
-                                        
-                                        if(ranking_mode == RERANKING_ROBERTA) {
-                                            ids.reserve(q.size() + d.size() + 4);
-                                            ids.push_back(0); // <s>
-                                            ids.insert(ids.end(), q.begin(), q.end());
-                                            ids.push_back(2); // </s>
-                                            ids.push_back(2); // </s>
-                                            ids.insert(ids.end(), d.begin(), d.end());
-                                            ids.push_back(2); // </s>
-                                            type_ids.resize(ids.size(), 0);
-                                        }
-                                        
-                                        if(ranking_mode == RERANKING_BERT) {
-                                            ids.reserve(q.size() + d.size() + 3);
-                                            type_ids.reserve(ids.capacity());
-                                            ids.push_back(101); // [CLS]
-                                            type_ids.push_back(0);
-                                            for(int x : q) { ids.push_back(x); type_ids.push_back(0); }
-                                            ids.push_back(102); // [SEP]
-                                            type_ids.push_back(0);
-                                            for(int x : d) { ids.push_back(x); type_ids.push_back(1); }
-                                            ids.push_back(102); // [SEP]
-                                            type_ids.push_back(1);
-                                        }
-                                    }
-                                        break;
-                                    default:
-                                    {
-                                        ids = rerank_tokenizer->Encode(query + "\n" + documents[i]);
-                                    }
-                                        break;
-                                }
-                                
-                                if (ids.size() > max_position_embeddings) {
-                                    ids.resize(max_position_embeddings - 1);
-                                    int end_token_id = 2;
-                                    if (ranking_mode == RERANKING_BERT) end_token_id = 102;
-                                    ids.push_back(end_token_id);
-                                    if (!type_ids.empty()) {
-                                        type_ids.resize(max_position_embeddings - 1);
-                                        int end_type_id = (ranking_mode == RERANKING_BERT) ? 1 : 0;
-                                        type_ids.push_back(end_type_id);
-                                    }
-                                }
-                                items.emplace_back(RerankItem({ ids, type_ids }));
-                            }
-                            response_json = run_reranking(
-                                                          rerank_session.get(),
-                                                          items, max_position_embeddings, top_n,
-                                                          reranking_input_names_c_array,
-                                                          num_reranking_input_nodes,
-                                                          reranking_output_names_c_array,
-                                                          num_reranking_output_nodes);
-                            
+                        std::vector<int> d = rerank_tokenizer->Encode(documents[i]);
+                        
+                        if(ranking_mode == RERANKING_ROBERTA) {
+                            ids.reserve(q.size() + d.size() + 4);
+                            ids.push_back(0); // <s>
+                            ids.insert(ids.end(), q.begin(), q.end());
+                            ids.push_back(2); // </s>
+                            ids.push_back(2); // </s>
+                            ids.insert(ids.end(), d.begin(), d.end());
+                            ids.push_back(2); // </s>
+                            type_ids.resize(ids.size(), 0);
                         }
+                        
+                        if(ranking_mode == RERANKING_BERT) {
+                            ids.reserve(q.size() + d.size() + 3);
+                            type_ids.reserve(ids.capacity());
+                            ids.push_back(101); // [CLS]
+                            type_ids.push_back(0);
+                            for(int x : q) { ids.push_back(x); type_ids.push_back(0); }
+                            ids.push_back(102); // [SEP]
+                            type_ids.push_back(0);
+                            for(int x : d) { ids.push_back(x); type_ids.push_back(1); }
+                            ids.push_back(102); // [SEP]
+                            type_ids.push_back(1);
+                        }
+                        
+                        if(ranking_mode == RERANKING_EDGE) {
+                            ids = rerank_tokenizer->Encode(query + "\n" + documents[i]);
+                        }
+                        
+                        if (ids.size() > max_position_embeddings) {
+                            ids.resize(max_position_embeddings - 1);
+                            int end_token_id = 2;
+                            if (ranking_mode == RERANKING_BERT) end_token_id = 102;
+                            ids.push_back(end_token_id);
+                            if (!type_ids.empty()) {
+                                type_ids.resize(max_position_embeddings - 1);
+                                int end_type_id = (ranking_mode == RERANKING_BERT) ? 1 : 0;
+                                type_ids.push_back(end_type_id);
+                            }
+                        }
+                        items.emplace_back(RerankItem({ ids, type_ids }));
                     }
-                        break;
+                    response_json = run_reranking(
+                                                  rerank_session.get(),
+                                                  items, max_position_embeddings, top_n,
+                                                  reranking_input_names_c_array,
+                                                  num_reranking_input_nodes,
+                                                  reranking_output_names_c_array,
+                                                  num_reranking_output_nodes);
+                    
                 }
                 
                 res.set_content(response_json, "application/json");
