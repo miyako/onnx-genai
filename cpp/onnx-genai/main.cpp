@@ -158,6 +158,12 @@ RerankingMode LoadRerankingMode(const std::string& model_path) {
                         std::cout << "[Rerank] model_type: " << model_type << " (bert)" << std::endl;
                         return RERANKING_BERT;
                     }
+                    if(model_type == "qwen3") {
+                        std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
+                        return RERANKING_LLM;
+                    }
+                    
+                    
                 }
             }
         }
@@ -2249,34 +2255,35 @@ int main(int argc, OPTARG_T argv[]) {
                         
                         std::vector<int> d = rerank_tokenizer->Encode(documents[i]);
                         
-                        if(ranking_mode == RERANKING_ROBERTA) {
-                            ids.reserve(q.size() + d.size() + 4);
-                            ids.push_back(0); // <s>
-                            ids.insert(ids.end(), q.begin(), q.end());
-                            ids.push_back(2); // </s>
-                            ids.push_back(2); // </s>
-                            ids.insert(ids.end(), d.begin(), d.end());
-                            ids.push_back(2); // </s>
-                            type_ids.resize(ids.size(), 0);
+                        switch (ranking_mode) {
+                            case RERANKING_ROBERTA:
+                                ids.reserve(q.size() + d.size() + 4);
+                                ids.push_back(0); // <s>
+                                ids.insert(ids.end(), q.begin(), q.end());
+                                ids.push_back(2); // </s>
+                                ids.push_back(2); // </s>
+                                ids.insert(ids.end(), d.begin(), d.end());
+                                ids.push_back(2); // </s>
+                                type_ids.resize(ids.size(), 0);
+                                break;
+                            case RERANKING_BERT:
+                                ids.reserve(q.size() + d.size() + 3);
+                                type_ids.reserve(ids.capacity());
+                                ids.push_back(101); // [CLS]
+                                type_ids.push_back(0);
+                                for(int x : q) { ids.push_back(x); type_ids.push_back(0); }
+                                ids.push_back(102); // [SEP]
+                                type_ids.push_back(0);
+                                for(int x : d) { ids.push_back(x); type_ids.push_back(1); }
+                                ids.push_back(102); // [SEP]
+                                type_ids.push_back(1);
+                                break;
+                            case RERANKING_LLM:
+                            default:
+                                ids = rerank_tokenizer->Encode(query + "\n" + documents[i]);
+                                break;
                         }
-                        
-                        if(ranking_mode == RERANKING_BERT) {
-                            ids.reserve(q.size() + d.size() + 3);
-                            type_ids.reserve(ids.capacity());
-                            ids.push_back(101); // [CLS]
-                            type_ids.push_back(0);
-                            for(int x : q) { ids.push_back(x); type_ids.push_back(0); }
-                            ids.push_back(102); // [SEP]
-                            type_ids.push_back(0);
-                            for(int x : d) { ids.push_back(x); type_ids.push_back(1); }
-                            ids.push_back(102); // [SEP]
-                            type_ids.push_back(1);
-                        }
-                        
-                        if(ranking_mode == RERANKING_EDGE) {
-                            ids = rerank_tokenizer->Encode(query + "\n" + documents[i]);
-                        }
-                        
+                                                
                         if (ids.size() > max_position_embeddings) {
                             ids.resize(max_position_embeddings - 1);
                             int end_token_id = 2;
