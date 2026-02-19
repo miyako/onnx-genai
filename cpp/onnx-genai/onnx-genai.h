@@ -119,7 +119,7 @@ enum PoolingMode {
 
 enum RerankingMode {
     RERANKING_BERT,       // MiniLM, TinyBERT
-    RERANKING_ROBERTA,    // BGE-M3, BGE-Reranker, XLM)
+    RERANKING_ROBERTA,    // BGE-M3, BGE-Reranker, XLM
     RERANKING_LLM
 };
 
