@@ -89,12 +89,8 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/miyako/.onnx/Qwen3-0.6B/model.onnx"
-            isEnabled = "NO">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "/Users/miyako/.onnx/Qwen3-Reranker-4B/model_quantized.onnx"
-            isEnabled = "NO">
+            argument = "/Users/miyako/.onnx/Qwen3-Reranker-0.6B/model_quantized.onnx"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.onnx/bge-reranker-v2-m3/model_quantized.onnx"
@@ -102,7 +98,7 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/Desktop/test/model.onnx"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-t"
