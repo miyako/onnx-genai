@@ -2307,7 +2307,26 @@ int main(int argc, OPTARG_T argv[]) {
                                 break;
                             case RERANKING_LLM:
                             default:
-                                ids = rerank_tokenizer->Encode(query + "\n" + documents[i]);
+                            {
+                                // 1. Encode Query and Document separately
+                                std::vector<int> q_ids = rerank_tokenizer->Encode(query);
+                                std::vector<int> d_ids = rerank_tokenizer->Encode(documents[i]);
+                                std::vector<int> input_ids;
+                                input_ids.reserve(q_ids.size() + d_ids.size() + 2);
+                                input_ids.insert(input_ids.end(), q_ids.begin(), q_ids.end());
+                                input_ids.push_back(198); // Newline (\n) as separator
+                                input_ids.insert(input_ids.end(), d_ids.begin(), d_ids.end());
+                                // 3. Safety Truncation
+                                // We need space for the final EOS token.
+                                if (input_ids.size() >= max_position_embeddings) {
+                                    input_ids.resize(max_position_embeddings - 1);
+                                }
+                                // Append the EOS token. The ONNX model's classification head
+                                // is wired to look at the hidden state of this specific token.
+                                input_ids.push_back(151643);
+                                ids = input_ids;
+                            }
+//                                ids = rerank_tokenizer->Encode(query + "\n" + documents[i]);
                                 break;
                         }
                                                 

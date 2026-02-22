@@ -7,22 +7,6 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "598E6B7F-4968-4019-8193-24E5F1CF66CA"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "onnx-genai/main.cpp"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1351"
-            endingLineNumber = "1351"
-            landmarkName = "run_reranking(session, items, max_position_embeddings, top_n, input_names_c_array, num_input_nodes, output_names_c_array, num_output_nodes, ranking_mode)"
-            landmarkType = "9">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
             uuid = "E7343A37-7FBA-416B-AADD-DD6D7E2CFCA9"
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
@@ -30,10 +14,40 @@
             filePath = "onnx-genai/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "2339"
-            endingLineNumber = "2339"
+            startingLineNumber = "2416"
+            endingLineNumber = "2416"
             landmarkName = "main(argc, argv)"
             landmarkType = "9">
+            <Locations>
+               <Location
+                  uuid = "E7343A37-7FBA-416B-AADD-DD6D7E2CFCA9 - 115c960d7713ff89"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "main::$_3::operator()(httplib::Request const&amp;, httplib::Response&amp;) const"
+                  moduleName = "onnx-genai"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/miyako/Documents/GitHub/onnx-genai/cpp/onnx-genai/main.cpp"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "2416"
+                  endingLineNumber = "2416">
+               </Location>
+               <Location
+                  uuid = "E7343A37-7FBA-416B-AADD-DD6D7E2CFCA9 - 115c960d7713ff89"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "main::$_3::operator()(httplib::Request const&amp;, httplib::Response&amp;) const"
+                  moduleName = "onnx-genai"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/miyako/Documents/GitHub/onnx-genai/cpp/onnx-genai/main.cpp"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "2416"
+                  endingLineNumber = "2416">
+               </Location>
+            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -46,25 +60,9 @@
             filePath = "onnx-genai/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1859"
-            endingLineNumber = "1859"
+            startingLineNumber = "1885"
+            endingLineNumber = "1885"
             landmarkName = "main(argc, argv)"
-            landmarkType = "9">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "0488E335-D38C-40E2-85B9-816A0557F57D"
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "onnx-genai/main.cpp"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "1478"
-            endingLineNumber = "1478"
-            landmarkName = "run_reranking(session, items, max_position_embeddings, top_n, input_names_c_array, num_input_nodes, output_names_c_array, num_output_nodes, ranking_mode)"
             landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
@@ -78,8 +76,8 @@
             filePath = "onnx-genai/main.cpp"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "2349"
-            endingLineNumber = "2349"
+            startingLineNumber = "2425"
+            endingLineNumber = "2425"
             landmarkName = "main(argc, argv)"
             landmarkType = "9">
          </BreakpointContent>
