@@ -31,7 +31,7 @@
       shouldAutocreateTestPlan = "YES">
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Release"
+      buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
@@ -98,6 +98,10 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.onnx/bge-reranker-v2-m3/model_quantized.onnx"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/Desktop/test/model.onnx"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
