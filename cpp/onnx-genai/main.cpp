@@ -1349,14 +1349,15 @@ static std::string mean_pooling_response(std::vector<Ort::Value>& outputs,
 }
 
 static std::string run_reranking(
-                                  Ort::Session *session,
-                                  std::vector<RerankItem>& items,
-                                  int max_position_embeddings,
-                                  int top_n,
-                                  std::vector<const char*>&  input_names_c_array,
-                                  size_t num_input_nodes,
-                                  std::vector<const char*>&   output_names_c_array,
-                                  size_t num_output_nodes) {
+                                 Ort::Session *session,
+                                 std::vector<RerankItem>& items,
+                                 int max_position_embeddings,
+                                 int top_n,
+                                 std::vector<const char*>&  input_names_c_array,
+                                 size_t num_input_nodes,
+                                 std::vector<const char*>&   output_names_c_array,
+                                 size_t num_output_nodes,
+                                 RerankingMode ranking_mode) {
 
     std::string reponseJson;
     
@@ -1431,9 +1432,9 @@ static std::string run_reranking(
             
             // On first run, detect if model outputs 1 scalar or 2 logits
             if (output_dim == 0) {
-                output_dim = (int)shape[1];
+                output_dim = (int)shape.back(); // Safe whether shape is [1, 1] or [1]
             }
-            
+
             // Copy raw data out immediately (Ort::Value output dies at end of loop)
             for(int k = 0; k < output_dim; ++k) {
                 all_raw_logits.push_back(float_data[k]);
@@ -1451,22 +1452,15 @@ static std::string run_reranking(
            logits_mat(all_raw_logits.data(), items.size(), output_dim);
         
         if (output_dim == 2) {
-            // Case B: [Logit_Negative, Logit_Positive]
-            // Logic: 1.0 / (1.0 + exp(Neg - Pos))
-            
-            // Fix:
-            // 1. (col(0) - col(1)) creates a Vector (Matrix type)
-            // 2. .array() converts it to an Array
-            // 3. .exp() is now element-wise
-            // 4. .inverse() is element-wise reciprocal
-            
-            final_scores = (1.0f + (logits_mat.col(0) - logits_mat.col(1)).array().exp()).inverse();
+//            if(ranking_mode == RerankingMode::RERANKING_LLM) {
+//                float max_logit = logits_mat.col(0).maxCoeff();
+//                Eigen::ArrayXf exp_logits = (logits_mat.col(0).array() - max_logit).exp();
+//                final_scores = exp_logits / exp_logits.sum();
+//            }else {
+                final_scores = (1.0f + (logits_mat.col(0) - logits_mat.col(1)).array().exp()).inverse();
+//            }
         }
         else {
-            // Case A: Single Scalar
-            // Logic: 1.0 / (1.0 + exp(-x))
-            
-            // Fix: Cast to .array() before exp()
             final_scores = (1.0f + (-logits_mat.col(0)).array().exp()).inverse();
         }
         
@@ -2058,6 +2052,8 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
+    const std::string instruction = "Given a web search query, retrieve relevant passages that answer the query";
+
     // ---------------------------------------------------------
     // SERVER MODE
     // ---------------------------------------------------------
@@ -2308,25 +2304,14 @@ int main(int argc, OPTARG_T argv[]) {
                             case RERANKING_LLM:
                             default:
                             {
-                                // 1. Encode Query and Document separately
-                                std::vector<int> q_ids = rerank_tokenizer->Encode(query);
-                                std::vector<int> d_ids = rerank_tokenizer->Encode(documents[i]);
-                                std::vector<int> input_ids;
-                                input_ids.reserve(q_ids.size() + d_ids.size() + 2);
-                                input_ids.insert(input_ids.end(), q_ids.begin(), q_ids.end());
-                                input_ids.push_back(198); // Newline (\n) as separator
-                                input_ids.insert(input_ids.end(), d_ids.begin(), d_ids.end());
-                                // 3. Safety Truncation
-                                // We need space for the final EOS token.
-                                if (input_ids.size() >= max_position_embeddings) {
-                                    input_ids.resize(max_position_embeddings - 1);
-                                }
-                                // Append the EOS token. The ONNX model's classification head
-                                // is wired to look at the hidden state of this specific token.
-                                input_ids.push_back(151643);
-                                ids = input_ids;
+                                // 1. Build the prompt exactly as the model expects
+                                std::string prompt = "<Instruct>: " + instruction + "\n" +
+                                "<Query>: " + query + "\n" +
+                                "<Document>: " + documents[i];
+                                
+                                // 2. Encode the single formatted string
+                                ids = rerank_tokenizer->Encode(prompt);
                             }
-//                                ids = rerank_tokenizer->Encode(query + "\n" + documents[i]);
                                 break;
                         }
                                                 
@@ -2349,7 +2334,7 @@ int main(int argc, OPTARG_T argv[]) {
                                                   reranking_input_names_c_array,
                                                   num_reranking_input_nodes,
                                                   reranking_output_names_c_array,
-                                                  num_reranking_output_nodes);
+                                                  num_reranking_output_nodes, ranking_mode);
                     
                 }
                 
