@@ -31,7 +31,7 @@
       shouldAutocreateTestPlan = "YES">
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Release"
+      buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
@@ -77,6 +77,26 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
+            argument = "/Users/miyako/.onnx/jina-reranker-v3/model_quantized.onnx"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/.onnx/zerank-1-small/model_quantized.onnx"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/.onnx/zen3-reranker/model.onnx"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/.onnx/ctxl-rerank-v2-instruct-multilingual-1b/model_fp32.onnx"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/Downloads/jina-reranker-v2-base-multilingual/model.onnx"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
             argument = "/Users/miyako/.onnx/ms-marco-MiniLM-L6-v2-fp32/model.onnx"
             isEnabled = "NO">
          </CommandLineArgument>
@@ -90,7 +110,7 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.onnx/Qwen3-Reranker-0.6B/model_quantized.onnx"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.onnx/bge-reranker-v2-m3/model_quantized.onnx"
