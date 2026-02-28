@@ -19,6 +19,13 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
  -h host     : server host (default=127.0.0.1)    
 ```
 
+The CLI is built for `4` platforms:
+
+- macOS Apple Silicon
+- macOS Intel
+- Windows AMD
+- Windows ARM
+
 ## Dependencies
 
 - `onnxruntime-genai-0.12.0`
