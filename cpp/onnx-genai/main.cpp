@@ -1899,6 +1899,7 @@ int main(int argc, OPTARG_T argv[]) {
     std::vector<const char*> input_names_c_array;
     std::vector<const char*> output_names_c_array;
     std::unique_ptr<Tokenizer> embeddings_tokenizer;
+    int max_position_embeddings;
     
     if (embedding_model_path.length() != 0) {
         if (fs::exists(embedding_model_path)) {
@@ -1981,7 +1982,7 @@ int main(int argc, OPTARG_T argv[]) {
     std::vector<const char*> reranking_input_names_c_array;
     std::vector<const char*> reranking_output_names_c_array;
     std::unique_ptr<Tokenizer> rerank_tokenizer;
-    int max_position_embeddings;
+    int rerank_max_position_embeddings;
     RerankingMode ranking_mode;
     
     if (reranker_model_path.length() != 0) {
@@ -2037,14 +2038,14 @@ int main(int argc, OPTARG_T argv[]) {
                     }
 #ifdef WIN32
                     rerank_tokenizer = LoadTokenizer(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
-                    max_position_embeddings = LoadMaxPositionEmbeddings(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
+                    rerank_max_position_embeddings = LoadMaxPositionEmbeddings(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
                     ranking_mode = LoadRerankingMode(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
 #else
                     rerank_tokenizer = LoadTokenizer(fs::path(reranker_model_path).parent_path());
-                    max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(reranker_model_path).parent_path());
+                    rerank_max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(reranker_model_path).parent_path());
                     ranking_mode = LoadRerankingMode(fs::path(reranker_model_path).parent_path());
 #endif
-                    std::cout << "[Rerank] max_position_embeddings: " << max_position_embeddings << std::endl;
+                    std::cout << "[Rerank] max_position_embeddings: " << rerank_max_position_embeddings << std::endl;
                     reranking_model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
                     std::cerr << "Failed to load model: " << e.what() << std::endl;
@@ -2317,13 +2318,13 @@ int main(int argc, OPTARG_T argv[]) {
                                 break;
                         }
                                                 
-                        if (ids.size() > max_position_embeddings) {
-                            ids.resize(max_position_embeddings - 1);
+                        if (ids.size() > rerank_max_position_embeddings) {
+                            ids.resize(rerank_max_position_embeddings - 1);
                             int end_token_id = 2;
                             if (ranking_mode == RERANKING_BERT) end_token_id = 102;
                             ids.push_back(end_token_id);
                             if (!type_ids.empty()) {
-                                type_ids.resize(max_position_embeddings - 1);
+                                type_ids.resize(rerank_max_position_embeddings - 1);
                                 int end_type_id = (ranking_mode == RERANKING_BERT) ? 1 : 0;
                                 type_ids.push_back(end_type_id);
                             }
@@ -2332,7 +2333,7 @@ int main(int argc, OPTARG_T argv[]) {
                     }
                     response_json = run_reranking(
                                                   rerank_session.get(),
-                                                  items, max_position_embeddings, top_n,
+                                                  items, rerank_max_position_embeddings, top_n,
                                                   reranking_input_names_c_array,
                                                   num_reranking_input_nodes,
                                                   reranking_output_names_c_array,
