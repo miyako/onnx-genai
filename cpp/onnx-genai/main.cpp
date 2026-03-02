@@ -1262,7 +1262,7 @@ static std::string cls_pooling_response(std::vector<Ort::Value>& outputs,
         float* floatarr = outputs[0].GetTensorMutableData<float>();
         
         auto shape = output_info.GetShape();
-        if(shape.size() > 2) {
+        if((shape.size() > 2) && (floatarr != NULL)) {
             int64_t hidden_size = shape[2];
             
             Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
@@ -1953,8 +1953,10 @@ int main(int argc, OPTARG_T argv[]) {
                     }
 #ifdef WIN32
                     embeddings_tokenizer = LoadTokenizer(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
+                    max_position_embeddings = LoadMaxPositionEmbeddings(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
 #else
                     embeddings_tokenizer = LoadTokenizer(fs::path(embedding_model_path).parent_path());
+                    max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(reranker_model_path).parent_path());
 #endif
                     embedding_model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
