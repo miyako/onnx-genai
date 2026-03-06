@@ -94,22 +94,35 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 		$URL:="keisuke-miyako/multilingual-e5-small-onnx-fp16"
 		$options:={pooling: "mean"}
 		
-		$huggingface:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model.onnx")
+		$homeFolder:=Folder:C1567(fk home folder:K87:24).folder(".ONNX")
+		$port:=8081
+		$options:={pooling: "cls"}
+		
+		$folder:=$homeFolder.folder("LaBSE")
+		$path:="LaBSE-onnx-int8"
+		$URL:="keisuke-miyako/LaBSE-onnx-int8"
+		
+		$huggingface:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; ($URL="@-f16" || ($URL="@-f32")) ? "model.onnx" : "model_quantized.onnx")
+		$huggingfaces:=cs:C1710.event.huggingfaces.new([$huggingface])
+		
+		$ONNX:=cs:C1710.ONNX.new($port; $huggingfaces; $homeFolder; $options; $event)
+		
+		//$huggingface:=cs.event.huggingface.new($folder; $URL; $path; "embedding"; "model.onnx")
 		
 		//$folder:=$homeFolder.folder("gte-Qwen2-1.5B-instruct")
 		//$path:="gte-Qwen2-1.5B-instruct-onnx-int8"
 		//$URL:="keisuke-miyako/gte-Qwen2-1.5B-instruct-onnx-int8"
 		//$options:={pooling: "last-token"}
 		
-		$huggingface:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
+		//$huggingface:=cs.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
 		
-		$huggingfaces:=cs:C1710.event.huggingfaces.new([$huggingface])
+		//$huggingfaces:=cs.event.huggingfaces.new([$huggingface])
 		
-		$ONNX:=cs:C1710.ONNX.new($port; $huggingfaces; $homeFolder; $options; $event)
+		//$ONNX:=cs.ONNX.new($port; $huggingfaces; $homeFolder; $options; $event)
 		
 	End if 
 	
-	If (True:C214)  //rerank
+	If (False:C215)  //rerank
 		
 		$homeFolder:=Folder:C1567(fk home folder:K87:24).folder(".ONNX")
 		$port:=8080
