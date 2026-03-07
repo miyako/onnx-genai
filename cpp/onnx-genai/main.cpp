@@ -1595,135 +1595,131 @@ static std::string run_reranking(
 }
 
 static std::string run_embeddings(
-                                  Ort::Session *session,
-                                  std::vector<std::string> &inputs,
-                                  int max_position_embeddings,
-                                  std::vector<const char*>&  input_names_c_array,
-                                  size_t num_input_nodes,
-                                  std::vector<const char*>&   output_names_c_array,
-                                  size_t num_output_nodes,
-                                  Tokenizer* tokenizer,
-                                  PoolingMode pooling_mode) {
-    
-    if (tokenizer == NULL) {
-        return "";
+    Ort::Session *session,
+    std::vector<std::string> &inputs,
+    int max_position_embeddings,
+    std::vector<const char*>& input_names_c_array,
+    size_t num_input_nodes,
+    std::vector<const char*>& output_names_c_array,
+    size_t num_output_nodes,
+    Tokenizer* tokenizer,
+    PoolingMode pooling_mode)
+{
+    if (tokenizer == nullptr || inputs.empty()) {
+        return "{\"object\":\"list\",\"data\":[]}";
     }
-    
-    // Build JSON Response
-    Json::Value rootNode(Json::objectValue);
-    Json::Value listNode(Json::arrayValue);
-    int b = 0;
-    
-    for (const auto& input : inputs) {
-        std::vector<int> ids = tokenizer->Encode(input);
-        if(pooling_mode == POOLING_CLS) {
-            std::vector<int> cls_ids;
-            cls_ids.reserve(ids.size() + 2);
-            cls_ids.push_back(0);
-            cls_ids.insert(cls_ids.end(), ids.begin(), ids.end());
-            cls_ids.push_back(2);
-            ids = cls_ids;
+
+    try {
+        int batch_size = (int)inputs.size();
+        int max_seq_len = 0;
+        std::vector<std::vector<int>> tokenized_inputs;
+        tokenized_inputs.reserve(batch_size);
+
+        // 1. Tokenize all and find the max length for padding
+        for (const auto& input : inputs) {
+            std::vector<int> ids = tokenizer->Encode(input);
+            if(pooling_mode == POOLING_CLS) {
+                ids.insert(ids.begin(), 0); // <s> or CLS
+                ids.push_back(2);           // </s> or SEP
+            }
+            if (ids.size() > static_cast<size_t>(max_position_embeddings)) {
+                ids.resize(max_position_embeddings);
+            }
+            if ((int)ids.size() > max_seq_len) {
+                max_seq_len = (int)ids.size();
+            }
+            tokenized_inputs.push_back(std::move(ids));
         }
-        
-        int batch_size = 1;
-        
-        // 1. Safety: Truncate BEFORE any other operations
-        if (ids.size() > static_cast<size_t>(max_position_embeddings)) {
-            ids.resize(max_position_embeddings);
+
+        // 2. Allocate flat memory for tensors (Zero initialized for padding)
+        size_t total_elements = (size_t)batch_size * max_seq_len;
+        std::vector<int64_t> flat_input_ids(total_elements, 0);
+        std::vector<int64_t> flat_attention_mask(total_elements, 0);
+        std::vector<int64_t> flat_token_type_ids(total_elements, 0);
+
+        // 3. Fill the flat arrays
+        for (int b = 0; b < batch_size; ++b) {
+            int seq_len = (int)tokenized_inputs[b].size();
+            for (int i = 0; i < seq_len; ++i) {
+                size_t idx = (size_t)(b * max_seq_len + i);
+                flat_input_ids[idx] = tokenized_inputs[b][i];
+                flat_attention_mask[idx] = 1; // 1 for real tokens, pad remains 0
+                // flat_token_type_ids remains 0
+            }
         }
-        
-        std::vector<int64_t> input_ids = ConvertToInt64(ids);
-        int seq_len = (int)ids.size();
-        
-        
-        
-        std::vector<int64_t> input_node_dims = {batch_size, (int64_t)input_ids.size()};
-        Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(
-                                                                 OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
-        
-        // Define Shapes
-        std::vector<int64_t> input_dims = {batch_size, seq_len};
-        // Create Attention Mask (1 for real tokens)
-        std::vector<int64_t> attention_mask(seq_len, 1);
-        // Create the Missing Vector (All Zeros)
-        std::vector<int64_t> token_type_ids(seq_len, 0);
-        // Create Inputs Vector
+
+        // 4. Create Tensors
+        Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+        std::vector<int64_t> input_dims = { batch_size, max_seq_len };
         std::vector<Ort::Value> input_tensors;
-        
-        // Mistral / Llama / Qwen: only need input_ids
+
         input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-                                                                  memory_info,
-                                                                  input_ids.data(),
-                                                                  input_ids.size(),
-                                                                  input_dims.data(),
-                                                                  input_dims.size()));
-        if (num_input_nodes >1) {
-            // DistilBERT: only needs input_ids and attention_mask.
-            input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-                                                                      memory_info,
-                                                                      attention_mask.data(),
-                                                                      attention_mask.size(),
-                                                                      input_dims.data(),
-                                                                      input_dims.size()));
-        }
-        if (num_input_nodes >2) {
-            // BERT / RoBERTa / MiniLM: ALWAYS require token_type_ids
-            input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-                                                                      memory_info,
-                                                                      token_type_ids.data(),
-                                                                      token_type_ids.size(),
-                                                                      input_dims.data(),
-                                                                      input_dims.size()));
-        }
+            memory_info, flat_input_ids.data(), flat_input_ids.size(), input_dims.data(), input_dims.size()));
         
+        if (num_input_nodes > 1) {
+            input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                memory_info, flat_attention_mask.data(), flat_attention_mask.size(), input_dims.data(), input_dims.size()));
+        }
+        if (num_input_nodes > 2) {
+            input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                memory_info, flat_token_type_ids.data(), flat_token_type_ids.size(), input_dims.data(), input_dims.size()));
+        }
+
+        // 5. Run Batched Inference (1 Call to session->Run!)
         auto outputs = session->Run(
-                                    Ort::RunOptions{nullptr},
-                                    input_names_c_array.data(),
-                                    input_tensors.data(),
-                                    num_input_nodes,
-                                    output_names_c_array.data(),
-                                    num_output_nodes
-                                    );
+            Ort::RunOptions{nullptr},
+            input_names_c_array.data(),
+            input_tensors.data(),
+            num_input_nodes,
+            output_names_c_array.data(),
+            num_output_nodes
+        );
+
+        // 6. Pooling & Build JSON
+        if (pooling_mode == POOLING_COLBERT) {
+            // Colbert requires specialized nested JSON construction
+            return colbert_pooling_batch_json(outputs, flat_attention_mask, batch_size, max_seq_len);
+        }
         
-        std::vector<float>embeddings;
-        
+        std::vector<std::vector<float>> batch_embeddings;
         switch (pooling_mode) {
-            case POOLING_COLBERT:
-                embeddings = std::vector<float>();
-                //                    reponseJson = colbert_pooling_response(outputs, attention_mask, seq_len);
-                break;
             case POOLING_CLS:
-                embeddings = cls_pooling_response(outputs, attention_mask, seq_len);
+                batch_embeddings = cls_pooling_batch(outputs, flat_attention_mask, batch_size, max_seq_len);
                 break;
             case POOLING_LAST_TOKEN:
-                embeddings = last_token_pooling_response(outputs, attention_mask, seq_len);
+                batch_embeddings = last_token_pooling_batch(outputs, flat_attention_mask, batch_size, max_seq_len);
                 break;
             case POOLING_MEAN:
             default:
-                embeddings = mean_pooling_response(outputs, attention_mask, seq_len);
+                batch_embeddings = mean_pooling_batch(outputs, flat_attention_mask, batch_size, max_seq_len);
                 break;
         }
+
+        Json::Value rootNode(Json::objectValue);
+        Json::Value listNode(Json::arrayValue);
         
-        Json::Value dataNode = Json::objectValue;
-        Json::Value embeddingsNode(Json::arrayValue);
-        
-        for (float val : embeddings) {
-            embeddingsNode.append(val);
+        for (int b = 0; b < batch_size; ++b) {
+            Json::Value dataNode = Json::objectValue;
+            Json::Value embeddingsNode(Json::arrayValue);
+            for (float val : batch_embeddings[b]) {
+                embeddingsNode.append(val);
+            }
+            dataNode["object"] = "embedding";
+            dataNode["embedding"] = embeddingsNode;
+            dataNode["index"] = b;
+            listNode.append(dataNode);
         }
         
-        dataNode["embedding"] = embeddingsNode;
-        dataNode["index"] = (int)b;
-        listNode.append(dataNode);
+        rootNode["data"] = listNode;
+        rootNode["object"] = "list";
         
-        b++;
+        Json::StreamWriterBuilder writer;
+        writer["indentation"] = "";
+        return Json::writeString(writer, rootNode);
+
+    } catch (const std::exception& e) {
+        throw; // Controller handles the JSON error formatting
     }
-    
-    rootNode["data"] = listNode;
-    rootNode["object"] = "list";
-    
-    Json::StreamWriterBuilder writer;
-    writer["indentation"] = "";
-    return Json::writeString(writer, rootNode);
 }
 
 static std::string run_embeddings_e2e(
