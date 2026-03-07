@@ -52,3 +52,7 @@ onnx-genai/Project/DerivedData/formAttributes.json
 onnxruntime-genai/*
 onnxruntime-extensions/*
 onnxruntime/1.23.2/libonnxruntime.dylib
+cpp/onnx-genai/ARM64/Release/onnx-genai.tlog/unsuccessfulbuild
+cpp/onnx-genai/ARM64/Release/onnx-genai.iobj
+cpp/onnx-genai/ARM64/Release/main.obj
+cpp/ARM64/Release/onnx-genai.pdb
