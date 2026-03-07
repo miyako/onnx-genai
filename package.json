@@ -6,7 +6,7 @@
   ],
   "license": "MIT",
   "repository": "https://github.com/miyako/onnx-genai",
-  "version": "20.3.3",
+  "version": "20.3.4",
   "tool": {
     "platform": "macos",
     "branch": "20.x",
