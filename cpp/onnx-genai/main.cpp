@@ -642,10 +642,10 @@ static void parse_request_contextualized_embeddings(const std::string &json,
     
     if(parse && root.isObject())
     {
-        // Voyage AI uses "inputs" (plural) for this specific endpoint
+        // Voyage AI uses "inputs" (plural)
         Json::Value inputs_node = root["inputs"];
         
-        // fallback for 4D AI Kit
+        // fallback for 4D AI Kit which uses "inout" (singular)
         inputs_node = inputs_node.isArray() ? inputs_node : root["input"];
         
         if(inputs_node.isArray())
@@ -840,6 +840,8 @@ static void parse_request(
         }
     }
 }
+
+#pragma mark -
 
 static void before_run_reranking(
                                  const std::string& request_body,
