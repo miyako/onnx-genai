@@ -267,7 +267,7 @@ std::unique_ptr<Tokenizer> LoadTokenizer(const std::string& model_path) {
         return Tokenizer::FromBlobSentencePiece(blob);
     }
 
-    return 0;
+    return nullptr;
 }
 
 #ifdef WIN32
