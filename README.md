@@ -42,6 +42,15 @@ The CLI is built for `4` platforms:
 
 - `/v1/rerank`
 
+## MongoDB Compatible Endpoints
+
+- `/v1/contextualizedembeddings`
+- `/v1/contextualized/embeddings` (alias)
+
+> [!TIP]
+> The `input_type` property has no special effect. You must specifically add the prefixes "Represent the query for retrieving supporting documents: " and "Represent the document for retrieval: " if required by the model.  
+> [https://www.mongodb.com/docs/](https://www.mongodb.com/docs/api/doc/atlas-embedding-and-reranking-api/operation/operation-createcontextualizedembedding)
+
 ## Converted ONNX Models
 
 #### Quantisation
