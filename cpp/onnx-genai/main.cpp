@@ -1588,9 +1588,7 @@ static std::string run_embeddings_e2e(
                                       size_t num_input_nodes,
                                       std::vector<const char*>&   output_names_c_array,
                                       size_t num_output_nodes) {
-    
-    Json::Value rootNode(Json::objectValue);
-    
+        
     // Build JSON Response
     Json::Value rootNode(Json::objectValue);
     Json::Value listNode(Json::arrayValue);
@@ -2089,22 +2087,33 @@ int main(int argc, OPTARG_T argv[]) {
                 if(is_stream) {
                     std::string req_id = get_openai_style_id();
                     
-                    // Corrected Lambda structure
+                    // 1. Extract raw pointers safely.
+                    // Since 'model' and 'tokenizer' live in main() for the lifetime of the app,
+                    // these pointers will remain valid while the stream runs.
+                    OgaModel* raw_model = model.get();
+                    OgaTokenizer* raw_tokenizer = tokenizer.get();
+                    
+                    // 2. Explicitly capture EVERYTHING by value (copy) or by safe pointer.
+                    // We removed the dangerous `&` default capture.
                     res.set_chunked_content_provider("text/event-stream",
-                                                     [&,
-                                                       req_id,
-                                                       prompt,
-                                                       max_tokens,
-                                                       top_k,
-                                                       top_p,
-                                                       temperature,
-                                                       repetition_penalty,
-                                                       is_stream,
-                                                       n,
-                                                       chat_template,
-                                                       guidance_string_type,
-                                                       guidance_string
+                                                     [
+                                                         raw_model,
+                                                         raw_tokenizer,
+                                                         modelName,
+                                                         fingerprint,
+                                                         model_created,
+                                                         req_id,
+                                                         prompt,
+                                                         max_tokens,
+                                                         top_k,
+                                                         top_p,
+                                                         temperature,
+                                                         repetition_penalty,
+                                                         n,
+                                                         guidance_string_type,
+                                                         guidance_string
                                                      ](size_t offset, httplib::DataSink &sink) {
+
                         // Send initial role packet (optional but good practice)
                         for (int i = 0; i < n; i++) {
                             std::string role_chunk = create_stream_chunk(i, req_id, modelName, fingerprint, "");
@@ -2112,6 +2121,8 @@ int main(int argc, OPTARG_T argv[]) {
                         }
                         
                         // Define a callback to handle tokens as they are generated
+                        // It's safe to use [&] HERE because this lambda is synchronous and
+                        // only executes within the lifespan of the parent lambda.
                         auto token_callback = [&](const std::string& token, unsigned int n) {
                                                        
                             std::string chunk = create_stream_chunk(n, req_id, modelName, fingerprint, token);
@@ -2121,8 +2132,8 @@ int main(int argc, OPTARG_T argv[]) {
                         };
 
                         run_inference_stream(
-                                             model.get(),
-                                             tokenizer.get(),
+                                             raw_model,
+                                             raw_tokenizer,
                                              modelName,
                                              fingerprint,
                                              model_created,
