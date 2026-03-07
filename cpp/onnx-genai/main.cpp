@@ -645,6 +645,9 @@ static void parse_request_contextualized_embeddings(const std::string &json,
         // Voyage AI uses "inputs" (plural) for this specific endpoint
         Json::Value inputs_node = root["inputs"];
         
+        // fallback for 4D AI Kit
+        inputs_node = inputs_node.isArray() ? inputs_node : root["input"];
+        
         if(inputs_node.isArray())
         {
             // Iterate over documents (each document is an array of chunks)
@@ -2603,7 +2606,7 @@ int main(int argc, OPTARG_T argv[]) {
         });
         
         // Route: /v1/contextualizedembeddings
-        svr.Post("/v1/contextualizedembeddings", [&](const httplib::Request& req, httplib::Response& res) {
+        auto contextualized_embeddings_handler = [&](const httplib::Request& req, httplib::Response& res) {
             
             std::cout << "[Server] /v1/contextualizedembeddings request received." << std::endl;
             
@@ -2663,8 +2666,11 @@ int main(int argc, OPTARG_T argv[]) {
                 std::cerr << "[Server] Error: " << e.what() << std::endl;
             }
             
-        });
-        
+        };
+
+        svr.Post("/v1/contextualizedembeddings", contextualized_embeddings_handler);
+        svr.Post("/v1/contextualized/embeddings", contextualized_embeddings_handler);
+
         std::cout << "[Server] Listening on " << host << ":" << port << std::endl;
         
         // Listen (Blocking call)
