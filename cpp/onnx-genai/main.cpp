@@ -565,11 +565,13 @@ static std::string get_openai_style_id() {
     const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
     const size_t max_index = (sizeof(charset) - 1);
     
-    std::string id = "chatcmpl-";
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    // Initialize once per thread
+    thread_local std::random_device rd;
+    thread_local std::mt19937 gen(rd());
     std::uniform_int_distribution<> dis(0, max_index - 1);
     
+    std::string id = "chatcmpl-";
+    id.reserve(29 + 9); // reserve space to avoid reallocation
     for (int i = 0; i < 29; ++i) {
         id += charset[dis(gen)];
     }
@@ -1129,21 +1131,8 @@ static void run_inference_stream(
     }
 }
 
-static // Helper to convert int32 -> int64 using Eigen SIMD cast
-std::vector<int64_t> ConvertToInt64(const std::vector<int>& input_ids) {
-    if (input_ids.empty()) return {};
-
-    // Map the input int32 data
-    Eigen::Map<const Eigen::VectorXi> input_map(input_ids.data(), input_ids.size());
-
-    // Prepare output vector
-    std::vector<int64_t> output(input_ids.size());
-    
-    // Map the output int64 data and perform vectorized cast
-    Eigen::Map<Eigen::Vector<int64_t, Eigen::Dynamic>> output_map(output.data(), output.size());
-    output_map = input_map.cast<int64_t>();
-
-    return output;
+static std::vector<int64_t> ConvertToInt64(const std::vector<int>& input_ids) {
+    return std::vector<int64_t>(input_ids.begin(), input_ids.end());
 }
 
 static std::vector<float> last_token_pooling_response(std::vector<Ort::Value>& outputs,
