@@ -1829,10 +1829,8 @@ int main(int argc, OPTARG_T argv[]) {
         if (fs::exists(model_path)) {
             if (fs::is_directory(model_path)) {
                 
-                while (!model_path.empty() && (model_path.back() == '/' || model_path.back() == '\\')) {
-                    model_path.pop_back();
-                }
-                                
+                model_path = fs::path(model_path).lexically_normal().string();
+                                                
                 // 1.a Initialize Model and Tokenizer (Load once)
                 std::cerr << "[Chat] Loading from " << model_path << std::endl;
                 modelName = get_model_name(model_path);
