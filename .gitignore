@@ -56,3 +56,4 @@ cpp/onnx-genai/ARM64/Release/onnx-genai.tlog/unsuccessfulbuild
 cpp/onnx-genai/ARM64/Release/onnx-genai.iobj
 cpp/onnx-genai/ARM64/Release/main.obj
 cpp/ARM64/Release/onnx-genai.pdb
+cpp/ARM64/Release/onnx-genai.exe
