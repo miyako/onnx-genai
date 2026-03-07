@@ -640,38 +640,38 @@ static void parse_request_contextualized_embeddings(const std::string &json,
                                &root,
                                &errors);
     
-    if(parse)
+    if(parse && root.isObject())
     {
-        if(root.isObject())
+        // Voyage AI uses "inputs" (plural) for this specific endpoint
+        Json::Value inputs_node = root["inputs"];
+        
+        if(inputs_node.isArray())
         {
-            Json::Value input_node = root["input"];
-            
-            auto process_node = [&](const Json::Value& node) {
-                if(node.isObject())
+            // Iterate over documents (each document is an array of chunks)
+            for (Json::Value::const_iterator it_doc = inputs_node.begin(); it_doc != inputs_node.end(); ++it_doc)
+            {
+                const Json::Value& chunk_array = *it_doc;
+                if(chunk_array.isArray())
                 {
-                    std::string document = node.isMember("document") ? node["document"].asString() : "";
-                    std::string chunk = node.isMember("chunk") ? node["chunk"].asString() : "";
-                    
-                    // Concatenate context/document with the target chunk for generic ONNX embedding models
-                    if (!document.empty() && !chunk.empty()) {
-                        inputs.push_back(document + "\n\n" + chunk);
-                    } else if (!chunk.empty()) {
-                        inputs.push_back(chunk);
-                    } else if (!document.empty()) {
-                        inputs.push_back(document);
+                    // 1. Reconstruct the full document by concatenating its chunks
+                    std::string full_document;
+                    for (Json::Value::const_iterator it_chunk = chunk_array.begin(); it_chunk != chunk_array.end(); ++it_chunk)
+                    {
+                        if(it_chunk->isString()) {
+                            full_document += it_chunk->asString();
+                        }
                     }
-                }
-            };
-
-            if(input_node.isObject())
-            {
-                process_node(input_node);
-            }
-            else if(input_node.isArray())
-            {
-                for (Json::ValueIterator i = input_node.begin(); i != input_node.end(); ++i)
-                {
-                    process_node(*i);
+                    
+                    // 2. Flatten the request: create a contextualized input for each chunk
+                    for (Json::Value::const_iterator it_chunk = chunk_array.begin(); it_chunk != chunk_array.end(); ++it_chunk)
+                    {
+                        if(it_chunk->isString()) {
+                            std::string chunk = it_chunk->asString();
+                            // Prepend the reconstructed document context to the specific chunk.
+                            // This allows standard ONNX models to approximate Voyage's context-awareness.
+                            inputs.push_back(full_document + "\n\n" + chunk);
+                        }
+                    }
                 }
             }
         }
