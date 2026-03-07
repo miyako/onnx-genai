@@ -847,138 +847,134 @@ static std::string run_inference(
     size_t input_token_count = 0;
     std::string finish_reason = "stop";//length, content_filter, tool_calls, function_call
     
-    try {
-        // Create Tokenizer Stream
-        auto tokenizer_stream = OgaTokenizerStream::Create(*tokenizer);
-        
-        // Encode Prompt
-        auto input_sequences = OgaSequences::Create();
-        tokenizer->Encode(prompt.c_str(), *input_sequences);
-        input_token_count = input_sequences->SequenceCount(0);
-        double max_length = (double)(input_token_count + max_tokens);
-        
-        // Set Generation Parameters
-        auto params = OgaGeneratorParams::Create(*model);
-        params->SetSearchOption("max_length", max_length);
-        params->SetSearchOption("top_k", top_k);
-        params->SetSearchOption("top_p", top_p);
-        params->SetSearchOption("temperature", temperature);
-        params->SetSearchOption("repetition_penalty", repetition_penalty);
-        params->SetSearchOption("num_return_sequences", n);
-        
-        if(guidance_string_type != ""){
-            params->SetGuidance(guidance_string_type.c_str(), guidance_string.c_str());
-        }
+    // Create Tokenizer Stream
+    auto tokenizer_stream = OgaTokenizerStream::Create(*tokenizer);
+    
+    // Encode Prompt
+    auto input_sequences = OgaSequences::Create();
+    tokenizer->Encode(prompt.c_str(), *input_sequences);
+    input_token_count = input_sequences->SequenceCount(0);
+    double max_length = (double)(input_token_count + max_tokens);
+    
+    // Set Generation Parameters
+    auto params = OgaGeneratorParams::Create(*model);
+    params->SetSearchOption("max_length", max_length);
+    params->SetSearchOption("top_k", top_k);
+    params->SetSearchOption("top_p", top_p);
+    params->SetSearchOption("temperature", temperature);
+    params->SetSearchOption("repetition_penalty", repetition_penalty);
+    params->SetSearchOption("num_return_sequences", n);
+    
+    if(guidance_string_type != ""){
+        params->SetGuidance(guidance_string_type.c_str(), guidance_string.c_str());
+    }
 #if TOKEN_BACKSTOP
-        int32_t chat_end_id = tokenizer->ToTokenId("<|im_end|>");
-        int32_t file_end_id = tokenizer->ToTokenId("<|endoftext|>");
-        int32_t chat_start_id = tokenizer->ToTokenId("<|im_start|>");
-        int32_t head_start_id = tokenizer->ToTokenId("<|start_header_id|>");
-        int32_t pad_id = tokenizer->ToTokenId("<pad>");
-        int32_t bos_id = tokenizer->ToTokenId("<bos>");
-        int32_t turn_start_id = tokenizer->ToTokenId("<start_of_turn>");
-        int32_t turn_end_id = tokenizer->ToTokenId("<end_of_turn>");
-        int32_t end_id = tokenizer->ToTokenId("<|end|>");
-        
-        std::unordered_set<int32_t> stop_tokens = {
-            chat_end_id,
-            file_end_id,
-            chat_start_id,
-            head_start_id,
-            pad_id,
-            bos_id,
-            turn_start_id,
-            turn_end_id,
-            end_id};
+    int32_t chat_end_id = tokenizer->ToTokenId("<|im_end|>");
+    int32_t file_end_id = tokenizer->ToTokenId("<|endoftext|>");
+    int32_t chat_start_id = tokenizer->ToTokenId("<|im_start|>");
+    int32_t head_start_id = tokenizer->ToTokenId("<|start_header_id|>");
+    int32_t pad_id = tokenizer->ToTokenId("<pad>");
+    int32_t bos_id = tokenizer->ToTokenId("<bos>");
+    int32_t turn_start_id = tokenizer->ToTokenId("<start_of_turn>");
+    int32_t turn_end_id = tokenizer->ToTokenId("<end_of_turn>");
+    int32_t end_id = tokenizer->ToTokenId("<|end|>");
+    
+    std::unordered_set<int32_t> stop_tokens = {
+        chat_end_id,
+        file_end_id,
+        chat_start_id,
+        head_start_id,
+        pad_id,
+        bos_id,
+        turn_start_id,
+        turn_end_id,
+        end_id};
 #endif
-        // Create Generator
-        // Generator is stateful; we need 1 per request.
-        auto generator = OgaGenerator::Create(*model, *params);
-        generator->AppendTokenSequences(*input_sequences);
-        // Create a vector of streams
-        // Decoding is stateful; we need 1 decoder per sequence.
-        std::vector<std::string> generated_responses(n);
-        std::vector<std::unique_ptr<OgaTokenizerStream>> streams;
+    // Create Generator
+    // Generator is stateful; we need 1 per request.
+    auto generator = OgaGenerator::Create(*model, *params);
+    generator->AppendTokenSequences(*input_sequences);
+    // Create a vector of streams
+    // Decoding is stateful; we need 1 decoder per sequence.
+    std::vector<std::string> generated_responses(n);
+    std::vector<std::unique_ptr<OgaTokenizerStream>> streams;
+    for (int i = 0; i < n; i++) {
+        streams.push_back(OgaTokenizerStream::Create(*tokenizer));
+    }
+    
+    // Start Generating
+    while (1) {
+        generator->GenerateNextToken();
+        if(generator->IsDone()) break;
+        // Iterate through each sequence (0 to n-1) to collect results
         for (int i = 0; i < n; i++) {
-            streams.push_back(OgaTokenizerStream::Create(*tokenizer));
-        }
-        
-        // Start Generating
-        while (1) {
-            generator->GenerateNextToken();
-            if(generator->IsDone()) break;
-            // Iterate through each sequence (0 to n-1) to collect results
-            for (int i = 0; i < n; i++) {
-                // Get the full sequence data for the i-th choice
-                const auto* seq_data = generator->GetSequenceData(i);
-                size_t seq_len = generator->GetSequenceCount(i);
-                // Safety check to ensure we have data
-                if (seq_len == 0) continue;
-                // Get the most recently generated token
-                int32_t new_token = seq_data[seq_len - 1];
+            // Get the full sequence data for the i-th choice
+            const auto* seq_data = generator->GetSequenceData(i);
+            size_t seq_len = generator->GetSequenceCount(i);
+            // Safety check to ensure we have data
+            if (seq_len == 0) continue;
+            // Get the most recently generated token
+            int32_t new_token = seq_data[seq_len - 1];
 #if TOKEN_BACKSTOP
-                if (stop_tokens.count(new_token)) {
-                    // We hit one of our stop tokens!
-                    continue;
-                }
+            if (stop_tokens.count(new_token)) {
+                // We hit one of our stop tokens!
+                continue;
+            }
 #endif
-                const char* token_str = streams[i]->Decode(new_token);
-                if (token_str) {
-                    generated_responses[i] += token_str;
-                    completion_tokens++;
-                }
+            const char* token_str = streams[i]->Decode(new_token);
+            if (token_str) {
+                generated_responses[i] += token_str;
+                completion_tokens++;
             }
         }
-        
-        Json::Int total_tokens = (Json::Int)(input_token_count + completion_tokens);
-        if (total_tokens >= max_length) {
-            finish_reason = "length";
-        }
-        // Build Response JSON
-        rootNode["id"] = get_openai_style_id();
-        rootNode["object"] = "chat.completion";
-        rootNode["created"] = created;
-        rootNode["model"] = modelName;
-        rootNode["system_fingerprint"] = fingerprint;//Deprecated
-        rootNode["service_tier"] = "default";
-        Json::Value choicesNode(Json::arrayValue);
-        
-        for (int i = 0; i < n; i++) {
-            Json::Value choiceNode(Json::objectValue);
-            choiceNode["index"] = i;
-            Json::Value messageNode(Json::objectValue);
-            messageNode["role"] = "assistant";
-            messageNode["content"] = generated_responses[i].c_str();
-            messageNode["refusal"] = Json::nullValue;
-            choiceNode["message"] = messageNode;
-            choicesNode.append(choiceNode);
-            choiceNode["logprobs"] = Json::nullValue;
-            choiceNode["finish_reason"] = finish_reason;
-        }
-        rootNode["choices"] = choicesNode;
-        
-        Json::Value usageNode(Json::objectValue);
-        usageNode["prompt_tokens"] = (Json::Int)input_token_count;
-        usageNode["completion_tokens"] = (Json::Int)completion_tokens;
-        usageNode["total_tokens"] = total_tokens;
-        
-        Json::Value promptTokenDetailsNode(Json::objectValue);
-        promptTokenDetailsNode["cached_tokens"] = 0;
-        promptTokenDetailsNode["audio_tokens"] = 0;
-        usageNode["prompt_tokens_details"] = promptTokenDetailsNode;
-        
-        Json::Value completionTokenDetailsNode(Json::objectValue);
-        completionTokenDetailsNode["reasoning_tokens"] = 0;
-        completionTokenDetailsNode["audio_tokens"] = 0;
-        completionTokenDetailsNode["accepted_prediction_tokens"] = 0;
-        completionTokenDetailsNode["rejected_prediction_tokens"] = 0;
-        usageNode["completion_tokens_details"] = completionTokenDetailsNode;
-        
-        rootNode["usage"] = usageNode;
-        
-    } catch (const std::exception& e) {
-        throw;
     }
+    
+    Json::Int total_tokens = (Json::Int)(input_token_count + completion_tokens);
+    if (total_tokens >= max_length) {
+        finish_reason = "length";
+    }
+    // Build Response JSON
+    rootNode["id"] = get_openai_style_id();
+    rootNode["object"] = "chat.completion";
+    rootNode["created"] = created;
+    rootNode["model"] = modelName;
+    rootNode["system_fingerprint"] = fingerprint;//Deprecated
+    rootNode["service_tier"] = "default";
+    Json::Value choicesNode(Json::arrayValue);
+    
+    for (int i = 0; i < n; i++) {
+        Json::Value choiceNode(Json::objectValue);
+        choiceNode["index"] = i;
+        Json::Value messageNode(Json::objectValue);
+        messageNode["role"] = "assistant";
+        messageNode["content"] = generated_responses[i].c_str();
+        messageNode["refusal"] = Json::nullValue;
+        choiceNode["message"] = messageNode;
+        choicesNode.append(choiceNode);
+        choiceNode["logprobs"] = Json::nullValue;
+        choiceNode["finish_reason"] = finish_reason;
+    }
+    rootNode["choices"] = choicesNode;
+    
+    Json::Value usageNode(Json::objectValue);
+    usageNode["prompt_tokens"] = (Json::Int)input_token_count;
+    usageNode["completion_tokens"] = (Json::Int)completion_tokens;
+    usageNode["total_tokens"] = total_tokens;
+    
+    Json::Value promptTokenDetailsNode(Json::objectValue);
+    promptTokenDetailsNode["cached_tokens"] = 0;
+    promptTokenDetailsNode["audio_tokens"] = 0;
+    usageNode["prompt_tokens_details"] = promptTokenDetailsNode;
+    
+    Json::Value completionTokenDetailsNode(Json::objectValue);
+    completionTokenDetailsNode["reasoning_tokens"] = 0;
+    completionTokenDetailsNode["audio_tokens"] = 0;
+    completionTokenDetailsNode["accepted_prediction_tokens"] = 0;
+    completionTokenDetailsNode["rejected_prediction_tokens"] = 0;
+    usageNode["completion_tokens_details"] = completionTokenDetailsNode;
+    
+    rootNode["usage"] = usageNode;
+    
     Json::StreamWriterBuilder writer;
     writer["indentation"] = "";
     return Json::writeString(writer, rootNode);
@@ -1309,152 +1305,147 @@ static std::string run_reranking(
                                  std::vector<const char*>&   output_names_c_array,
                                  size_t num_output_nodes,
                                  RerankingMode ranking_mode) {
-
+    
     std::string reponseJson;
     
     // We will store indices and calculated scores here
     std::vector<RerankResult> results;
     results.reserve(items.size());
-
+    
     // Optimize: Store all raw logits contiguously to apply Eigen SIMD later
     // We assume max 2 outputs per item to reserve memory safely
     std::vector<float> all_raw_logits;
     all_raw_logits.reserve(items.size() * 2);
-
+    
     int output_dim = 0; // Detected on first inference run
-
-    try {
-        Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(
-                OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
-
-        int i = 0;
-        for(auto it = items.begin() ; it != items.end() ; it++)
-        {
-            // --- PREPROCESSING ---
-            std::vector<int64_t> ids = ConvertToInt64(it->ids);
-            std::vector<int64_t> type_ids = ConvertToInt64(it->type_ids);
-            
-            int seq_len = (int)ids.size();
-            
-            // Safety: Truncate if exceeding model limits (prevents crash)
-            if (seq_len > max_position_embeddings) {
-                seq_len = max_position_embeddings;
-                ids.resize(seq_len);
-                if (!type_ids.empty()) type_ids.resize(seq_len);
-            }
-
-            if (num_input_nodes > 2 && type_ids.empty()) {
-                type_ids.resize(seq_len, 0);
-            }
-            
-            int batch_size = 1;
-            std::vector<int64_t> input_dims = {batch_size, seq_len};
-            std::vector<int64_t> attention_mask(seq_len, 1);
-                        
-            std::vector<Ort::Value> input_tensors;
-            
+    
+    Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(
+                                                             OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
+    
+    int i = 0;
+    for(auto it = items.begin() ; it != items.end() ; it++)
+    {
+        // --- PREPROCESSING ---
+        std::vector<int64_t> ids = ConvertToInt64(it->ids);
+        std::vector<int64_t> type_ids = ConvertToInt64(it->type_ids);
+        
+        int seq_len = (int)ids.size();
+        
+        // Safety: Truncate if exceeding model limits (prevents crash)
+        if (seq_len > max_position_embeddings) {
+            seq_len = max_position_embeddings;
+            ids.resize(seq_len);
+            if (!type_ids.empty()) type_ids.resize(seq_len);
+        }
+        
+        if (num_input_nodes > 2 && type_ids.empty()) {
+            type_ids.resize(seq_len, 0);
+        }
+        
+        int batch_size = 1;
+        std::vector<int64_t> input_dims = {batch_size, seq_len};
+        std::vector<int64_t> attention_mask(seq_len, 1);
+        
+        std::vector<Ort::Value> input_tensors;
+        
+        input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                                                                  memory_info, ids.data(), ids.size(), input_dims.data(), input_dims.size()));
+        
+        if (num_input_nodes > 1) {
             input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-                    memory_info, ids.data(), ids.size(), input_dims.data(), input_dims.size()));
-
-            if (num_input_nodes > 1) {
+                                                                      memory_info, attention_mask.data(), attention_mask.size(), input_dims.data(), input_dims.size()));
+            
+            if (num_input_nodes > 2) {
                 input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-                        memory_info, attention_mask.data(), attention_mask.size(), input_dims.data(), input_dims.size()));
-                
-                if (num_input_nodes > 2) {
-                    input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-                            memory_info, type_ids.data(), type_ids.size(), input_dims.data(), input_dims.size()));
-                }
+                                                                          memory_info, type_ids.data(), type_ids.size(), input_dims.data(), input_dims.size()));
             }
-            
-            // --- INFERENCE ---
-            auto outputs = session->Run(
-                                        Ort::RunOptions{nullptr},
-                                        input_names_c_array.data(),
-                                        input_tensors.data(),
-                                        num_input_nodes,
-                                        output_names_c_array.data(),
-                                        num_output_nodes
-                                        );
-        
-            // --- DATA COLLECTION ---
-            float* float_data = outputs.front().GetTensorMutableData<float>();
-            auto type_info = outputs.front().GetTensorTypeAndShapeInfo();
-            auto shape = type_info.GetShape();
-            
-            // On first run, detect if model outputs 1 scalar or 2 logits
-            if (output_dim == 0) {
-                output_dim = (int)shape.back(); // Safe whether shape is [1, 1] or [1]
-            }
-
-            // Copy raw data out immediately (Ort::Value output dies at end of loop)
-            for(int k = 0; k < output_dim; ++k) {
-                all_raw_logits.push_back(float_data[k]);
-            }
-            
-            i++;
-        }
-                
-        Eigen::ArrayXf final_scores(items.size());
-        
-        // 2. Map input data.
-               // We use Matrix map initially to easily access columns (.col),
-               // but we will cast to .array() immediately for the math.
-       Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-           logits_mat(all_raw_logits.data(), items.size(), output_dim);
-        
-        if (output_dim == 2) {
-//            if(ranking_mode == RerankingMode::RERANKING_LLM) {
-//                float max_logit = logits_mat.col(0).maxCoeff();
-//                Eigen::ArrayXf exp_logits = (logits_mat.col(0).array() - max_logit).exp();
-//                final_scores = exp_logits / exp_logits.sum();
-//            }else {
-                final_scores = (1.0f + (logits_mat.col(0) - logits_mat.col(1)).array().exp()).inverse();
-//            }
-        }
-        else {
-            final_scores = (1.0f + (-logits_mat.col(0)).array().exp()).inverse();
         }
         
-        // --- PACK RESULTS ---
-        // Eigen Array can be accessed just like std::vector or C-array using []
-        for (int j = 0; j < items.size(); ++j) {
-            results.push_back({(int)j, final_scores[j]}); // Note: cast j to int if struct expects int
+        // --- INFERENCE ---
+        auto outputs = session->Run(
+                                    Ort::RunOptions{nullptr},
+                                    input_names_c_array.data(),
+                                    input_tensors.data(),
+                                    num_input_nodes,
+                                    output_names_c_array.data(),
+                                    num_output_nodes
+                                    );
+        
+        // --- DATA COLLECTION ---
+        float* float_data = outputs.front().GetTensorMutableData<float>();
+        auto type_info = outputs.front().GetTensorTypeAndShapeInfo();
+        auto shape = type_info.GetShape();
+        
+        // On first run, detect if model outputs 1 scalar or 2 logits
+        if (output_dim == 0) {
+            output_dim = (int)shape.back(); // Safe whether shape is [1, 1] or [1]
         }
         
-        // --- SORTING AND JSON ---
-        auto sorter = [](const RerankResult& a, const RerankResult& b) {
-            return a.score > b.score; // Descending
-        };
-        
-        if (top_n > 0 && top_n < (int)results.size()) {
-            // Partial sort is O(N * log(k)) - faster than full sort
-            std::partial_sort(results.begin(), results.begin() + top_n, results.end(), sorter);
-            results.resize(top_n);
-        } else {
-            std::sort(results.begin(), results.end(), sorter);
+        // Copy raw data out immediately (Ort::Value output dies at end of loop)
+        for(int k = 0; k < output_dim; ++k) {
+            all_raw_logits.push_back(float_data[k]);
         }
         
-        Json::Value rootNode(Json::objectValue);
-        Json::Value listNode(Json::arrayValue);
-        
-        for (const auto& result : results) {
-            Json::Value dataNode = Json::objectValue;
-            dataNode["index"] = result.index;
-            dataNode["relevance_score"] = result.score;
-            listNode.append(dataNode);
-        }
-
-        rootNode["results"] = listNode;
-        rootNode["object"] = "list";
-        
-        Json::StreamWriterBuilder writer;
-        writer["indentation"] = "";
-        reponseJson = Json::writeString(writer, rootNode);
-        
-    } catch (const std::exception& e) {
-        throw;
+        i++;
     }
-
+    
+    Eigen::ArrayXf final_scores(items.size());
+    
+    // 2. Map input data.
+    // We use Matrix map initially to easily access columns (.col),
+    // but we will cast to .array() immediately for the math.
+    Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+    logits_mat(all_raw_logits.data(), items.size(), output_dim);
+    
+    if (output_dim == 2) {
+        //            if(ranking_mode == RerankingMode::RERANKING_LLM) {
+        //                float max_logit = logits_mat.col(0).maxCoeff();
+        //                Eigen::ArrayXf exp_logits = (logits_mat.col(0).array() - max_logit).exp();
+        //                final_scores = exp_logits / exp_logits.sum();
+        //            }else {
+        final_scores = (1.0f + (logits_mat.col(0) - logits_mat.col(1)).array().exp()).inverse();
+        //            }
+    }
+    else {
+        final_scores = (1.0f + (-logits_mat.col(0)).array().exp()).inverse();
+    }
+    
+    // --- PACK RESULTS ---
+    // Eigen Array can be accessed just like std::vector or C-array using []
+    for (int j = 0; j < items.size(); ++j) {
+        results.push_back({(int)j, final_scores[j]}); // Note: cast j to int if struct expects int
+    }
+    
+    // --- SORTING AND JSON ---
+    auto sorter = [](const RerankResult& a, const RerankResult& b) {
+        return a.score > b.score; // Descending
+    };
+    
+    if (top_n > 0 && top_n < (int)results.size()) {
+        // Partial sort is O(N * log(k)) - faster than full sort
+        std::partial_sort(results.begin(), results.begin() + top_n, results.end(), sorter);
+        results.resize(top_n);
+    } else {
+        std::sort(results.begin(), results.end(), sorter);
+    }
+    
+    Json::Value rootNode(Json::objectValue);
+    Json::Value listNode(Json::arrayValue);
+    
+    for (const auto& result : results) {
+        Json::Value dataNode = Json::objectValue;
+        dataNode["index"] = result.index;
+        dataNode["relevance_score"] = result.score;
+        listNode.append(dataNode);
+    }
+    
+    rootNode["results"] = listNode;
+    rootNode["object"] = "list";
+    
+    Json::StreamWriterBuilder writer;
+    writer["indentation"] = "";
+    reponseJson = Json::writeString(writer, rootNode);
+    
     return reponseJson;
 }
 
@@ -1468,124 +1459,118 @@ static std::string run_embeddings(
                                   size_t num_output_nodes,
                                   Tokenizer* tokenizer,
                                   PoolingMode pooling_mode) {
-
+    
     if (tokenizer == NULL) {
         return "";
     }
-        
+    
     // Build JSON Response
     Json::Value rootNode(Json::objectValue);
     Json::Value listNode(Json::arrayValue);
     int b = 0;
-        
-    try {
-        
-        for (const auto& input : inputs) {
-            std::vector<int> ids = tokenizer->Encode(input);
-            if(pooling_mode == POOLING_CLS) {
-                std::vector<int> cls_ids;
-                cls_ids.reserve(ids.size() + 2);
-                cls_ids.push_back(0);
-                cls_ids.insert(cls_ids.end(), ids.begin(), ids.end());
-                cls_ids.push_back(2);
-                ids = cls_ids;
-            }
-            
-            int batch_size = 1;
-            
-            // 1. Safety: Truncate BEFORE any other operations
-            if (ids.size() > static_cast<size_t>(max_position_embeddings)) {
-                ids.resize(max_position_embeddings);
-            }
-            
-            std::vector<int64_t> input_ids = ConvertToInt64(ids);
-            int seq_len = (int)ids.size();
-            
-            
-            
-            std::vector<int64_t> input_node_dims = {batch_size, (int64_t)input_ids.size()};
-            Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(
-                                                                     OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
-            
-            // Define Shapes
-            std::vector<int64_t> input_dims = {batch_size, seq_len};
-            // Create Attention Mask (1 for real tokens)
-            std::vector<int64_t> attention_mask(seq_len, 1);
-            // Create the Missing Vector (All Zeros)
-            std::vector<int64_t> token_type_ids(seq_len, 0);
-            // Create Inputs Vector
-            std::vector<Ort::Value> input_tensors;
-            
-            // Mistral / Llama / Qwen: only need input_ids
-            input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-                                                                      memory_info,
-                                                                      input_ids.data(),
-                                                                      input_ids.size(),
-                                                                      input_dims.data(),
-                                                                      input_dims.size()));
-            if (num_input_nodes >1) {
-                // DistilBERT: only needs input_ids and attention_mask.
-                input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-                                                                          memory_info,
-                                                                          attention_mask.data(),
-                                                                          attention_mask.size(),
-                                                                          input_dims.data(),
-                                                                          input_dims.size()));
-            }
-            if (num_input_nodes >2) {
-                // BERT / RoBERTa / MiniLM: ALWAYS require token_type_ids
-                input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-                                                                          memory_info,
-                                                                          token_type_ids.data(),
-                                                                          token_type_ids.size(),
-                                                                          input_dims.data(),
-                                                                          input_dims.size()));
-            }
-            
-            auto outputs = session->Run(
-                                        Ort::RunOptions{nullptr},
-                                        input_names_c_array.data(),
-                                        input_tensors.data(),
-                                        num_input_nodes,
-                                        output_names_c_array.data(),
-                                        num_output_nodes
-                                        );
-            
-            std::vector<float>embeddings;
-            
-            switch (pooling_mode) {
-                case POOLING_COLBERT:
-                    embeddings = std::vector<float>();
-                    //                    reponseJson = colbert_pooling_response(outputs, attention_mask, seq_len);
-                    break;
-                case POOLING_CLS:
-                    embeddings = cls_pooling_response(outputs, attention_mask, seq_len);
-                    break;
-                case POOLING_LAST_TOKEN:
-                    embeddings = last_token_pooling_response(outputs, attention_mask, seq_len);
-                    break;
-                case POOLING_MEAN:
-                default:
-                    embeddings = mean_pooling_response(outputs, attention_mask, seq_len);
-                    break;
-            }
-            
-            Json::Value dataNode = Json::objectValue;
-            Json::Value embeddingsNode(Json::arrayValue);
-            
-            for (float val : embeddings) {
-                embeddingsNode.append(val);
-            }
-            
-            dataNode["embedding"] = embeddingsNode;
-            dataNode["index"] = (int)b;
-            listNode.append(dataNode);
-            
-            b++;
+    
+    for (const auto& input : inputs) {
+        std::vector<int> ids = tokenizer->Encode(input);
+        if(pooling_mode == POOLING_CLS) {
+            std::vector<int> cls_ids;
+            cls_ids.reserve(ids.size() + 2);
+            cls_ids.push_back(0);
+            cls_ids.insert(cls_ids.end(), ids.begin(), ids.end());
+            cls_ids.push_back(2);
+            ids = cls_ids;
         }
         
-    } catch (const std::exception& e) {
-        throw;
+        int batch_size = 1;
+        
+        // 1. Safety: Truncate BEFORE any other operations
+        if (ids.size() > static_cast<size_t>(max_position_embeddings)) {
+            ids.resize(max_position_embeddings);
+        }
+        
+        std::vector<int64_t> input_ids = ConvertToInt64(ids);
+        int seq_len = (int)ids.size();
+        
+        
+        
+        std::vector<int64_t> input_node_dims = {batch_size, (int64_t)input_ids.size()};
+        Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(
+                                                                 OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
+        
+        // Define Shapes
+        std::vector<int64_t> input_dims = {batch_size, seq_len};
+        // Create Attention Mask (1 for real tokens)
+        std::vector<int64_t> attention_mask(seq_len, 1);
+        // Create the Missing Vector (All Zeros)
+        std::vector<int64_t> token_type_ids(seq_len, 0);
+        // Create Inputs Vector
+        std::vector<Ort::Value> input_tensors;
+        
+        // Mistral / Llama / Qwen: only need input_ids
+        input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                                                                  memory_info,
+                                                                  input_ids.data(),
+                                                                  input_ids.size(),
+                                                                  input_dims.data(),
+                                                                  input_dims.size()));
+        if (num_input_nodes >1) {
+            // DistilBERT: only needs input_ids and attention_mask.
+            input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                                                                      memory_info,
+                                                                      attention_mask.data(),
+                                                                      attention_mask.size(),
+                                                                      input_dims.data(),
+                                                                      input_dims.size()));
+        }
+        if (num_input_nodes >2) {
+            // BERT / RoBERTa / MiniLM: ALWAYS require token_type_ids
+            input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                                                                      memory_info,
+                                                                      token_type_ids.data(),
+                                                                      token_type_ids.size(),
+                                                                      input_dims.data(),
+                                                                      input_dims.size()));
+        }
+        
+        auto outputs = session->Run(
+                                    Ort::RunOptions{nullptr},
+                                    input_names_c_array.data(),
+                                    input_tensors.data(),
+                                    num_input_nodes,
+                                    output_names_c_array.data(),
+                                    num_output_nodes
+                                    );
+        
+        std::vector<float>embeddings;
+        
+        switch (pooling_mode) {
+            case POOLING_COLBERT:
+                embeddings = std::vector<float>();
+                //                    reponseJson = colbert_pooling_response(outputs, attention_mask, seq_len);
+                break;
+            case POOLING_CLS:
+                embeddings = cls_pooling_response(outputs, attention_mask, seq_len);
+                break;
+            case POOLING_LAST_TOKEN:
+                embeddings = last_token_pooling_response(outputs, attention_mask, seq_len);
+                break;
+            case POOLING_MEAN:
+            default:
+                embeddings = mean_pooling_response(outputs, attention_mask, seq_len);
+                break;
+        }
+        
+        Json::Value dataNode = Json::objectValue;
+        Json::Value embeddingsNode(Json::arrayValue);
+        
+        for (float val : embeddings) {
+            embeddingsNode.append(val);
+        }
+        
+        dataNode["embedding"] = embeddingsNode;
+        dataNode["index"] = (int)b;
+        listNode.append(dataNode);
+        
+        b++;
     }
     
     rootNode["data"] = listNode;
@@ -1597,96 +1582,92 @@ static std::string run_embeddings(
 }
 
 static std::string run_embeddings_e2e(
-                                  Ort::Session *session,
-                                  std::vector<std::string> &inputs,
-                                  std::vector<const char*>&  input_names_c_array,
-                                  size_t num_input_nodes,
-                                  std::vector<const char*>&   output_names_c_array,
-                                  size_t num_output_nodes) {
-
+                                      Ort::Session *session,
+                                      std::vector<std::string> &inputs,
+                                      std::vector<const char*>&  input_names_c_array,
+                                      size_t num_input_nodes,
+                                      std::vector<const char*>&   output_names_c_array,
+                                      size_t num_output_nodes) {
+    
     Json::Value rootNode(Json::objectValue);
-    try {
-        
-        // Build JSON Response
-        Json::Value rootNode(Json::objectValue);
-        Json::Value listNode(Json::arrayValue);
-        int b = 0;
-        for (const auto& input : inputs) {
-            const char* input_strings[] = { input.c_str() };
-            size_t batch_size = 1;
-            int64_t input_shape[] = { (int64_t)batch_size };
-            const OrtApi& api = Ort::GetApi();
-            OrtAllocator* allocator;
-            OrtStatus* status = api.GetAllocatorWithDefaultOptions(&allocator);
-            OrtValue* raw_tensor_ptr = nullptr;
-            status = api.CreateTensorAsOrtValue(
-                                                           allocator,                            // 1. Allocator
-                                                           input_shape,                          // 2. Shape
-                                                           1,                                    // 3. Shape Rank
-                                                           ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING, // 4. Type
-                                                           &raw_tensor_ptr                       // 5. Output
-                                                           );
-            if (status != nullptr) {
-                std::cerr << "CreateTensorAsOrtValue() failed: " << api.GetErrorMessage(status) << std::endl;
-                api.ReleaseStatus(status);
-                api.ReleaseValue(raw_tensor_ptr);
-                return "";
-            }
-            
-            status = api.FillStringTensor(
-                                          raw_tensor_ptr,                       // Tensor to fill
-                                          input_strings,                        // Array of C-strings
-                                          batch_size                            // Number of strings
-                                          );
-            if (status != nullptr) {
-                std::cerr << "FillStringTensor() failed: " << api.GetErrorMessage(status) << std::endl;
-                api.ReleaseStatus(status);
-                return "";
-            }
-            
-            Ort::Value input_tensor(raw_tensor_ptr);
-            auto outputs = session->Run(
-                                        Ort::RunOptions{nullptr},
-                                        input_names_c_array.data(),
-                                        &input_tensor,
-                                        num_input_nodes,
-                                        output_names_c_array.data(),
-                                        num_output_nodes
-                                        );
-            
-            size_t dimensions = outputs.size();
-            if(dimensions > 0) {
-                
-                auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
-                float* floatarr  = outputs[0].GetTensorMutableData<float>();
-                
-                auto shape = output_info.GetShape();
-                if(shape.size() > 0) {
-                    int64_t embedding_dim = shape[1];
-                    // Create the std::vector
-                    std::vector<float> embeddings(floatarr, floatarr + embedding_dim);
-
-                    Json::Value dataNode = Json::objectValue;
-                    dataNode["object"] = "embedding";
-                    Json::Value embeddingsNode(Json::arrayValue);
-                    for (float val : embeddings) {
-                        embeddingsNode.append(val);
-                    }
-                    dataNode["embedding"] = embeddingsNode;
-                    dataNode["index"] = b;
-                    Json::Value listNode = Json::arrayValue;
-                    listNode.append(dataNode);
-                }
-            }
-            b++;
+    
+    // Build JSON Response
+    Json::Value rootNode(Json::objectValue);
+    Json::Value listNode(Json::arrayValue);
+    int b = 0;
+    for (const auto& input : inputs) {
+        const char* input_strings[] = { input.c_str() };
+        size_t batch_size = 1;
+        int64_t input_shape[] = { (int64_t)batch_size };
+        const OrtApi& api = Ort::GetApi();
+        OrtAllocator* allocator;
+        OrtStatus* status = api.GetAllocatorWithDefaultOptions(&allocator);
+        OrtValue* raw_tensor_ptr = nullptr;
+        status = api.CreateTensorAsOrtValue(
+                                            allocator,                            // 1. Allocator
+                                            input_shape,                          // 2. Shape
+                                            1,                                    // 3. Shape Rank
+                                            ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING, // 4. Type
+                                            &raw_tensor_ptr                       // 5. Output
+                                            );
+        if (status != nullptr) {
+            std::cerr << "CreateTensorAsOrtValue() failed: " << api.GetErrorMessage(status) << std::endl;
+            api.ReleaseStatus(status);
+            api.ReleaseValue(raw_tensor_ptr);
+            return "";
         }
         
-        rootNode["data"] = listNode;
-        rootNode["object"] = "list";
-
-    } catch (const std::exception& e) {
-        throw;
+        status = api.FillStringTensor(
+                                      raw_tensor_ptr,                       // Tensor to fill
+                                      input_strings,                        // Array of C-strings
+                                      batch_size                            // Number of strings
+                                      );
+        if (status != nullptr) {
+            std::cerr << "FillStringTensor() failed: " << api.GetErrorMessage(status) << std::endl;
+            api.ReleaseStatus(status);
+            return "";
+        }
+        
+        Ort::Value input_tensor(raw_tensor_ptr);
+        auto outputs = session->Run(
+                                    Ort::RunOptions{nullptr},
+                                    input_names_c_array.data(),
+                                    &input_tensor,
+                                    num_input_nodes,
+                                    output_names_c_array.data(),
+                                    num_output_nodes
+                                    );
+        
+        size_t dimensions = outputs.size();
+        if(dimensions > 0) {
+            
+            auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
+            float* floatarr  = outputs[0].GetTensorMutableData<float>();
+            
+            auto shape = output_info.GetShape();
+            if(shape.size() > 0) {
+                int64_t embedding_dim = shape[1];
+                // Create the std::vector
+                std::vector<float> embeddings(floatarr, floatarr + embedding_dim);
+                
+                Json::Value dataNode = Json::objectValue;
+                dataNode["object"] = "embedding";
+                Json::Value embeddingsNode(Json::arrayValue);
+                for (float val : embeddings) {
+                    embeddingsNode.append(val);
+                }
+                dataNode["embedding"] = embeddingsNode;
+                dataNode["index"] = b;
+                Json::Value listNode = Json::arrayValue;
+                listNode.append(dataNode);
+            }
+        }
+        b++;
     }
+    
+    rootNode["data"] = listNode;
+    rootNode["object"] = "list";
+    
     Json::StreamWriterBuilder writer;
     writer["indentation"] = "";
     return Json::writeString(writer, rootNode);
