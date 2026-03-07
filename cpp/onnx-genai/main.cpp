@@ -1639,6 +1639,7 @@ static std::string run_embeddings_e2e(
             if (status != nullptr) {
                 std::cerr << "CreateTensorAsOrtValue() failed: " << api.GetErrorMessage(status) << std::endl;
                 api.ReleaseStatus(status);
+                api.ReleaseValue(raw_tensor_ptr); 
                 return "";
             }
             
