@@ -544,19 +544,16 @@ static std::string get_model_name(std::string model_path) {
     return path.filename().string();
 }
 
-// Generate a fingerprint based on model identity and hardware
+// Simple stable FNV-1a hash implementation
 static std::string get_system_fingerprint(const std::string& model_path, const std::string& provider) {
-    // 1. Combine identifying factors (Model + Engine)
     std::string identifier = model_path + "_" + provider;
-    
-    // 2. Hash the string to get a unique number
-    std::hash<std::string> hasher;
-    size_t hash = hasher(identifier);
-    
-    // 3. Format as hex (e.g., "fp_1a2b3c4d")
+    uint64_t hash = 14695981039346656037ULL;
+    for (char c : identifier) {
+        hash ^= static_cast<uint64_t>(c);
+        hash *= 1099511628211ULL;
+    }
     std::stringstream ss;
     ss << "fp_" << std::hex << hash;
-    
     return ss.str();
 }
 
@@ -1639,7 +1636,7 @@ static std::string run_embeddings_e2e(
             if (status != nullptr) {
                 std::cerr << "CreateTensorAsOrtValue() failed: " << api.GetErrorMessage(status) << std::endl;
                 api.ReleaseStatus(status);
-                api.ReleaseValue(raw_tensor_ptr); 
+                api.ReleaseValue(raw_tensor_ptr);
                 return "";
             }
             
