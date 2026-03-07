@@ -627,6 +627,57 @@ static void parse_request_reranking(const std::string &json,
     }
 }
 
+static void parse_request_contextualized_embeddings(const std::string &json,
+                                     std::vector<std::string> &inputs) {
+    
+    Json::Value root;
+    Json::CharReaderBuilder builder;
+    std::string errors;
+    
+    std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+    bool parse = reader->parse(json.c_str(),
+                               json.c_str() + json.size(),
+                               &root,
+                               &errors);
+    
+    if(parse)
+    {
+        if(root.isObject())
+        {
+            Json::Value input_node = root["input"];
+            
+            auto process_node = [&](const Json::Value& node) {
+                if(node.isObject())
+                {
+                    std::string document = node.isMember("document") ? node["document"].asString() : "";
+                    std::string chunk = node.isMember("chunk") ? node["chunk"].asString() : "";
+                    
+                    // Concatenate context/document with the target chunk for generic ONNX embedding models
+                    if (!document.empty() && !chunk.empty()) {
+                        inputs.push_back(document + "\n\n" + chunk);
+                    } else if (!chunk.empty()) {
+                        inputs.push_back(chunk);
+                    } else if (!document.empty()) {
+                        inputs.push_back(document);
+                    }
+                }
+            };
+
+            if(input_node.isObject())
+            {
+                process_node(input_node);
+            }
+            else if(input_node.isArray())
+            {
+                for (Json::ValueIterator i = input_node.begin(); i != input_node.end(); ++i)
+                {
+                    process_node(*i);
+                }
+            }
+        }
+    }
+}
+
 static void parse_request_embeddings(const std::string &json,
                                      std::vector<std::string> &inputs) {
     
@@ -794,6 +845,13 @@ static void before_run_reranking(
                                  std::vector<std::string> &documents
                                  ) {
     parse_request_reranking(request_body, query, top_n, documents);
+}
+
+static void before_run_contextualized_embeddings(
+                                  const std::string& request_body,
+                                  std::vector<std::string> &inputs
+                                  ) {
+    parse_request_contextualized_embeddings(request_body, inputs);
 }
 
 static void before_run_embeddings(
@@ -2497,6 +2555,69 @@ int main(int argc, OPTARG_T argv[]) {
                 
                 std::string response_json;
 
+                switch (pooling_mode) {
+                    case POOLING_E2E:
+                        response_json = run_embeddings_e2e(
+                                                           embeddings_session.get(),
+                                                           texts,
+                                                           input_names_c_array,
+                                                           num_input_nodes,
+                                                           output_names_c_array,
+                                                           num_output_nodes);
+                        break;
+                        
+                    default:
+                        response_json = run_embeddings(
+                                                       embeddings_session.get(),
+                                                       texts,
+                                                       max_position_embeddings,
+                                                       input_names_c_array,
+                                                       num_input_nodes,
+                                                       output_names_c_array,
+                                                       num_output_nodes,
+                                                       embeddings_tokenizer.get(),
+                                                       pooling_mode);
+                        break;
+                }
+                res.set_content(response_json, "application/json");
+                res.status = 200;
+            } catch (const std::exception& e) {
+                // Build Error JSON
+                Json::Value rootNode(Json::objectValue);
+                Json::Value errorNode(Json::objectValue);
+                errorNode["message"] = e.what();
+                errorNode["type"] = "invalid_request_error";
+                errorNode["param"] = Json::nullValue;
+                errorNode["code"] = Json::nullValue;
+                rootNode["error"] = errorNode;
+                
+                Json::StreamWriterBuilder writer;
+                writer["indentation"] = "";
+                std::string error_str = Json::writeString(writer, rootNode);
+                
+                res.set_content(error_str, "application/json");
+                res.status = 400; // Bad Request as per requirement
+                std::cerr << "[Server] Error: " << e.what() << std::endl;
+            }
+            
+        });
+        
+        // Route: /v1/contextualizedembeddings
+        svr.Post("/v1/contextualizedembeddings", [&](const httplib::Request& req, httplib::Response& res) {
+            
+            std::cout << "[Server] /v1/contextualizedembeddings request received." << std::endl;
+            
+            try {
+                
+                if(embedding_model_created == 0) {
+                    throw std::invalid_argument("[Embedding] Contextualized Embedding Model not loaded.");
+                }
+                
+                std::vector<std::string> texts;
+                before_run_contextualized_embeddings(req.body, texts);
+                
+                std::string response_json;
+                
                 switch (pooling_mode) {
                     case POOLING_E2E:
                         response_json = run_embeddings_e2e(
