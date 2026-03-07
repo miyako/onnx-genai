@@ -1131,6 +1131,39 @@ static std::vector<int64_t> ConvertToInt64(const std::vector<int>& input_ids) {
     return std::vector<int64_t>(input_ids.begin(), input_ids.end());
 }
 
+static std::vector<std::vector<float>> last_token_pooling_batch(
+    std::vector<Ort::Value>& outputs,
+    const std::vector<int64_t>& attention_mask,
+    int batch_size, int max_seq_len)
+{
+    std::vector<std::vector<float>> batch_embeddings;
+    if (outputs.empty()) return batch_embeddings;
+        
+    auto shape = outputs[0].GetTensorTypeAndShapeInfo().GetShape();
+    if (shape.size() <= 2) return batch_embeddings;
+    
+    int64_t hidden_size = shape[2];
+    float* floatarr = outputs[0].GetTensorMutableData<float>();
+    
+    for (int b = 0; b < batch_size; ++b) {
+        Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+            raw_matrix(floatarr + (b * max_seq_len * hidden_size), max_seq_len, hidden_size);
+        
+        int last_token_index = 0;
+        for (int i = 0; i < max_seq_len; ++i) {
+            if (attention_mask[b * max_seq_len + i] == 1) {
+                last_token_index = i;
+            } else {
+                break; // Padding found
+            }
+        }
+        
+        Eigen::VectorXf final_embedding = raw_matrix.row(last_token_index).normalized();
+        batch_embeddings.push_back(std::vector<float>(final_embedding.data(), final_embedding.data() + final_embedding.size()));
+    }
+    return batch_embeddings;
+}
+
 static std::vector<float> last_token_pooling_response(std::vector<Ort::Value>& outputs,
                                                std::vector<int64_t>& attention_mask,
                                                int seq_len) {
@@ -1169,6 +1202,54 @@ static std::vector<float> last_token_pooling_response(std::vector<Ort::Value>& o
     }
     
     return std::vector<float>();
+}
+
+// ColBERT returns a list of embeddings per token, so we build the JSON directly.
+static std::string colbert_pooling_batch_json(
+    std::vector<Ort::Value>& outputs,
+    const std::vector<int64_t>& attention_mask,
+    int batch_size, int max_seq_len)
+{
+    Json::Value rootNode(Json::objectValue);
+    Json::Value listNode(Json::arrayValue);
+    
+    if(!outputs.empty()) {
+        auto shape = outputs[0].GetTensorTypeAndShapeInfo().GetShape();
+        if(shape.size() > 2) {
+            int64_t hidden_size = shape[2];
+            float* floatarr = outputs[0].GetTensorMutableData<float>();
+            
+            for (int b = 0; b < batch_size; ++b) {
+                Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+                    raw_matrix(floatarr + (b * max_seq_len * hidden_size), max_seq_len, hidden_size);
+                
+                Eigen::MatrixXf normalized_matrix = raw_matrix.rowwise().normalized();
+                
+                Json::Value dataNode = Json::objectValue;
+                dataNode["object"] = "embedding";
+                dataNode["index"] = b;
+                
+                Json::Value tokensArray(Json::arrayValue);
+                for (int i = 0; i < max_seq_len; ++i) {
+                    if (attention_mask[b * max_seq_len + i] == 0) continue; // Skip padding
+                    
+                    Json::Value tokenEmbedding(Json::arrayValue);
+                    for (int j = 0; j < hidden_size; ++j) {
+                        tokenEmbedding.append(normalized_matrix(i, j));
+                    }
+                    tokensArray.append(tokenEmbedding);
+                }
+                dataNode["embedding"] = tokensArray;
+                listNode.append(dataNode);
+            }
+        }
+    }
+    rootNode["data"] = listNode;
+    rootNode["object"] = "list";
+    
+    Json::StreamWriterBuilder writer;
+    writer["indentation"] = "";
+    return Json::writeString(writer, rootNode);
 }
 
 static std::string colbert_pooling_response(std::vector<Ort::Value>& outputs,
@@ -1226,6 +1307,31 @@ static std::string colbert_pooling_response(std::vector<Ort::Value>& outputs,
     return Json::writeString(writer, rootNode);
 }
 
+static std::vector<std::vector<float>> cls_pooling_batch(
+    std::vector<Ort::Value>& outputs,
+    const std::vector<int64_t>& attention_mask, // Not strictly needed for CLS, but kept for signature consistency
+    int batch_size, int max_seq_len)
+{
+    std::vector<std::vector<float>> batch_embeddings;
+    if (outputs.empty()) return batch_embeddings;
+     
+    auto shape = outputs[0].GetTensorTypeAndShapeInfo().GetShape();
+    if (shape.size() <= 2) return batch_embeddings;
+    
+    int64_t hidden_size = shape[2];
+    float* floatarr = outputs[0].GetTensorMutableData<float>();
+    
+    for (int b = 0; b < batch_size; ++b) {
+        Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+            raw_matrix(floatarr + (b * max_seq_len * hidden_size), max_seq_len, hidden_size);
+        
+        Eigen::VectorXf cls_vec = raw_matrix.row(0);
+        Eigen::VectorXf final_embedding = l2_normalize(cls_vec);
+        batch_embeddings.push_back(std::vector<float>(final_embedding.data(), final_embedding.data() + final_embedding.size()));
+    }
+    return batch_embeddings;
+}
+
 static std::vector<float> cls_pooling_response(std::vector<Ort::Value>& outputs,
                                         std::vector<int64_t>& attention_mask,
                                         int seq_len) {
@@ -1253,6 +1359,45 @@ static std::vector<float> cls_pooling_response(std::vector<Ort::Value>& outputs,
     }
         
     return std::vector<float>();
+}
+
+static std::vector<std::vector<float>> mean_pooling_batch(
+    std::vector<Ort::Value>& outputs,
+    const std::vector<int64_t>& attention_mask,
+    int batch_size, int max_seq_len)
+{
+    std::vector<std::vector<float>> batch_embeddings;
+    if (outputs.empty()) return batch_embeddings;
+        
+    auto shape = outputs[0].GetTensorTypeAndShapeInfo().GetShape();
+    if (shape.size() <= 2) return batch_embeddings;
+    
+    int64_t hidden_size = shape[2];
+    float* floatarr = outputs[0].GetTensorMutableData<float>();
+    
+    std::vector<Eigen::MatrixXf> hidden_batch_vec;
+    std::vector<Eigen::VectorXi> mask_batch_vec;
+    
+    for (int b = 0; b < batch_size; ++b) {
+        Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+            mapped_hidden(floatarr + (b * max_seq_len * hidden_size), max_seq_len, hidden_size);
+        hidden_batch_vec.push_back(mapped_hidden);
+        
+        Eigen::VectorXi mask_vec(max_seq_len);
+        for(int i = 0; i < max_seq_len; ++i) {
+            mask_vec(i) = (int)attention_mask[b * max_seq_len + i];
+        }
+        mask_batch_vec.push_back(mask_vec);
+    }
+    
+    // Process the entire batch using OpenMP optimized function
+    Eigen::MatrixXf pooled = mean_pool_batch(hidden_batch_vec, mask_batch_vec); // Returns [Batch, Hidden]
+    
+    for (int b = 0; b < batch_size; ++b) {
+        Eigen::VectorXf final_embedding = l2_normalize(pooled.row(b));
+        batch_embeddings.push_back(std::vector<float>(final_embedding.data(), final_embedding.data() + final_embedding.size()));
+    }
+    return batch_embeddings;
 }
 
 static std::vector<float> mean_pooling_response(std::vector<Ort::Value>& outputs,
