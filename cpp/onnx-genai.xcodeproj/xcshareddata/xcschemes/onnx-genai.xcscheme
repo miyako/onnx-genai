@@ -31,7 +31,7 @@
       shouldAutocreateTestPlan = "YES">
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Release"
+      buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
@@ -62,10 +62,6 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-e"
-            isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = "/Users/miyako/.onnx/multilingual-e5-small/model.onnx"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
@@ -82,15 +78,15 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.ONNX/pplx-embed-context-v1-0.6b/model_quantized.onnx"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-r"
-            isEnabled = "NO">
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/miyako/.onnx/ms-marco-MiniLM-L6-v2-fp16/model.onnx"
-            isEnabled = "NO">
+            argument = "/Users/miyako/Downloads/test/model.onnx"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.onnx/jina-reranker-v3/model_quantized.onnx"
@@ -151,6 +147,10 @@
          <CommandLineArgument
             argument = "-j"
             isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-b"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-s"

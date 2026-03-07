@@ -1853,6 +1853,201 @@ static std::string run_embeddings_e2e(
     return Json::writeString(writer, rootNode);
 }
 
+static std::string run_colbert_reranking(
+    Ort::Session *session,
+    const std::string& query,
+    const std::vector<std::string>& documents,
+    Tokenizer* tokenizer,
+    int max_position_embeddings,
+    int top_n,
+    std::vector<const char*>& input_names_c_array,
+    size_t num_input_nodes,
+    std::vector<const char*>& output_names_c_array,
+    size_t num_output_nodes,
+    RerankingMode ranking_mode)
+{
+    if (documents.empty()) {
+        return "{\"object\":\"list\",\"results\":[]}";
+    }
+
+    try {
+        std::vector<std::string> inputs;
+        inputs.push_back(query);
+        inputs.insert(inputs.end(), documents.begin(), documents.end());
+
+        int batch_size = (int)inputs.size();
+        int max_seq_len = 0;
+        std::vector<std::vector<int>> tokenized_inputs;
+        tokenized_inputs.reserve(batch_size);
+
+        // 1. Tokenize query and all documents
+        for (int i = 0; i < batch_size; ++i) {
+            std::vector<int> raw_ids = tokenizer->Encode(inputs[i]);
+            std::vector<int> ids;
+            ids.reserve(raw_ids.size() + 2);
+
+            // Add standard boundary tokens if needed based on the architecture
+            if (ranking_mode == RERANKING_BERT) {
+                ids.push_back(101); // [CLS]
+                ids.insert(ids.end(), raw_ids.begin(), raw_ids.end());
+                ids.push_back(102); // [SEP]
+            } else if (ranking_mode == RERANKING_ROBERTA) {
+                ids.push_back(0); // <s>
+                ids.insert(ids.end(), raw_ids.begin(), raw_ids.end());
+                ids.push_back(2); // </s>
+            } else {
+                ids = raw_ids;
+            }
+
+            if (ids.size() > static_cast<size_t>(max_position_embeddings)) {
+                ids.resize(max_position_embeddings - 1);
+                if (ranking_mode == RERANKING_BERT) ids.push_back(102);
+                else if (ranking_mode == RERANKING_ROBERTA) ids.push_back(2);
+            }
+            
+            if ((int)ids.size() > max_seq_len) {
+                max_seq_len = (int)ids.size();
+            }
+            tokenized_inputs.push_back(std::move(ids));
+        }
+
+        // 2. Allocate flat memory (Zero-initialized for padding)
+        size_t total_elements = (size_t)batch_size * max_seq_len;
+        std::vector<int64_t> flat_input_ids(total_elements, 0);
+        std::vector<int64_t> flat_attention_mask(total_elements, 0);
+        std::vector<int64_t> flat_token_type_ids(total_elements, 0);
+
+        // 3. Fill the flat arrays
+        for (int b = 0; b < batch_size; ++b) {
+            int seq_len = (int)tokenized_inputs[b].size();
+            for (int i = 0; i < seq_len; ++i) {
+                size_t idx = (size_t)(b * max_seq_len + i);
+                flat_input_ids[idx] = tokenized_inputs[b][i];
+                flat_attention_mask[idx] = 1;
+            }
+        }
+
+        // 4. Create Tensors
+        Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+        std::vector<int64_t> input_dims = { batch_size, max_seq_len };
+        std::vector<Ort::Value> input_tensors;
+
+        input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+            memory_info, flat_input_ids.data(), flat_input_ids.size(), input_dims.data(), input_dims.size()));
+        
+        if (num_input_nodes > 1) {
+            input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                memory_info, flat_attention_mask.data(), flat_attention_mask.size(), input_dims.data(), input_dims.size()));
+        }
+        if (num_input_nodes > 2) {
+            input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                memory_info, flat_token_type_ids.data(), flat_token_type_ids.size(), input_dims.data(), input_dims.size()));
+        }
+
+        // 5. Run Batched Inference
+        auto outputs = session->Run(
+            Ort::RunOptions{nullptr},
+            input_names_c_array.data(),
+            input_tensors.data(),
+            num_input_nodes,
+            output_names_c_array.data(),
+            num_output_nodes
+        );
+
+        float* data = outputs.front().GetTensorMutableData<float>();
+        auto shape = outputs.front().GetTensorTypeAndShapeInfo().GetShape();
+        
+        if (shape.size() < 3) {
+            throw std::runtime_error("ColBERT reranking requires a 3D tensor output [batch, seq_len, hidden_size].");
+        }
+        int64_t hidden_size = shape[2];
+
+        // 6. Process Query Embeddings (Batch Index 0)
+        int q_len = 0;
+        for(int i = 0; i < max_seq_len; ++i) {
+            if(flat_attention_mask[i] == 1) q_len++;
+        }
+        
+        Eigen::MatrixXf Q_valid(q_len, hidden_size);
+        if (q_len > 0) {
+            Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+                raw_Q(data, max_seq_len, hidden_size);
+            int q_idx = 0;
+            for(int i = 0; i < max_seq_len; ++i) {
+                if(flat_attention_mask[i] == 1) {
+                    // ColBERT requires L2 Normalized token embeddings
+                    Q_valid.row(q_idx++) = raw_Q.row(i).normalized();
+                }
+            }
+        }
+
+        // 7. Process Document Embeddings & MaxSim Scoring
+        std::vector<RerankResult> results;
+        results.reserve(documents.size());
+
+        for (int b = 1; b < batch_size; ++b) {
+            int d_len = 0;
+            for(int i = 0; i < max_seq_len; ++i) {
+                if(flat_attention_mask[b * max_seq_len + i] == 1) d_len++;
+            }
+
+            if (q_len == 0 || d_len == 0) {
+                results.push_back({b - 1, 0.0f});
+                continue;
+            }
+
+            Eigen::MatrixXf D_valid(d_len, hidden_size);
+            Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+                raw_D(data + b * max_seq_len * hidden_size, max_seq_len, hidden_size);
+            
+            int d_idx = 0;
+            for(int i = 0; i < max_seq_len; ++i) {
+                if(flat_attention_mask[b * max_seq_len + i] == 1) {
+                    D_valid.row(d_idx++) = raw_D.row(i).normalized();
+                }
+            }
+
+            // MaxSim math: Query tokens (rows) x Doc tokens (cols) -> Resulting in [q_len, d_len]
+            Eigen::MatrixXf Sim = Q_valid * D_valid.transpose();
+            
+            // For each query token, find max similarity across doc tokens, then sum for total score
+            float score = Sim.rowwise().maxCoeff().sum();
+            results.push_back({b - 1, score});
+        }
+
+        // 8. Sort and Build JSON
+        auto sorter = [](const RerankResult& a, const RerankResult& b) {
+            return a.score > b.score;
+        };
+        
+        if (top_n > 0 && top_n < (int)results.size()) {
+            std::partial_sort(results.begin(), results.begin() + top_n, results.end(), sorter);
+            results.resize(top_n);
+        } else {
+            std::sort(results.begin(), results.end(), sorter);
+        }
+
+        Json::Value rootNode(Json::objectValue);
+        Json::Value listNode(Json::arrayValue);
+        for (const auto& result : results) {
+            Json::Value dataNode = Json::objectValue;
+            dataNode["index"] = result.index;
+            dataNode["relevance_score"] = result.score;
+            listNode.append(dataNode);
+        }
+
+        rootNode["results"] = listNode;
+        rootNode["object"] = "list";
+        
+        Json::StreamWriterBuilder writer;
+        writer["indentation"] = "";
+        return Json::writeString(writer, rootNode);
+
+    } catch (const std::exception& e) {
+        throw;
+    }
+}
+
 #pragma mark -
 
 int main(int argc, OPTARG_T argv[]) {
@@ -2447,80 +2642,93 @@ int main(int argc, OPTARG_T argv[]) {
                 
                 std::string response_json;
                     
-                std::vector<RerankItem>items;
+                std::vector<RerankItem> items;
                 
-                /*
-                 pooling_mode should have no impact on reranking
-                 */
-                
-                if (rerank_tokenizer != NULL) {
-                    std::vector<int> q = rerank_tokenizer->Encode(query);
-                    for (size_t i = 0; i < documents.size(); ++i) {
-                        std::vector<int> ids;
-                        std::vector<int> type_ids;
-                        
-                        std::vector<int> d = rerank_tokenizer->Encode(documents[i]);
-                        
-                        switch (ranking_mode) {
-                            case RERANKING_ROBERTA:
-                                ids.reserve(q.size() + d.size() + 4);
-                                ids.push_back(0); // <s>
-                                ids.insert(ids.end(), q.begin(), q.end());
-                                ids.push_back(2); // </s>
-                                ids.push_back(2); // </s>
-                                ids.insert(ids.end(), d.begin(), d.end());
-                                ids.push_back(2); // </s>
-                                type_ids.resize(ids.size(), 0);
-                                break;
-                            case RERANKING_BERT:
-                                ids.reserve(q.size() + d.size() + 3);
-                                type_ids.reserve(ids.capacity());
-                                ids.push_back(101); // [CLS]
-                                type_ids.push_back(0);
-                                for(int x : q) { ids.push_back(x); type_ids.push_back(0); }
-                                ids.push_back(102); // [SEP]
-                                type_ids.push_back(0);
-                                for(int x : d) { ids.push_back(x); type_ids.push_back(1); }
-                                ids.push_back(102); // [SEP]
-                                type_ids.push_back(1);
-                                break;
-                            case RERANKING_LLM:
-                            default:
-                            {
-                                // 1. Build the prompt exactly as the model expects
-                                std::string prompt = "<Instruct>: " + instruction + "\n" +
-                                "<Query>: " + query + "\n" +
-                                "<Document>: " + documents[i];
-                                
-                                // 2. Encode the single formatted string
-                                ids = rerank_tokenizer->Encode(prompt);
-                            }
-                                break;
-                        }
-                                                
-                        if (ids.size() > rerank_max_position_embeddings) {
-                            ids.resize(rerank_max_position_embeddings - 1);
-                            int end_token_id = 2;
-                            if (ranking_mode == RERANKING_BERT) end_token_id = 102;
-                            ids.push_back(end_token_id);
-                            if (!type_ids.empty()) {
-                                type_ids.resize(rerank_max_position_embeddings - 1);
-                                int end_type_id = (ranking_mode == RERANKING_BERT) ? 1 : 0;
-                                type_ids.push_back(end_type_id);
-                            }
-                        }
-                        items.emplace_back(RerankItem({ ids, type_ids }));
+                // For ColBERT late interaction, pooling_mode must be set to POOLING_COLBERT
+                // (e.g., via the '-b' flag when starting the server).
+                if (pooling_mode == POOLING_COLBERT) {
+                    if (rerank_tokenizer != NULL) {
+                        response_json = run_colbert_reranking(
+                                                              rerank_session.get(), query, documents, rerank_tokenizer.get(),
+                                                              rerank_max_position_embeddings, top_n,
+                                                              reranking_input_names_c_array, num_reranking_input_nodes,
+                                                              reranking_output_names_c_array, num_reranking_output_nodes,
+                                                              ranking_mode
+                                                              );
                     }
-                    response_json = run_reranking(
-                                                  rerank_session.get(),
-                                                  items, rerank_max_position_embeddings, top_n,
-                                                  reranking_input_names_c_array,
-                                                  num_reranking_input_nodes,
-                                                  reranking_output_names_c_array,
-                                                  num_reranking_output_nodes, ranking_mode);
+                } else {
+                    /*
+                     Standard Cross-Encoder Reranking
+                     */
+                    if (rerank_tokenizer != NULL) {
+                        std::vector<int> q = rerank_tokenizer->Encode(query);
+                        for (size_t i = 0; i < documents.size(); ++i) {
+                            std::vector<int> ids;
+                            std::vector<int> type_ids;
+                            
+                            std::vector<int> d = rerank_tokenizer->Encode(documents[i]);
+                            
+                            switch (ranking_mode) {
+                                case RERANKING_ROBERTA:
+                                    ids.reserve(q.size() + d.size() + 4);
+                                    ids.push_back(0); // <s>
+                                    ids.insert(ids.end(), q.begin(), q.end());
+                                    ids.push_back(2); // </s>
+                                    ids.push_back(2); // </s>
+                                    ids.insert(ids.end(), d.begin(), d.end());
+                                    ids.push_back(2); // </s>
+                                    type_ids.resize(ids.size(), 0);
+                                    break;
+                                case RERANKING_BERT:
+                                    ids.reserve(q.size() + d.size() + 3);
+                                    type_ids.reserve(ids.capacity());
+                                    ids.push_back(101); // [CLS]
+                                    type_ids.push_back(0);
+                                    for(int x : q) { ids.push_back(x); type_ids.push_back(0); }
+                                    ids.push_back(102); // [SEP]
+                                    type_ids.push_back(0);
+                                    for(int x : d) { ids.push_back(x); type_ids.push_back(1); }
+                                    ids.push_back(102); // [SEP]
+                                    type_ids.push_back(1);
+                                    break;
+                                case RERANKING_LLM:
+                                default:
+                                {
+                                    // 1. Build the prompt exactly as the model expects
+                                    std::string prompt = "<Instruct>: " + instruction + "\n" +
+                                    "<Query>: " + query + "\n" +
+                                    "<Document>: " + documents[i];
+                                    
+                                    // 2. Encode the single formatted string
+                                    ids = rerank_tokenizer->Encode(prompt);
+                                }
+                                    break;
+                            }
+                            
+                            if (ids.size() > rerank_max_position_embeddings) {
+                                ids.resize(rerank_max_position_embeddings - 1);
+                                int end_token_id = 2;
+                                if (ranking_mode == RERANKING_BERT) end_token_id = 102;
+                                ids.push_back(end_token_id);
+                                if (!type_ids.empty()) {
+                                    type_ids.resize(rerank_max_position_embeddings - 1);
+                                    int end_type_id = (ranking_mode == RERANKING_BERT) ? 1 : 0;
+                                    type_ids.push_back(end_type_id);
+                                }
+                            }
+                            items.emplace_back(RerankItem({ ids, type_ids }));
+                        }
+                        response_json = run_reranking(
+                                                      rerank_session.get(),
+                                                      items, rerank_max_position_embeddings, top_n,
+                                                      reranking_input_names_c_array,
+                                                      num_reranking_input_nodes,
+                                                      reranking_output_names_c_array,
+                                                      num_reranking_output_nodes, ranking_mode);
+                        
+                    }
                     
                 }
-                
                 res.set_content(response_json, "application/json");
                 res.status = 200;
             } catch (const std::exception& e) {
