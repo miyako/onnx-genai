@@ -89,6 +89,7 @@ The `int4` format is designed to compress large language models. Just as a refer
 
 ||`fp16`|`fp32`|`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`|`pooling`
 |-|-:|-:|-:|-:|-:|-:|-:
+|[`perplexity-ai/pplx-embed-v1-0.6b`](https://huggingface.co/perplexity-ai/pplx-embed-v1-0.6b)| | | [`614`](https://huggingface.co/keisuke-miyako/pplx-embed-v1-0.6b-onnx-int8) | `32768` | `1024` | `28` | `mean`
 |[`BAAI/bge-small-en-v1.5`](https://huggingface.co/BAAI/bge-small-en-v1.5)|[`66`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-fp16)|[`133`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-fp32)|[`33`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-int8)|`512`|`384`|`12`|`cls`
 |[`BAAI/bge-base-en-v1.5`](https://huggingface.co/BAAI/bge-base-en-v1.5)|[`278`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-fp16)|[`435`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-fp32)|[`116`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-int8)|`512`|`768`|`12`|`cls`
 |[`BAAI/bge-large-en-v1.5`](https://huggingface.co/BAAI/bge-large-en-v1.5)|[`668`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-fp16)|[`1340`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-fp32)|[`335`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-int8)|`512`|`1024`|`24`|`cls`
