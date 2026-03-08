@@ -7,6 +7,76 @@
 
 #include "onnx-genai.h"
 
+namespace fs = std::filesystem;
+using namespace tokenizers;
+
+static std::string LoadBytesFromFile(const std::string& path) {
+    std::ifstream fs(path, std::ios::in | std::ios::binary);
+    if (!fs) throw std::runtime_error("Could not open file: " + path);
+    
+    fs.seekg(0, std::ios::end);
+    size_t size = fs.tellg();
+    std::string data(size, '\0');
+    fs.seekg(0, std::ios::beg);
+    fs.read(&data[0], size);
+    
+    return data;
+}
+
+static void LoadSpecialTokenIds(const std::string& model_path,
+                                RerankingMode ranking_mode,
+                                int& cls_id,
+                                int& sep_id) {
+    
+    // 1. Set Defaults based on architecture
+    switch (ranking_mode) {
+        case RERANKING_MODERNBERT:
+            cls_id = 50281;
+            sep_id = 50282;
+            break;
+        case RERANKING_ROBERTA:
+            cls_id = 0;
+            sep_id = 2;
+            break;
+        case RERANKING_BERT:
+        default:
+            cls_id = 101;
+            sep_id = 102;
+            break;
+    }
+    
+    // 2. Try to read overrides from config.json
+    fs::path config_path = fs::path(model_path);
+    if (fs::is_directory(config_path)) {
+        config_path = config_path / "config.json";
+    }
+    
+    if (fs::exists(config_path) && config_path.extension() == ".json") {
+        std::string json = LoadBytesFromFile(config_path.string());
+        Json::Value root;
+        Json::CharReaderBuilder builder;
+        std::string errors;
+        std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+        if (reader->parse(json.c_str(), json.c_str() + json.size(), &root, &errors) && root.isObject()) {
+            
+            // Look for CLS or BOS token
+            if (root.isMember("cls_token_id") && root["cls_token_id"].isNumeric()) {
+                cls_id = root["cls_token_id"].asInt();
+            } else if (root.isMember("bos_token_id") && root["bos_token_id"].isNumeric()) {
+                cls_id = root["bos_token_id"].asInt();
+            }
+            
+            // Look for SEP or EOS token
+            if (root.isMember("sep_token_id") && root["sep_token_id"].isNumeric()) {
+                sep_id = root["sep_token_id"].asInt();
+            } else if (root.isMember("eos_token_id") && root["eos_token_id"].isNumeric()) {
+                sep_id = root["eos_token_id"].asInt();
+            }
+        }
+    }
+    std::cout << "[Tokens] CLS/BOS ID: " << cls_id << " | SEP/EOS ID: " << sep_id << std::endl;
+}
+
 static int GetOptimalIntraOpThreads() {
     int threads = 0;
 
@@ -57,22 +127,6 @@ static int GetOptimalIntraOpThreads() {
 
     // Safety clamp: Ensure we have at least 1 thread and not an insane amount (cap at 16 for client devices)
     return std::max(1, std::min(threads, 16));
-}
-
-namespace fs = std::filesystem;
-using namespace tokenizers; // mlc-ai namespace
-
-static std::string LoadBytesFromFile(const std::string& path) {
-    std::ifstream fs(path, std::ios::in | std::ios::binary);
-    if (!fs) throw std::runtime_error("Could not open file: " + path);
-    
-    fs.seekg(0, std::ios::end);
-    size_t size = fs.tellg();
-    std::string data(size, '\0');
-    fs.seekg(0, std::ios::beg);
-    fs.read(&data[0], size);
-    
-    return data;
 }
 
 struct RerankResult {
@@ -1599,15 +1653,17 @@ static std::string run_reranking(
 }
 
 static std::string run_embeddings(
-    Ort::Session *session,
-    std::vector<std::string> &inputs,
-    int max_position_embeddings,
-    std::vector<const char*>& input_names_c_array,
-    size_t num_input_nodes,
-    std::vector<const char*>& output_names_c_array,
-    size_t num_output_nodes,
-    Tokenizer* tokenizer,
-    PoolingMode pooling_mode)
+                                  Ort::Session *session,
+                                  std::vector<std::string> &inputs,
+                                  int max_position_embeddings,
+                                  std::vector<const char*>& input_names_c_array,
+                                  size_t num_input_nodes,
+                                  std::vector<const char*>& output_names_c_array,
+                                  size_t num_output_nodes,
+                                  Tokenizer* tokenizer,
+                                  PoolingMode pooling_mode,
+                                  int cls_id,
+                                  int sep_id)
 {
     if (tokenizer == nullptr || inputs.empty()) {
         return "{\"object\":\"list\",\"data\":[]}";
@@ -1622,14 +1678,16 @@ static std::string run_embeddings(
         // 1. Tokenize all and find the max length for padding
         for (const auto& input : inputs) {
             std::vector<int> ids = tokenizer->Encode(input);
-            
-            if(pooling_mode == POOLING_CLS) {
-                ids.insert(ids.begin(), 0); // <s> or CLS
-                ids.push_back(2);           // </s> or SEP
-            }
+
+            ids.insert(ids.begin(), cls_id);
+            ids.push_back(sep_id);
+
+            // Handle Truncation safely
             if (ids.size() > static_cast<size_t>(max_position_embeddings)) {
-                ids.resize(max_position_embeddings);
+                ids.resize(max_position_embeddings - 1);
+                ids.push_back(sep_id); // Ensure it always ends with the correct token
             }
+
             if ((int)ids.size() > max_seq_len) {
                 max_seq_len = (int)ids.size();
             }
@@ -1818,17 +1876,19 @@ static std::string run_embeddings_e2e(
 }
 
 static std::string run_colbert_reranking(
-    Ort::Session *session,
-    const std::string& query,
-    const std::vector<std::string>& documents,
-    Tokenizer* tokenizer,
-    int max_position_embeddings,
-    int top_n,
-    std::vector<const char*>& input_names_c_array,
-    size_t num_input_nodes,
-    std::vector<const char*>& output_names_c_array,
-    size_t num_output_nodes,
-    RerankingMode ranking_mode)
+                                         Ort::Session *session,
+                                         const std::string& query,
+                                         const std::vector<std::string>& documents,
+                                         Tokenizer* tokenizer,
+                                         int max_position_embeddings,
+                                         int top_n,
+                                         std::vector<const char*>& input_names_c_array,
+                                         size_t num_input_nodes,
+                                         std::vector<const char*>& output_names_c_array,
+                                         size_t num_output_nodes,
+                                         RerankingMode ranking_mode,
+                                         int cls_id,
+                                         int sep_id)
 {
     if (documents.empty()) {
         return "{\"object\":\"list\",\"results\":[]}";
@@ -1850,19 +1910,19 @@ static std::string run_colbert_reranking(
             std::vector<int> ids;
             ids.reserve(raw_ids.size() + 2);
 
-            // Add standard boundary tokens if needed based on the architecture
-            if (ranking_mode == RERANKING_BERT) {
-                ids.push_back(101); // [CLS]
-                ids.insert(ids.end(), raw_ids.begin(), raw_ids.end());
-                ids.push_back(102); // [SEP]
-            } else if (ranking_mode == RERANKING_ROBERTA) {
-                ids.push_back(0); // <s>
-                ids.insert(ids.end(), raw_ids.begin(), raw_ids.end());
-                ids.push_back(2); // </s>
-            } else {
-                ids = raw_ids;
+            switch (ranking_mode) {
+                case RERANKING_MODERNBERT:
+                case RERANKING_BERT:
+                case RERANKING_ROBERTA:
+                    ids.push_back(cls_id);
+                    ids.insert(ids.end(), raw_ids.begin(), raw_ids.end());
+                    ids.push_back(sep_id);
+                    break;
+                default:
+                    ids = raw_ids;
+                    break;
             }
-
+            
             if (ids.size() > static_cast<size_t>(max_position_embeddings)) {
                 ids.resize(max_position_embeddings - 1);
                 if (ranking_mode == RERANKING_BERT) ids.push_back(102);
@@ -2226,6 +2286,9 @@ int main(int argc, OPTARG_T argv[]) {
     std::vector<const char*> output_names_c_array;
     std::unique_ptr<Tokenizer> embeddings_tokenizer;
     int max_position_embeddings;
+    RerankingMode ranking_mode_embeddings;
+    int cls_id_embeddings = 101;
+    int sep_id_embeddings = 102;
     
     if (embedding_model_path.length() != 0) {
         if (fs::exists(embedding_model_path)) {
@@ -2280,11 +2343,17 @@ int main(int argc, OPTARG_T argv[]) {
                     }
 #ifdef WIN32
                     embeddings_tokenizer = LoadTokenizer(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
-                    max_position_embeddings = LoadMaxPositionEmbeddings(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
+                    max_position_embeddings = LoadMaxPositionEmbeddings(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
+                    ranking_mode_embeddings = LoadRerankingMode(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
 #else
                     embeddings_tokenizer = LoadTokenizer(fs::path(embedding_model_path).parent_path());
-                    max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(reranker_model_path).parent_path());
+                    max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(embedding_model_path).parent_path());
+                    ranking_mode_embeddings = LoadRerankingMode(fs::path(embedding_model_path).parent_path());
 #endif
+                    LoadSpecialTokenIds(fs::path(embedding_model_path).parent_path(),
+                                        ranking_mode_embeddings,
+                                        cls_id_embeddings,
+                                        sep_id_embeddings);
                     embedding_model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
                     std::cerr << "Failed to load model: " << e.what() << std::endl;
@@ -2310,6 +2379,8 @@ int main(int argc, OPTARG_T argv[]) {
     std::unique_ptr<Tokenizer> rerank_tokenizer;
     int rerank_max_position_embeddings;
     RerankingMode ranking_mode;
+    int rerank_cls_id = 101;
+    int rerank_sep_id = 102;
     
     if (reranker_model_path.length() != 0) {
         if (fs::exists(reranker_model_path)) {
@@ -2371,7 +2442,10 @@ int main(int argc, OPTARG_T argv[]) {
                     rerank_max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(reranker_model_path).parent_path());
                     ranking_mode = LoadRerankingMode(fs::path(reranker_model_path).parent_path());
 #endif
-                    std::cout << "[Rerank] max_position_embeddings: " << rerank_max_position_embeddings << std::endl;
+                    LoadSpecialTokenIds(fs::path(embedding_model_path).parent_path(),
+                                        ranking_mode,
+                                        rerank_cls_id,
+                                        rerank_sep_id);
                     reranking_model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
                     std::cerr << "Failed to load model: " << e.what() << std::endl;
@@ -2617,7 +2691,9 @@ int main(int argc, OPTARG_T argv[]) {
                                                               rerank_max_position_embeddings, top_n,
                                                               reranking_input_names_c_array, num_reranking_input_nodes,
                                                               reranking_output_names_c_array, num_reranking_output_nodes,
-                                                              ranking_mode
+                                                              ranking_mode,
+                                                              rerank_cls_id,
+                                                              rerank_sep_id
                                                               );
                     }
                 } else {
@@ -2633,26 +2709,35 @@ int main(int argc, OPTARG_T argv[]) {
                             std::vector<int> d = rerank_tokenizer->Encode(documents[i]);
                             
                             switch (ranking_mode) {
+                                case RERANKING_MODERNBERT:
+                                    ids.reserve(q.size() + d.size() + 3);
+                                    ids.push_back(rerank_cls_id); // <cls>
+                                    for(int x : q) { ids.push_back(x); }
+                                    ids.push_back(rerank_sep_id); // <sep>
+                                    for(int x : d) { ids.push_back(x); }
+                                    ids.push_back(rerank_sep_id); // <sep>
+                                    type_ids.resize(ids.size(), 0);
+                                    break;
                                 case RERANKING_ROBERTA:
                                     ids.reserve(q.size() + d.size() + 4);
-                                    ids.push_back(0); // <s>
+                                    ids.push_back(rerank_cls_id); // <s>
                                     ids.insert(ids.end(), q.begin(), q.end());
-                                    ids.push_back(2); // </s>
-                                    ids.push_back(2); // </s>
+                                    ids.push_back(rerank_sep_id); // </s>
+                                    ids.push_back(rerank_sep_id); // </s>
                                     ids.insert(ids.end(), d.begin(), d.end());
-                                    ids.push_back(2); // </s>
+                                    ids.push_back(rerank_sep_id); // </s>
                                     type_ids.resize(ids.size(), 0);
                                     break;
                                 case RERANKING_BERT:
                                     ids.reserve(q.size() + d.size() + 3);
                                     type_ids.reserve(ids.capacity());
-                                    ids.push_back(101); // [CLS]
+                                    ids.push_back(rerank_cls_id); // [CLS]
                                     type_ids.push_back(0);
                                     for(int x : q) { ids.push_back(x); type_ids.push_back(0); }
-                                    ids.push_back(102); // [SEP]
+                                    ids.push_back(rerank_sep_id); // [SEP]
                                     type_ids.push_back(0);
                                     for(int x : d) { ids.push_back(x); type_ids.push_back(1); }
-                                    ids.push_back(102); // [SEP]
+                                    ids.push_back(rerank_sep_id); // [SEP]
                                     type_ids.push_back(1);
                                     break;
                                 case RERANKING_LLM:
@@ -2753,7 +2838,9 @@ int main(int argc, OPTARG_T argv[]) {
                                                        output_names_c_array,
                                                        num_output_nodes,
                                                        embeddings_tokenizer.get(),
-                                                       pooling_mode);
+                                                       pooling_mode,
+                                                       cls_id_embeddings,
+                                                       sep_id_embeddings);
                         break;
                 }
                 res.set_content(response_json, "application/json");
@@ -2816,7 +2903,9 @@ int main(int argc, OPTARG_T argv[]) {
                                                        output_names_c_array,
                                                        num_output_nodes,
                                                        embeddings_tokenizer.get(),
-                                                       pooling_mode);
+                                                       pooling_mode,
+                                                       cls_id_embeddings,
+                                                       sep_id_embeddings);
                         break;
                 }
                 res.set_content(response_json, "application/json");
