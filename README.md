@@ -83,11 +83,15 @@ The `int4` format is designed to compress large language models. Just as a refer
 |[`Qwen/Qwen3-Reranker-0.6B`](https://huggingface.co/Qwen/Qwen3-Reranker-0.6B)|||[`598`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-onnx-int8)|`32768`|`1024`|`28`|
 |[`Qwen/Qwen3-Reranker-4B`](https://huggingface.co/Qwen/Qwen3-Reranker-4B)|||[`4030`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-4B-onnx-int8)|`40960`|`2560`|`36`|
 |[`zeroentropy/zerank-2`](https://huggingface.co/zeroentropy/zerank-2)|||[`4030`](https://huggingface.co/keisuke-miyako/zerank-2-onnx-int8)|`40960`|`2560`|`36`
+|[`lightonai/ColBERT-Zero`](https://huggingface.co/lightonai/ColBERT-Zero)|[`298`](https://huggingface.co/keisuke-miyako/ColBERT-Zero-onnx-f16)|[`596`](https://huggingface.co/keisuke-miyako/ColBERT-Zero-onnx-f32)|[`151`](https://huggingface.co/keisuke-miyako/ColBERT-Zero-onnx-int8)|`8192`|`768`|`22`
 
 ### Embedding
 
 ||`fp16`|`fp32`|`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`|`pooling`
 |-|-:|-:|-:|-:|-:|-:|-:
+|[`answerdotai/ModernBERT-base`](https://huggingface.co/answerdotai/ModernBERT-base)|[`298`](https://huggingface.co/keisuke-miyako/ModernBERT-base-onnx-f16)|[`596`](https://huggingface.co/keisuke-miyako/ModernBERT-base-onnx-f32)|[`151`](https://huggingface.co/keisuke-miyako/ModernBERT-base-onnx-int8)|`8192`|`768`|`22`|`mean`
+|[`answerdotai/ModernBERT-large`](https://huggingface.co/answerdotai/ModernBERT-large)|[`789`](https://huggingface.co/keisuke-miyako/ModernBERT-large-onnx-f16)|[`1580`](https://huggingface.co/keisuke-miyako/ModernBERT-large-onnx-f32)|[`397`](https://huggingface.co/keisuke-miyako/ModernBERT-large-onnx-int8)|`8192`|`1024`|`28`|`mean`
+|[`perplexity-ai/pplx-embed-v1-0.6b`](https://huggingface.co/perplexity-ai/pplx-embed-v1-0.6b)| | | [`614`](https://huggingface.co/keisuke-miyako/pplx-embed-v1-0.6b-onnx-int8) | `32768` | `1024` | `28` | `mean`
 |[`BAAI/bge-small-en-v1.5`](https://huggingface.co/BAAI/bge-small-en-v1.5)|[`66`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-fp16)|[`133`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-fp32)|[`33`](https://huggingface.co/keisuke-miyako/bge-small-en-v1.5-onnx-int8)|`512`|`384`|`12`|`cls`
 |[`BAAI/bge-base-en-v1.5`](https://huggingface.co/BAAI/bge-base-en-v1.5)|[`278`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-fp16)|[`435`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-fp32)|[`116`](https://huggingface.co/keisuke-miyako/bge-base-en-v1.5-onnx-int8)|`512`|`768`|`12`|`cls`
 |[`BAAI/bge-large-en-v1.5`](https://huggingface.co/BAAI/bge-large-en-v1.5)|[`668`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-fp16)|[`1340`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-fp32)|[`335`](https://huggingface.co/keisuke-miyako/bge-large-en-v1.5-onnx-int8)|`512`|`1024`|`24`|`cls`
@@ -136,6 +140,7 @@ The `int4` format is designed to compress large language models. Just as a refer
 
 ||`int4`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
 |-|-:|-:|-:|-:|
+|[`MadeAgents/Hammer2.1-0.5b`](https://huggingface.co/MadeAgents/Hammer2.1-0.5b)|[`864`](https://huggingface.co/keisuke-miyako/Hammer2.1-0.5b-onnx-int4)|`32768`|`896`|`24`|
 |[`meta-llama/Llama-3.2-1B-Instruct`](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct)|[`1860`](https://huggingface.co/keisuke-miyako/Llama-3.2-1B-Instruct-onnx-int4)|`8192`|`2048`|`16`|
 |[`meta-llama/Llama-3.2-3B-Instruct`](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct)|[`3650`](https://huggingface.co/keisuke-miyako/Llama-3.2-3B-Instruct-onnx-int4)|`131072`|`3072`|`28`|
 |[`microsoft/Phi-4-mini-instruct`](https://huggingface.co/microsoft/Phi-4-mini-instruct)|[`4860`](https://huggingface.co/keisuke-miyako/Phi-4-mini-instruct-onnx-int4)|`131072`|`3072`|`32`|
