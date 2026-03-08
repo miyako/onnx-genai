@@ -350,43 +350,6 @@ static std::string wchar_to_utf8(const wchar_t* wstr) {
 }
 #endif
 
-// Improved signature: uses Eigen::Ref to avoid copies if passing blocks/maps
-Eigen::VectorXf mean_pool(
-    const Eigen::Ref<const Eigen::MatrixXf>& hidden,
-    const Eigen::Ref<const Eigen::VectorXi>& mask
-) {
-    // 1. Safety Check
-    if (hidden.rows() != mask.size()) {
-        throw std::invalid_argument("Hidden state sequence length does not match mask length.");
-    }
-
-    // 2. Convert mask to float for matrix multiplication
-    // Casting is usually very fast compared to the accumulation logic
-    Eigen::VectorXf mask_f = mask.cast<float>();
-
-    // 3. Calculate Count (Sum of mask)
-    float count = mask_f.sum();
-    
-    // Edge case: empty mask
-    if (count <= 0.0f) {
-        return Eigen::VectorXf::Zero(hidden.cols());
-    }
-
-    // 4. Matrix Multiplication approach (The main optimization)
-    // Formula: (1/N) * (mask^T * Hidden)
-    //
-    // mask_f             is [seq_len, 1]
-    // hidden             is [seq_len, hidden_dim]
-    // mask_f.transpose() is [1, seq_len]
-    // result             is [1, hidden_dim]
-    
-    // Note: We create a temporary row vector, then transpose it back
-    // to match the return type (VectorXf is a column vector).
-    Eigen::VectorXf pooled = (mask_f.transpose() * hidden).transpose();
-
-    return pooled / count;
-}
-
 Eigen::MatrixXf mean_pool_batch(
     const std::vector<Eigen::MatrixXf>& hidden_batch,
     const std::vector<Eigen::VectorXi>& mask_batch
