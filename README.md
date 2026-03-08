@@ -89,6 +89,8 @@ The `int4` format is designed to compress large language models. Just as a refer
 
 ||`fp16`|`fp32`|`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`|`pooling`
 |-|-:|-:|-:|-:|-:|-:|-:
+|[`jhu-clsp/mmBERT-small`](https://huggingface.co/jhu-clsp/mmBERT-small)|[`282`](https://huggingface.co/keisuke-miyako/mmBERT-small-onnx-f16)||[`141`](https://huggingface.co/keisuke-miyako/mmBERT-small-onnx-int8)|`8192`|`384`|`22`|`mean`
+|[`jhu-clsp/mmBERT-base`](https://huggingface.co/jhu-clsp/mmBERT-base)|[`616`](https://huggingface.co/keisuke-miyako/mmBERT-base-onnx-f16)||[`308`](https://huggingface.co/keisuke-miyako/mmBERT-base-onnx-int8)|`8192`|`768`|`22`|`mean`
 |[`answerdotai/ModernBERT-base`](https://huggingface.co/answerdotai/ModernBERT-base)|[`298`](https://huggingface.co/keisuke-miyako/ModernBERT-base-onnx-f16)|[`596`](https://huggingface.co/keisuke-miyako/ModernBERT-base-onnx-f32)|[`151`](https://huggingface.co/keisuke-miyako/ModernBERT-base-onnx-int8)|`8192`|`768`|`22`|`mean`
 |[`answerdotai/ModernBERT-large`](https://huggingface.co/answerdotai/ModernBERT-large)|[`789`](https://huggingface.co/keisuke-miyako/ModernBERT-large-onnx-f16)|[`1580`](https://huggingface.co/keisuke-miyako/ModernBERT-large-onnx-f32)|[`397`](https://huggingface.co/keisuke-miyako/ModernBERT-large-onnx-int8)|`8192`|`1024`|`28`|`mean`
 |[`perplexity-ai/pplx-embed-v1-0.6b`](https://huggingface.co/perplexity-ai/pplx-embed-v1-0.6b)| | | [`614`](https://huggingface.co/keisuke-miyako/pplx-embed-v1-0.6b-onnx-int8) | `32768` | `1024` | `28` | `mean`
