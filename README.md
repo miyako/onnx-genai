@@ -67,6 +67,7 @@ The `int4` format is designed to compress large language models. Just as a refer
 
 ||`fp16`|`fp32`|`int8`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
 |-|-:|-:|-:|-:|-:|-:
+|[`answerdotai/ModernBERT-base`](https://huggingface.co/answerdotai/ModernBERT-base)|[``](https://huggingface.co/keisuke-miyako/ModernBERT-base-onnx-f16)|[`596`](https://huggingface.co/keisuke-miyako/ModernBERT-base-onnx-f32)|[`151`](https://huggingface.co/keisuke-miyako/ModernBERT-base-onnx-int8)|`8192`|`768`|`22`
 |[`cross-encoder/ms-marco-MiniLM-L6-v2`](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L6-v2)|[`45`](https://huggingface.co/keisuke-miyako/ms-marco-MiniLM-L6-v2-onnx-fp16)|[`91`](https://huggingface.co/keisuke-miyako/ms-marco-MiniLM-L6-v2-onnx-fp32)|[`23`](https://huggingface.co/keisuke-miyako/ms-marco-MiniLM-L6-v2-onnx-int8)|`512`|`384`|`6`
 |[`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`](https://huggingface.co/cross-encoder/mmarco-mMiniLMv2-L12-H384-v1)|[`235`](https://huggingface.co/keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-onnx-fp16)|[`470`](https://huggingface.co/keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-onnx-fp32)|[`118`](https://huggingface.co/keisuke-miyako/mmarco-mMiniLMv2-L12-H384-v1-onnx-int8)|`512`|`384`|`12`|
 |[`BAAI/bge-reranker-v2-m3`](https://huggingface.co/BAAI/bge-reranker-v2-m3)|[`1140`](https://huggingface.co/keisuke-miyako/bge-reranker-v2-m3-onnx-fp16)|[`2270`](https://huggingface.co/keisuke-miyako/bge-reranker-v2-m3-onnx-fp32)|[`569`](https://huggingface.co/keisuke-miyako/bge-reranker-v2-m3-onnx-int8)|`8192`|`1024`|`24`|
