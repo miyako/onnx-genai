@@ -163,7 +163,7 @@ RerankingMode LoadRerankingMode(const std::string& model_path) {
                     }
                     if(model_type == "modernbert") {
                         std::cout << "[Rerank] model_type: " << model_type << " (bert)" << std::endl;
-                        return RERANKING_BERT;
+                        return RERANKING_MODERNBERT;
                     }
                     if(model_type == "qwen3") {
                         std::cout << "[Rerank] model_type: " << model_type << " (llm)" << std::endl;
@@ -1622,6 +1622,7 @@ static std::string run_embeddings(
         // 1. Tokenize all and find the max length for padding
         for (const auto& input : inputs) {
             std::vector<int> ids = tokenizer->Encode(input);
+            
             if(pooling_mode == POOLING_CLS) {
                 ids.insert(ids.begin(), 0); // <s> or CLS
                 ids.push_back(2);           // </s> or SEP
