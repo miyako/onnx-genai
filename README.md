@@ -83,6 +83,7 @@ The `int4` format is designed to compress large language models. Just as a refer
 |[`Qwen/Qwen3-Reranker-0.6B`](https://huggingface.co/Qwen/Qwen3-Reranker-0.6B)|||[`598`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-0.6B-onnx-int8)|`32768`|`1024`|`28`|
 |[`Qwen/Qwen3-Reranker-4B`](https://huggingface.co/Qwen/Qwen3-Reranker-4B)|||[`4030`](https://huggingface.co/keisuke-miyako/Qwen3-Reranker-4B-onnx-int8)|`40960`|`2560`|`36`|
 |[`zeroentropy/zerank-2`](https://huggingface.co/zeroentropy/zerank-2)|||[`4030`](https://huggingface.co/keisuke-miyako/zerank-2-onnx-int8)|`40960`|`2560`|`36`
+|[`lightonai/ColBERT-Zero`](https://huggingface.co/lightonai/ColBERT-Zero)|[`298`](https://huggingface.co/keisuke-miyako/ColBERT-Zero-onnx-f16)|[`596`](https://huggingface.co/keisuke-miyako/ColBERT-Zero-onnx-f32)|[`151`](https://huggingface.co/keisuke-miyako/ColBERT-Zero-onnx-int8)|`8192`|`768`|`22`
 
 ### Embedding
 
