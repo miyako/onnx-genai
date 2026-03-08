@@ -1207,10 +1207,6 @@ static void run_inference_stream(
     }
 }
 
-static std::vector<int64_t> ConvertToInt64(const std::vector<int>& input_ids) {
-    return std::vector<int64_t>(input_ids.begin(), input_ids.end());
-}
-
 static std::vector<std::vector<float>> last_token_pooling_batch(
     std::vector<Ort::Value>& outputs,
     const std::vector<int64_t>& attention_mask,
@@ -1242,46 +1238,6 @@ static std::vector<std::vector<float>> last_token_pooling_batch(
         batch_embeddings.push_back(std::vector<float>(final_embedding.data(), final_embedding.data() + final_embedding.size()));
     }
     return batch_embeddings;
-}
-
-static std::vector<float> last_token_pooling_response(std::vector<Ort::Value>& outputs,
-                                               std::vector<int64_t>& attention_mask,
-                                               int seq_len) {
-        
-    size_t dimensions = outputs.size();
-    if(dimensions > 0) {
-        
-        auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
-        float* floatarr = outputs[0].GetTensorMutableData<float>();
-        
-        auto shape = output_info.GetShape();
-        if(shape.size() > 2) {
-            int64_t hidden_size = shape[2];
-         
-            Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-                            raw_matrix(floatarr, seq_len, hidden_size);
-            
-            // Logic for Decoder/LLM models (Gemma)
-            int last_token_index = 0;
-            // Find the last index where mask == 1
-            for (int i = 0; i < seq_len; ++i) {
-                if (attention_mask[i] == 1) {
-                    last_token_index = i;
-                } else {
-                    break; // Assuming padding is always at the end
-                }
-            }
-            
-            // Direct normalized expression evaluation into std::vector
-            // This avoids creating the intermediate 'Eigen::VectorXf final_embedding' object.
-            Eigen::VectorXf final_embedding = raw_matrix.row(last_token_index).normalized();
-            std::vector<float> embeddings(final_embedding.data(), final_embedding.data() + final_embedding.size());
-            
-            return embeddings;
-        }
-    }
-    
-    return std::vector<float>();
 }
 
 // ColBERT returns a list of embeddings per token, so we build the JSON directly.
@@ -1332,61 +1288,6 @@ static std::string colbert_pooling_batch_json(
     return Json::writeString(writer, rootNode);
 }
 
-static std::string colbert_pooling_response(std::vector<Ort::Value>& outputs,
-                                            std::vector<int64_t>& attention_mask,
-                                            int seq_len) {
- 
-    Json::Value rootNode(Json::objectValue);
-    
-    if(!outputs.empty()) {
-        auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
-        float* floatarr = outputs[0].GetTensorMutableData<float>();
-        auto shape = output_info.GetShape();
-        
-        if(shape.size() > 2) {
-            int64_t hidden_size = shape[2];
-            
-            // Map raw ONNX data
-            Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-                            raw_matrix(floatarr, seq_len, hidden_size);
-            
-            // MATH IMPROVEMENT:
-            // 1. Convert mask to boolean Eigen array for easy checking
-            // 2. Perform L2 normalization on the ENTIRE matrix at once.
-            //    This uses vectorized math (SIMD) and is much faster than loop-based normalization.
-            //    Note: .normalized() handles the division by zero check internally (mostly safe),
-            //    but if you have zero-vectors, check stableNorm.
-            
-            Eigen::MatrixXf normalized_matrix = raw_matrix.rowwise().normalized();
-            
-            Json::Value listNode(Json::arrayValue);
-            
-            for (int i = 0; i < seq_len; ++i) {
-                // Skip padding based on mask
-                if (attention_mask[i] == 0) continue;
-
-                Json::Value dataNode = Json::objectValue;
-                dataNode["object"] = "embedding";
-                
-                Json::Value embeddingsNode(Json::arrayValue);
-                // Access the pre-calculated normalized matrix
-                for (int j = 0; j < hidden_size; ++j) {
-                    embeddingsNode.append(normalized_matrix(i, j));
-                }
-                dataNode["embedding"] = embeddingsNode;
-                dataNode["index"] = i;
-                listNode.append(dataNode);
-            }
-            rootNode["data"] = listNode;
-            rootNode["object"] = "list";
-        }
-    }
-        
-    Json::StreamWriterBuilder writer;
-    writer["indentation"] = "";
-    return Json::writeString(writer, rootNode);
-}
-
 static std::vector<std::vector<float>> cls_pooling_batch(
     std::vector<Ort::Value>& outputs,
     const std::vector<int64_t>& attention_mask, // Not strictly needed for CLS, but kept for signature consistency
@@ -1410,35 +1311,6 @@ static std::vector<std::vector<float>> cls_pooling_batch(
         batch_embeddings.push_back(std::vector<float>(final_embedding.data(), final_embedding.data() + final_embedding.size()));
     }
     return batch_embeddings;
-}
-
-static std::vector<float> cls_pooling_response(std::vector<Ort::Value>& outputs,
-                                        std::vector<int64_t>& attention_mask,
-                                        int seq_len) {
-     
-    size_t dimensions = outputs.size();
-    if(dimensions > 0) {
-     
-        auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
-        float* floatarr = outputs[0].GetTensorMutableData<float>();
-        
-        auto shape = output_info.GetShape();
-        if((shape.size() > 2) && (floatarr != NULL)) {
-            int64_t hidden_size = shape[2];
-            
-            Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-                            raw_matrix(floatarr, seq_len, hidden_size);
-            // Just take the first row
-            Eigen::VectorXf cls_vec = raw_matrix.row(0);
-            Eigen::VectorXf final_embedding = l2_normalize(cls_vec);
-            // Create the std::vector
-            std::vector<float> embeddings(final_embedding.data(), final_embedding.data() + final_embedding.size());
-
-            return embeddings;
-        }
-    }
-        
-    return std::vector<float>();
 }
 
 static std::vector<std::vector<float>> mean_pooling_batch(
@@ -1478,46 +1350,6 @@ static std::vector<std::vector<float>> mean_pooling_batch(
         batch_embeddings.push_back(std::vector<float>(final_embedding.data(), final_embedding.data() + final_embedding.size()));
     }
     return batch_embeddings;
-}
-
-static std::vector<float> mean_pooling_response(std::vector<Ort::Value>& outputs,
-                                                std::vector<int64_t>& attention_mask,
-                                                int seq_len) {
-        
-    size_t dimensions = outputs.size();
-    if(dimensions > 0) {
-        
-        auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
-        float* floatarr = outputs[0].GetTensorMutableData<float>();
-        
-        auto shape = output_info.GetShape();// [Batch, Seq, Hidden]
-        if(shape.size() > 2) {
-            int64_t hidden_size = shape[2];
-            // Prepare Batches
-            std::vector<Eigen::MatrixXf> hidden_batch_vec;
-            std::vector<Eigen::VectorXi> mask_batch_vec;
-            // (Since batch=1, loop runs once)
-            // Map raw data: ONNX (RowMajor) -> Eigen Map
-            Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-            mapped_hidden(floatarr, seq_len, hidden_size);
-            // Deep copy into MatrixXf (converts to ColMajor for Eigen internal efficiency)
-            hidden_batch_vec.push_back(mapped_hidden);
-            // Convert mask to Eigen::VectorXi
-            Eigen::VectorXi mask_vec(seq_len);
-            for(int i=0; i<seq_len; ++i) mask_vec(i) = (int)attention_mask[i];
-            mask_batch_vec.push_back(mask_vec);
-            // Mean Pool
-            Eigen::MatrixXf pooled = mean_pool_batch(hidden_batch_vec, mask_batch_vec); // Returns [1, Hidden]
-            // Normalize
-            Eigen::VectorXf final_embedding = l2_normalize(pooled.row(0));
-            // Create the std::vector
-            std::vector<float> embeddings(final_embedding.data(), final_embedding.data() + final_embedding.size());
-
-            return embeddings;
-        }
-    }
-    
-    return std::vector<float>();
 }
 
 static std::string run_reranking(
@@ -2345,15 +2177,19 @@ int main(int argc, OPTARG_T argv[]) {
                     embeddings_tokenizer = LoadTokenizer(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
                     max_position_embeddings = LoadMaxPositionEmbeddings(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
                     ranking_mode_embeddings = LoadRerankingMode(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
+                    LoadSpecialTokenIds(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()),
+                                        ranking_mode_embeddings,
+                                        cls_id_embeddings,
+                                        sep_id_embeddings);
 #else
                     embeddings_tokenizer = LoadTokenizer(fs::path(embedding_model_path).parent_path());
                     max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(embedding_model_path).parent_path());
                     ranking_mode_embeddings = LoadRerankingMode(fs::path(embedding_model_path).parent_path());
-#endif
                     LoadSpecialTokenIds(fs::path(embedding_model_path).parent_path(),
                                         ranking_mode_embeddings,
                                         cls_id_embeddings,
                                         sep_id_embeddings);
+#endif
                     embedding_model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
                     std::cerr << "Failed to load model: " << e.what() << std::endl;
@@ -2437,15 +2273,19 @@ int main(int argc, OPTARG_T argv[]) {
                     rerank_tokenizer = LoadTokenizer(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
                     rerank_max_position_embeddings = LoadMaxPositionEmbeddings(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
                     ranking_mode = LoadRerankingMode(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
+                    LoadSpecialTokenIds(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()),
+                                        ranking_mode,
+                                        rerank_cls_id,
+                                        rerank_sep_id);
 #else
                     rerank_tokenizer = LoadTokenizer(fs::path(reranker_model_path).parent_path());
                     rerank_max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(reranker_model_path).parent_path());
                     ranking_mode = LoadRerankingMode(fs::path(reranker_model_path).parent_path());
-#endif
                     LoadSpecialTokenIds(fs::path(embedding_model_path).parent_path(),
                                         ranking_mode,
                                         rerank_cls_id,
                                         rerank_sep_id);
+#endif
                     reranking_model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
                     std::cerr << "Failed to load model: " << e.what() << std::endl;
