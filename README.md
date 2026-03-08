@@ -140,6 +140,7 @@ The `int4` format is designed to compress large language models. Just as a refer
 
 ||`int4`|`max_position_embeddings`|`hidden_size`|`num_hidden_layers`
 |-|-:|-:|-:|-:|
+|[`MadeAgents/Hammer2.1-0.5b`](https://huggingface.co/MadeAgents/Hammer2.1-0.5b)|[`864`](https://huggingface.co/keisuke-miyako/Hammer2.1-0.5b-onnx-int4)|`32768`|`896`|`24`|
 |[`meta-llama/Llama-3.2-1B-Instruct`](https://huggingface.co/meta-llama/Llama-3.2-1B-Instruct)|[`1860`](https://huggingface.co/keisuke-miyako/Llama-3.2-1B-Instruct-onnx-int4)|`8192`|`2048`|`16`|
 |[`meta-llama/Llama-3.2-3B-Instruct`](https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct)|[`3650`](https://huggingface.co/keisuke-miyako/Llama-3.2-3B-Instruct-onnx-int4)|`131072`|`3072`|`28`|
 |[`microsoft/Phi-4-mini-instruct`](https://huggingface.co/microsoft/Phi-4-mini-instruct)|[`4860`](https://huggingface.co/keisuke-miyako/Phi-4-mini-instruct-onnx-int4)|`131072`|`3072`|`32`|
