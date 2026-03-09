@@ -57,3 +57,5 @@ cpp/onnx-genai/ARM64/Release/onnx-genai.iobj
 cpp/onnx-genai/ARM64/Release/main.obj
 cpp/ARM64/Release/onnx-genai.pdb
 cpp/ARM64/Release/onnx-genai.exe
+cpp/onnx-genai/ARM64/Release/vc143.pdb
+cpp/onnx-genai/ARM64/Release/onnx-genai.log
