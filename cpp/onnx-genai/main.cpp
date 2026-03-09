@@ -2295,7 +2295,7 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
-    const std::string instruction = "Given a web search query, retrieve relevant passages that answer the query";
+//    const std::string instruction = "Given a web search query, retrieve relevant passages that answer the query";
 
     // ---------------------------------------------------------
     // SERVER MODE
@@ -2582,23 +2582,15 @@ int main(int argc, OPTARG_T argv[]) {
                                     break;
                                 case RERANKING_LLM:
                                 default:
-                                {
-                                    // 1. Build the prompt exactly as the model expects
-                                    std::string prompt = "<Instruct>: " + instruction + "\n" +
-                                    "<Query>: " + query + "\n" +
-                                    "<Document>: " + documents[i];
-                                    
-                                    // 2. Encode the single formatted string
-                                    ids = rerank_tokenizer->Encode(prompt);
-                                }
+                                    ids = rerank_tokenizer->Encode(query + "\n" + documents[i]);
                                     break;
                             }
                             
                             if (ids.size() > rerank_max_position_embeddings) {
                                 ids.resize(rerank_max_position_embeddings - 1);
-                                int end_token_id = 2;
-                                if (ranking_mode == RERANKING_BERT) end_token_id = 102;
+                                int end_token_id = rerank_sep_id;
                                 ids.push_back(end_token_id);
+                                
                                 if (!type_ids.empty()) {
                                     type_ids.resize(rerank_max_position_embeddings - 1);
                                     int end_type_id = (ranking_mode == RERANKING_BERT) ? 1 : 0;
