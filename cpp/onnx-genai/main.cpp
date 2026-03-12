@@ -116,6 +116,51 @@ struct RerankItem {
     std::vector<int> type_ids;
 };
 
+struct ParsedToolCall {
+    std::string name;
+    std::string arguments;
+};
+
+// Parses the JSON content extracted from between <tool_call>…</tool_call>.
+// Uses jsoncpp to maintain compatibility across the ONNX module.
+static std::vector<ParsedToolCall> parse_tool_call_json(const std::string& json_str) {
+    std::vector<ParsedToolCall> results;
+    Json::Value parsed;
+    Json::CharReaderBuilder builder;
+    std::string errors;
+    std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+
+    try {
+        if (reader->parse(json_str.c_str(), json_str.c_str() + json_str.size(), &parsed, &errors)) {
+            // Normalise to an array
+            if (!parsed.isArray()) {
+                Json::Value arr(Json::arrayValue);
+                arr.append(parsed);
+                parsed = arr;
+            }
+
+            Json::StreamWriterBuilder writer;
+            writer["indentation"] = "";
+
+            for (const auto& call : parsed) {
+                if (!call.isMember("name") || !call.isMember("arguments")) continue;
+                ParsedToolCall tc;
+                tc.name = call["name"].asString();
+                
+                if (call["arguments"].isObject()) {
+                    tc.arguments = Json::writeString(writer, call["arguments"]);
+                } else {
+                    tc.arguments = call["arguments"].asString();
+                }
+                results.push_back(std::move(tc));
+            }
+        }
+    } catch (...) {
+        // Malformed JSON — return empty, callers treat this as not-a-tool-call
+    }
+    return results;
+}
+
 static // Helper to read the template file from the model directory
 std::string LoadChatTemplate(const std::string& model_path) {
     fs::path path(model_path);
@@ -663,6 +708,8 @@ static void parse_request(
                           double& repetition_penalty,
                           unsigned int& n,
                           bool& is_stream,
+                          bool& has_tools,
+                          std::string& tools_str,
                           OgaTokenizer& tokenizer,
                           std::string& chat_template,
                           std::string& guidance_string_type,
@@ -682,13 +729,23 @@ static void parse_request(
     {
         if(root.isObject())
         {
+            // --- Tool Handling ---
+            if (root.isMember("tools") && root["tools"].isArray() && !root["tools"].empty()) {
+                has_tools = true;
+                Json::StreamWriterBuilder w;
+                w["indentation"] = "";
+                tools_str = Json::writeString(w, root["tools"]);
+            }
+            
             Json::Value messages_node = root["messages"];
             if(messages_node.isArray())
             {
                 Json::StreamWriterBuilder writer;
                 writer["indentation"] = "";
                 std::string messages_json = Json::writeString(writer, messages_node);
-                prompt = tokenizer.ApplyChatTemplate(chat_template.c_str(), messages_json.c_str(), nullptr, true);
+                
+                const char* tools_ptr = has_tools ? tools_str.c_str() : nullptr;
+                prompt = tokenizer.ApplyChatTemplate(chat_template.c_str(), messages_json.c_str(), tools_ptr, true);
             }
             Json::Value top_p_node = root["top_p"];
             if(top_p_node.isNumeric())
@@ -811,12 +868,14 @@ static void before_run_inference(
                                  double& repetition_penalty,
                                  unsigned int& n,
                                  bool& is_stream,
+                                 bool& has_tools,
+                                 std::string& tools_str,
                                  OgaTokenizer& tokenizer,
                                  std::string& chat_template,
                                  std::string& guidance_string_type,
                                  std::string& guidance_string) {
     
-    parse_request(request_body, prompt, max_tokens, top_k, top_p, temperature, repetition_penalty, n, is_stream, tokenizer, chat_template, guidance_string_type, guidance_string);
+    parse_request(request_body, prompt, max_tokens, top_k, top_p, temperature, repetition_penalty, n, is_stream, has_tools, tools_str, tokenizer, chat_template, guidance_string_type, guidance_string);
 }
 
 static std::unordered_set<int32_t> BuildStopTokenSet(OgaTokenizer* tokenizer) {
@@ -847,7 +906,8 @@ static std::string run_inference(
                                  unsigned int n,
                                  std::string prompt,
                                  std::string guidance_string_type,
-                                 std::string guidance_string
+                                 std::string guidance_string,
+                                 bool has_tools
                                  ) {
     /*
      The chat completion object
@@ -937,11 +997,48 @@ static std::string run_inference(
         choiceNode["index"] = i;
         Json::Value messageNode(Json::objectValue);
         messageNode["role"] = "assistant";
-        messageNode["content"] = generated_responses[i].c_str();
+        
+        std::string finish_reason_local = finish_reason;
+        std::string response_text = generated_responses[i];
+        
+        // --- TOOL CALL INTERCEPTION ---
+        std::vector<ParsedToolCall> tool_calls_parsed;
+        if (has_tools) {
+            size_t start_tag = response_text.find("<tool_call>");
+            size_t end_tag   = response_text.find("</tool_call>");
+            
+            if (start_tag != std::string::npos && end_tag != std::string::npos) {
+                std::string json_str = response_text.substr(start_tag + 11, end_tag - (start_tag + 11));
+                tool_calls_parsed = parse_tool_call_json(json_str);
+            }
+        }
+
+        if (!tool_calls_parsed.empty()) {
+            messageNode["content"] = Json::nullValue;
+
+            Json::Value tool_calls_node(Json::arrayValue);
+            for (int tc_idx = 0; tc_idx < (int)tool_calls_parsed.size(); ++tc_idx) {
+                Json::Value tc(Json::objectValue);
+                tc["id"]    = "call_" + get_openai_style_id();
+                tc["type"]  = "function";
+                tc["index"] = tc_idx;
+                Json::Value func(Json::objectValue);
+                func["name"]      = tool_calls_parsed[tc_idx].name;
+                func["arguments"] = tool_calls_parsed[tc_idx].arguments;
+                tc["function"] = func;
+                tool_calls_node.append(tc);
+            }
+
+            messageNode["tool_calls"] = tool_calls_node;
+            finish_reason_local = "tool_calls";
+        } else {
+            messageNode["content"] = response_text.c_str();
+        }
+        
         messageNode["refusal"] = Json::nullValue;
         choiceNode["message"] = messageNode;
         choiceNode["logprobs"] = Json::nullValue;
-        choiceNode["finish_reason"] = finish_reason;
+        choiceNode["finish_reason"] = finish_reason_local;
         choicesNode.append(choiceNode);
     }
     rootNode["choices"] = choicesNode;
@@ -1026,7 +1123,8 @@ static void run_inference_stream(
                                  std::string prompt,
                                  std::string guidance_string_type,
                                  std::string guidance_string,
-                                 std::function<bool(const std::string&, unsigned int)> on_token_generated
+                                 bool has_tools,
+                                 std::function<bool(const std::string&, int, bool)> on_token_generated
                                  ) {
     
     size_t input_token_count = 0;
@@ -1059,7 +1157,11 @@ static void run_inference_stream(
     generator->AppendTokenSequences(*input_sequences);
     // Create a vector of streams
     // Decoding is stateful; we need 1 decoder per sequence.
-    std::vector<std::string> generated_responses(n);
+    std::vector<std::string> generated_responses(n, "");
+    std::vector<std::string> previous_text(n, "");
+    std::vector<bool> tool_mode(n, false);
+    std::vector<bool> finished(n, false);
+    
     std::vector<std::unique_ptr<OgaTokenizerStream>> streams;
     for (int i = 0; i < n; i++) {
         streams.push_back(OgaTokenizerStream::Create(*tokenizer));
@@ -1078,17 +1180,81 @@ static void run_inference_stream(
             if (seq_len == 0) continue;
             // Get the most recently generated token
             int32_t new_token = seq_data[seq_len - 1];
+            bool hit_stop = false;
 #if TOKEN_BACKSTOP
             if (stop_tokens.count(new_token)) {
-                // We hit one of our stop tokens!
-                continue;
+                hit_stop = true;
             }
 #endif
             const char* token_str = streams[i]->Decode(new_token);
             if (token_str) {
-                if (!on_token_generated(token_str, i)) {
-                    // If callback returns false, client disconnected
-                    break;
+                generated_responses[i] += token_str;
+                std::string current_text = generated_responses[i];
+
+                // 1. DYNAMIC TOOL INTERCEPTION
+                if (has_tools && !tool_mode[i]) {
+                    size_t tag_pos = current_text.find("<tool_call>");
+                    if (tag_pos != std::string::npos) {
+                        tool_mode[i] = true;
+                        std::string text_before_tag = current_text.substr(0, tag_pos);
+                        if (text_before_tag.length() > previous_text[i].length()) {
+                            std::string new_text = text_before_tag.substr(previous_text[i].length());
+                            if (!new_text.empty()) {
+                                if (!on_token_generated(new_text, i, false)) break;
+                            }
+                        }
+                        previous_text[i] = current_text;
+                    }
+                }
+                
+                // 2. TOOL MODE (Silent JSON Buffering)
+                if (tool_mode[i]) {
+                    if (hit_stop || current_text.find("</tool_call>") != std::string::npos) {
+                        finished[i] = true;
+                        
+                        size_t start = current_text.find("<tool_call>");
+                        size_t end = current_text.find("</tool_call>");
+                        
+                        std::string json_str = "";
+                        if (start != std::string::npos && end != std::string::npos) {
+                            json_str = current_text.substr(start + 11, end - (start + 11));
+                        } else if (start != std::string::npos) {
+                            json_str = current_text.substr(start + 11);
+                        }
+                        
+                        if (!json_str.empty()) {
+                            if (!on_token_generated(json_str, i, true)) break;
+                        }
+                    }
+                    continue; // Suppress output
+                }
+                
+                // 3. NORMAL TEXT STREAMING
+                if (!tool_mode[i]) {
+                    if (current_text.length() > previous_text[i].length()) {
+                        std::string new_text = current_text.substr(previous_text[i].length());
+                        
+                        // Normal token: Wait for complete UTF-8 characters
+                        if (new_text.find("\xef\xbf\xbd") == std::string::npos) {
+                            previous_text[i] = current_text;
+                            if (hit_stop) break; // Break out if stop hit and not in tool
+                            if (!on_token_generated(new_text, i, false)) break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Flush remaining tool calls if abruptly ended (e.g., max length reached)
+    for (int i = 0; i < n; i++) {
+        if (tool_mode[i] && !finished[i]) {
+            std::string current_text = generated_responses[i];
+            size_t start = current_text.find("<tool_call>");
+            if (start != std::string::npos) {
+                std::string json_str = current_text.substr(start + 11);
+                if (!json_str.empty()) {
+                    on_token_generated(json_str, i, true);
                 }
             }
         }
@@ -2211,6 +2377,8 @@ int main(int argc, OPTARG_T argv[]) {
                 double repetition_penalty = 1.2;
                 unsigned int n = 1;
                 bool is_stream = false;
+                bool has_tools = false;
+                std::string tools_str = "";
                 std::string guidance_string_type;
                 std::string guidance_string;
                 
@@ -2223,6 +2391,8 @@ int main(int argc, OPTARG_T argv[]) {
                                      repetition_penalty,
                                      n,
                                      is_stream,
+                                     has_tools,
+                                     tools_str,
                                      *tokenizer.get(),
                                      chat_template,
                                      guidance_string_type,
@@ -2238,7 +2408,6 @@ int main(int argc, OPTARG_T argv[]) {
                     OgaTokenizer* raw_tokenizer = tokenizer.get();
                     
                     // 2. Explicitly capture EVERYTHING by value (copy) or by safe pointer.
-                    // We removed the dangerous `&` default capture.
                     res.set_chunked_content_provider("text/event-stream",
                                                      [
                                                          raw_model,
@@ -2254,6 +2423,7 @@ int main(int argc, OPTARG_T argv[]) {
                                                          temperature,
                                                          repetition_penalty,
                                                          n,
+                                                         has_tools,
                                                          guidance_string_type,
                                                          guidance_string
                                                      ](size_t offset, httplib::DataSink &sink) {
@@ -2265,14 +2435,60 @@ int main(int argc, OPTARG_T argv[]) {
                         }
                         
                         // Define a callback to handle tokens as they are generated
-                        // It's safe to use [&] HERE because this lambda is synchronous and
-                        // only executes within the lifespan of the parent lambda.
-                        auto token_callback = [&](const std::string& token, unsigned int n) {
-                                                       
-                            std::string chunk = create_stream_chunk(n, req_id, modelName, fingerprint, token);
+                        auto token_callback = [&](const std::string& token, unsigned int choice_index, bool is_tool) {
+                            Json::Value root(Json::objectValue);
+                            root["id"] = req_id;
+                            root["object"] = "chat.completion.chunk";
+                            root["created"] = (Json::UInt64)get_created_timestamp();
+                            root["model"] = modelName;
+                            root["system_fingerprint"] = fingerprint;
+                            Json::Value choices(Json::arrayValue);
+                            Json::Value choice(Json::objectValue);
+                            choice["index"] = choice_index;
+                            Json::Value delta(Json::objectValue);
+                            
+                            if (is_tool) {
+                                std::vector<ParsedToolCall> tool_calls_parsed = parse_tool_call_json(token);
+                                if (tool_calls_parsed.empty()) {
+                                    is_tool = false;
+                                } else {
+                                    delta["content"] = Json::nullValue;
+
+                                    Json::Value tool_calls_node(Json::arrayValue);
+                                    for (int tc_idx = 0; tc_idx < (int)tool_calls_parsed.size(); ++tc_idx) {
+                                        Json::Value tc(Json::objectValue);
+                                        tc["id"]    = "call_" + get_openai_style_id();
+                                        tc["type"]  = "function";
+                                        tc["index"] = tc_idx;
+                                        Json::Value func(Json::objectValue);
+                                        func["name"]      = tool_calls_parsed[tc_idx].name;
+                                        func["arguments"] = tool_calls_parsed[tc_idx].arguments;
+                                        tc["function"] = func;
+                                        tool_calls_node.append(tc);
+                                    }
+
+                                    delta["tool_calls"]     = tool_calls_node;
+                                    choice["finish_reason"] = "tool_calls";
+                                }
+                            }
+                            
+                            if (!is_tool) {
+                                delta["content"]        = token;
+                                choice["finish_reason"] = Json::nullValue;
+                            }
+                            
+                            choice["delta"] = delta;
+                            choices.append(choice);
+                            root["choices"] = choices;
+                            
+                            Json::StreamWriterBuilder writer;
+                            writer["indentation"] = "";
+                            std::string chunk = "data: " + Json::writeString(writer, root) + "\n\n";
+                            
+                            // Write immediately to the client
                             sink.write(chunk.data(), chunk.size());
                             
-                            return true; // Return false to stop inference if needed
+                            return true; // Keep going
                         };
 
                         run_inference_stream(
@@ -2290,6 +2506,7 @@ int main(int argc, OPTARG_T argv[]) {
                                              prompt,
                                              guidance_string_type,
                                              guidance_string,
+                                             has_tools,
                                              token_callback
                                              );
                         // 4. Send finish reason
@@ -2321,7 +2538,8 @@ int main(int argc, OPTARG_T argv[]) {
                                                               n,
                                                               prompt,
                                                               guidance_string_type,
-                                                              guidance_string
+                                                              guidance_string,
+                                                              has_tools
                                                               );
                     res.set_content(response_json, "application/json");
                     res.status = 200;
@@ -2647,6 +2865,8 @@ int main(int argc, OPTARG_T argv[]) {
             double repetition_penalty = 1.2;
             unsigned int n = 1;
             bool is_stream = false;
+            bool has_tools = false;
+            std::string tools_str = "";
             std::string guidance_string_type;
             std::string guidance_string;
             
@@ -2659,6 +2879,8 @@ int main(int argc, OPTARG_T argv[]) {
                                  repetition_penalty,
                                  n,
                                  is_stream,
+                                 has_tools,
+                                 tools_str,
                                  *tokenizer.get(),
                                  chat_template,
                                  guidance_string_type,
@@ -2678,7 +2900,8 @@ int main(int argc, OPTARG_T argv[]) {
                                      n,
                                      prompt,
                                      guidance_string_type,
-                                     guidance_string
+                                     guidance_string,
+                                     has_tools
                                      );
             
         } catch (const std::exception& e) {
