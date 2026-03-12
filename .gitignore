@@ -59,3 +59,4 @@ cpp/ARM64/Release/onnx-genai.pdb
 cpp/ARM64/Release/onnx-genai.exe
 cpp/onnx-genai/ARM64/Release/vc143.pdb
 cpp/onnx-genai/ARM64/Release/onnx-genai.log
+cpp/onnx-genai.xcodeproj/project.xcworkspace/*
