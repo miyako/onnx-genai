@@ -132,6 +132,13 @@ std::string LoadChatTemplate(const std::string& model_path) {
     return "";
 }
 
+static const std::unordered_map<std::string, RerankingMode> kModelTypeMap = {
+    {"xlm-roberta", RERANKING_ROBERTA}, {"roberta", RERANKING_ROBERTA}, {"camembert", RERANKING_ROBERTA},
+    {"bert", RERANKING_BERT}, {"mpnet", RERANKING_BERT}, {"deberta-v2", RERANKING_BERT}, {"modernbert", RERANKING_BERT},
+    {"qwen3", RERANKING_LLM}, {"qwen2", RERANKING_LLM}, {"mistral", RERANKING_LLM},
+    {"llama", RERANKING_LLM}, {"gemma", RERANKING_LLM}, {"gemma2", RERANKING_LLM}, {"phi3", RERANKING_LLM},
+};
+
 static // Helper to read the template file from the model directory
 RerankingMode LoadRerankingMode(const std::string& model_path) {
     fs::path path(model_path);
@@ -355,10 +362,6 @@ Eigen::MatrixXf mean_pool_batch(
             // Matrix Mult: [1, seq] * [seq, dim] -> [1, dim]
             out.row(i) = mask_f.transpose() * hidden;
             out.row(i) /= count; // Average
-            
-            // MATH IMPROVEMENT: Use Eigen's in-place normalization
-            // This is generally safer and cleaner.
-            out.row(i).normalize();
         } else {
             // Handle edge case: empty mask -> zero vector
             out.row(i).setZero();
@@ -392,8 +395,6 @@ static void usage(void)
     fprintf(stderr, " -%c path     : %s\n", 'i' , "input");
     fprintf(stderr, " %c           : %s\n", '-' , "use stdin for input");
     fprintf(stderr, " -%c path     : %s\n", 'o' , "output (default=stdout)");
-    //
-    exit(1);
 }
 
 extern OPTARG_T optarg;
@@ -1266,135 +1267,130 @@ static std::vector<std::vector<float>> mean_pooling_batch(
 }
 
 static std::string run_reranking(
-    Ort::Session *session,
-    std::vector<RerankItem>& items,
-    int max_position_embeddings,
-    int top_n,
-    std::vector<const char*>& input_names_c_array,
-    size_t num_input_nodes,
-    std::vector<const char*>& output_names_c_array,
-    size_t num_output_nodes,
-    RerankingMode ranking_mode)
+                                 Ort::Session *session,
+                                 std::vector<RerankItem>& items,
+                                 int max_position_embeddings,
+                                 int top_n,
+                                 std::vector<const char*>& input_names_c_array,
+                                 size_t num_input_nodes,
+                                 std::vector<const char*>& output_names_c_array,
+                                 size_t num_output_nodes,
+                                 RerankingMode ranking_mode)
 {
     if (items.empty()) {
         return "{\"object\":\"list\",\"results\":[]}";
     }
-
-    try {
-        int batch_size = (int)items.size();
-        int max_seq_len = 0;
-
-        // 1. Find max length in batch
-        for (auto& item : items) {
-            if (item.ids.size() > max_position_embeddings) {
-                item.ids.resize(max_position_embeddings);
-                if (!item.type_ids.empty()) item.type_ids.resize(max_position_embeddings);
-            }
-            if ((int)item.ids.size() > max_seq_len) {
-                max_seq_len = (int)item.ids.size();
-            }
+    
+    int batch_size = (int)items.size();
+    int max_seq_len = 0;
+    
+    // 1. Find max length in batch
+    for (auto& item : items) {
+        if (item.ids.size() > max_position_embeddings) {
+            item.ids.resize(max_position_embeddings);
+            if (!item.type_ids.empty()) item.type_ids.resize(max_position_embeddings);
         }
-
-        // 2. Allocate flat memory (Zero-initialized for padding)
-        size_t total_elements = (size_t)batch_size * max_seq_len;
-        std::vector<int64_t> flat_ids(total_elements, 0);
-        std::vector<int64_t> flat_mask(total_elements, 0);
-        std::vector<int64_t> flat_type(total_elements, 0);
-
-        // 3. Fill the flat arrays
-        for (int b = 0; b < batch_size; ++b) {
-            int seq_len = (int)items[b].ids.size();
-            for (int i = 0; i < seq_len; ++i) {
-                size_t idx = (size_t)(b * max_seq_len + i);
-                flat_ids[idx] = items[b].ids[i];
-                flat_mask[idx] = 1;
-                if (i < items[b].type_ids.size()) {
-                    flat_type[idx] = items[b].type_ids[i];
-                }
-            }
+        if ((int)item.ids.size() > max_seq_len) {
+            max_seq_len = (int)item.ids.size();
         }
-
-        // 4. Create Tensors
-        Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-        std::vector<int64_t> input_dims = { batch_size, max_seq_len };
-        std::vector<Ort::Value> input_tensors;
-
-        input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-            memory_info, flat_ids.data(), flat_ids.size(), input_dims.data(), input_dims.size()));
-
-        if (num_input_nodes > 1) {
-            input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-                memory_info, flat_mask.data(), flat_mask.size(), input_dims.data(), input_dims.size()));
-            
-            if (num_input_nodes > 2) {
-                input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
-                    memory_info, flat_type.data(), flat_type.size(), input_dims.data(), input_dims.size()));
-            }
-        }
-
-        // 5. Run Batched Inference (1 Call!)
-        auto outputs = session->Run(
-            Ort::RunOptions{nullptr},
-            input_names_c_array.data(),
-            input_tensors.data(),
-            num_input_nodes,
-            output_names_c_array.data(),
-            num_output_nodes
-        );
-
-        // 6. Extract Outputs and Vectorized Math
-        float* float_data = outputs.front().GetTensorMutableData<float>();
-        auto shape = outputs.front().GetTensorTypeAndShapeInfo().GetShape();
-        int output_dim = (int)shape.back(); // Usually 1 or 2
-
-        Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-            logits_mat(float_data, batch_size, output_dim);
-        
-        Eigen::ArrayXf final_scores(batch_size);
-
-        if (output_dim == 2) {
-            final_scores = (1.0f + (logits_mat.col(0) - logits_mat.col(1)).array().exp()).inverse();
-        } else {
-            final_scores = (1.0f + (-logits_mat.col(0)).array().exp()).inverse();
-        }
-
-        // 7. Sort & Build JSON
-        std::vector<RerankResult> results;
-        results.reserve(batch_size);
-        for (int b = 0; b < batch_size; ++b) {
-            results.push_back({b, final_scores[b]});
-        }
-
-        auto sorter = [](const RerankResult& a, const RerankResult& b) {
-            return a.score > b.score;
-        };
-        
-        if (top_n > 0 && top_n < batch_size) {
-            std::partial_sort(results.begin(), results.begin() + top_n, results.end(), sorter);
-            results.resize(top_n);
-        } else {
-            std::sort(results.begin(), results.end(), sorter);
-        }
-        
-        Json::Value rootNode(Json::objectValue);
-        Json::Value listNode(Json::arrayValue);
-        for (const auto& result : results) {
-            Json::Value dataNode = Json::objectValue;
-            dataNode["index"] = result.index;
-            dataNode["relevance_score"] = result.score;
-            listNode.append(dataNode);
-        }
-
-        rootNode["results"] = listNode;
-        rootNode["object"] = "list";
-        
-        Json::StreamWriterBuilder writer;
-        writer["indentation"] = "";
-        return Json::writeString(writer, rootNode);
-
-    } catch (const std::exception& e) {
-        throw;
     }
+    
+    // 2. Allocate flat memory (Zero-initialized for padding)
+    size_t total_elements = (size_t)batch_size * max_seq_len;
+    std::vector<int64_t> flat_ids(total_elements, 0);
+    std::vector<int64_t> flat_mask(total_elements, 0);
+    std::vector<int64_t> flat_type(total_elements, 0);
+    
+    // 3. Fill the flat arrays
+    for (int b = 0; b < batch_size; ++b) {
+        int seq_len = (int)items[b].ids.size();
+        for (int i = 0; i < seq_len; ++i) {
+            size_t idx = (size_t)(b * max_seq_len + i);
+            flat_ids[idx] = items[b].ids[i];
+            flat_mask[idx] = 1;
+            if (i < items[b].type_ids.size()) {
+                flat_type[idx] = items[b].type_ids[i];
+            }
+        }
+    }
+    
+    // 4. Create Tensors
+    Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+    std::vector<int64_t> input_dims = { batch_size, max_seq_len };
+    std::vector<Ort::Value> input_tensors;
+    
+    input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                                                              memory_info, flat_ids.data(), flat_ids.size(), input_dims.data(), input_dims.size()));
+    
+    if (num_input_nodes > 1) {
+        input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                                                                  memory_info, flat_mask.data(), flat_mask.size(), input_dims.data(), input_dims.size()));
+        
+        if (num_input_nodes > 2) {
+            input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                                                                      memory_info, flat_type.data(), flat_type.size(), input_dims.data(), input_dims.size()));
+        }
+    }
+    
+    // 5. Run Batched Inference (1 Call!)
+    auto outputs = session->Run(
+                                Ort::RunOptions{nullptr},
+                                input_names_c_array.data(),
+                                input_tensors.data(),
+                                num_input_nodes,
+                                output_names_c_array.data(),
+                                num_output_nodes
+                                );
+    
+    // 6. Extract Outputs and Vectorized Math
+    float* float_data = outputs.front().GetTensorMutableData<float>();
+    auto shape = outputs.front().GetTensorTypeAndShapeInfo().GetShape();
+    int output_dim = (int)shape.back(); // Usually 1 or 2
+    
+    Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+    logits_mat(float_data, batch_size, output_dim);
+    
+    Eigen::ArrayXf final_scores(batch_size);
+    
+    if (output_dim == 2) {
+        final_scores = (1.0f + (logits_mat.col(0) - logits_mat.col(1)).array().exp()).inverse();
+    } else {
+        final_scores = (1.0f + (-logits_mat.col(0)).array().exp()).inverse();
+    }
+    
+    // 7. Sort & Build JSON
+    std::vector<RerankResult> results;
+    results.reserve(batch_size);
+    for (int b = 0; b < batch_size; ++b) {
+        results.push_back({b, final_scores[b]});
+    }
+    
+    auto sorter = [](const RerankResult& a, const RerankResult& b) {
+        return a.score > b.score;
+    };
+    
+    if (top_n > 0 && top_n < batch_size) {
+        std::partial_sort(results.begin(), results.begin() + top_n, results.end(), sorter);
+        results.resize(top_n);
+    } else {
+        std::sort(results.begin(), results.end(), sorter);
+    }
+    
+    Json::Value rootNode(Json::objectValue);
+    Json::Value listNode(Json::arrayValue);
+    for (const auto& result : results) {
+        Json::Value dataNode = Json::objectValue;
+        dataNode["index"] = result.index;
+        dataNode["relevance_score"] = result.score;
+        listNode.append(dataNode);
+    }
+    
+    rootNode["results"] = listNode;
+    rootNode["object"] = "list";
+    
+    Json::StreamWriterBuilder writer;
+    writer["indentation"] = "";
+    return Json::writeString(writer, rootNode);
 }
 
 static std::string run_embeddings(
@@ -1949,7 +1945,7 @@ int main(int argc, OPTARG_T argv[]) {
                 break;
             default:
                 usage();
-                break;
+                return 1;  // main returns, stack unwinds, all destructors run
         }
     }
     
