@@ -11,14 +11,14 @@ namespace fs = std::filesystem;
 using namespace tokenizers;
 
 static std::string LoadBytesFromFile(const std::string& path) {
-    std::ifstream fs(path, std::ios::in | std::ios::binary);
-    if (!fs) throw std::runtime_error("Could not open file: " + path);
+    std::ifstream ifs(path, std::ios::in | std::ios::binary);
+    if (!ifs) throw std::runtime_error("Could not open file: " + path);
     
-    fs.seekg(0, std::ios::end);
-    size_t size = fs.tellg();
+    ifs.seekg(0, std::ios::end);
+    size_t size = ifs.tellg();
     std::string data(size, '\0');
-    fs.seekg(0, std::ios::beg);
-    fs.read(&data[0], size);
+    ifs.seekg(0, std::ios::beg);
+    ifs.read(&data[0], size);
     
     return data;
 }
