@@ -859,9 +859,6 @@ static std::string run_inference(
     size_t input_token_count = 0;
     std::string finish_reason = "stop";//length, content_filter, tool_calls, function_call
     
-    // Create Tokenizer Stream
-    auto tokenizer_stream = OgaTokenizerStream::Create(*tokenizer);
-    
     // Encode Prompt
     auto input_sequences = OgaSequences::Create();
     tokenizer->Encode(prompt.c_str(), *input_sequences);
@@ -1031,9 +1028,6 @@ static void run_inference_stream(
                                  std::string guidance_string,
                                  std::function<bool(const std::string&, unsigned int)> on_token_generated
                                  ) {
-    
-    // Create Tokenizer Stream
-    auto tokenizer_stream = OgaTokenizerStream::Create(*tokenizer);
     
     size_t input_token_count = 0;
     double max_length = 0;
