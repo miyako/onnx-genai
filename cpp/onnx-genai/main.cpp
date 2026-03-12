@@ -172,7 +172,11 @@ RerankingMode LoadRerankingMode(const std::string& model_path) {
                     std::string model_type = model_type_node.asString();
                     
                     auto it = kModelTypeMap.find(model_type);
-                    if (it != kModelTypeMap.end()) return it->second;
+                    if (it != kModelTypeMap.end()) {
+                        std::cout << "[Rerank] model_type: " << model_type << std::endl;
+                        return it->second;
+                    }
+                    std::cout << "[Rerank] model_type: '" << model_type << "' unrecognized, defaulting to roberta" << std::endl;
                 }
             }
         }
@@ -2195,7 +2199,7 @@ int main(int argc, OPTARG_T argv[]) {
                     rerank_tokenizer = LoadTokenizer(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
                     rerank_max_position_embeddings = LoadMaxPositionEmbeddings(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
                     ranking_mode = LoadRerankingMode(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
-                    LoadSpecialTokenIds(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()),
+                    LoadSpecialTokenIds(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()),
                                         ranking_mode,
                                         rerank_cls_id,
                                         rerank_sep_id);
@@ -2203,7 +2207,7 @@ int main(int argc, OPTARG_T argv[]) {
                     rerank_tokenizer = LoadTokenizer(fs::path(reranker_model_path).parent_path());
                     rerank_max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(reranker_model_path).parent_path());
                     ranking_mode = LoadRerankingMode(fs::path(reranker_model_path).parent_path());
-                    LoadSpecialTokenIds(fs::path(embedding_model_path).parent_path(),
+                    LoadSpecialTokenIds(fs::path(reranker_model_path).parent_path(),
                                         ranking_mode,
                                         rerank_cls_id,
                                         rerank_sep_id);
