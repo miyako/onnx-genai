@@ -1581,7 +1581,6 @@ static std::string run_embeddings_e2e(
                 }
                 dataNode["embedding"] = embeddingsNode;
                 dataNode["index"] = b;
-                Json::Value listNode = Json::arrayValue;
                 listNode.append(dataNode);
             }
         }
