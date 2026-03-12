@@ -134,7 +134,7 @@ std::string LoadChatTemplate(const std::string& model_path) {
 
 static const std::unordered_map<std::string, RerankingMode> kModelTypeMap = {
     {"xlm-roberta", RERANKING_ROBERTA}, {"roberta", RERANKING_ROBERTA}, {"camembert", RERANKING_ROBERTA},
-    {"bert", RERANKING_BERT}, {"mpnet", RERANKING_BERT}, {"deberta-v2", RERANKING_BERT}, {"modernbert", RERANKING_BERT},
+    {"bert", RERANKING_BERT}, {"mpnet", RERANKING_BERT}, {"deberta-v2", RERANKING_BERT}, {"modernbert", RERANKING_MODERNBERT},
     {"qwen3", RERANKING_LLM}, {"qwen2", RERANKING_LLM}, {"mistral", RERANKING_LLM},
     {"llama", RERANKING_LLM}, {"gemma", RERANKING_LLM}, {"gemma2", RERANKING_LLM}, {"phi3", RERANKING_LLM},
 };
