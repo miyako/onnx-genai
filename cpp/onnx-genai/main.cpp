@@ -819,6 +819,20 @@ static void before_run_inference(
     parse_request(request_body, prompt, max_tokens, top_k, top_p, temperature, repetition_penalty, n, is_stream, tokenizer, chat_template, guidance_string_type, guidance_string);
 }
 
+static std::unordered_set<int32_t> BuildStopTokenSet(OgaTokenizer* tokenizer) {
+    return {
+        tokenizer->ToTokenId("<|im_end|>"),
+        tokenizer->ToTokenId("<|endoftext|>"),
+        tokenizer->ToTokenId("<|im_start|>"),
+        tokenizer->ToTokenId("<|start_header_id|>"),
+        tokenizer->ToTokenId("<pad>"),
+        tokenizer->ToTokenId("<bos>"),
+        tokenizer->ToTokenId("<start_of_turn>"),
+        tokenizer->ToTokenId("<end_of_turn>"),
+        tokenizer->ToTokenId("<|end|>")
+    };
+}
+
 static std::string run_inference(
                                  OgaModel* model,
                                  OgaTokenizer* tokenizer,
@@ -867,26 +881,7 @@ static std::string run_inference(
         params->SetGuidance(guidance_string_type.c_str(), guidance_string.c_str());
     }
 #if TOKEN_BACKSTOP
-    int32_t chat_end_id = tokenizer->ToTokenId("<|im_end|>");
-    int32_t file_end_id = tokenizer->ToTokenId("<|endoftext|>");
-    int32_t chat_start_id = tokenizer->ToTokenId("<|im_start|>");
-    int32_t head_start_id = tokenizer->ToTokenId("<|start_header_id|>");
-    int32_t pad_id = tokenizer->ToTokenId("<pad>");
-    int32_t bos_id = tokenizer->ToTokenId("<bos>");
-    int32_t turn_start_id = tokenizer->ToTokenId("<start_of_turn>");
-    int32_t turn_end_id = tokenizer->ToTokenId("<end_of_turn>");
-    int32_t end_id = tokenizer->ToTokenId("<|end|>");
-    
-    std::unordered_set<int32_t> stop_tokens = {
-        chat_end_id,
-        file_end_id,
-        chat_start_id,
-        head_start_id,
-        pad_id,
-        bos_id,
-        turn_start_id,
-        turn_end_id,
-        end_id};
+    std::unordered_set<int32_t> stop_tokens = BuildStopTokenSet(tokenizer);
 #endif
     // Create Generator
     // Generator is stateful; we need 1 per request.
@@ -948,9 +943,9 @@ static std::string run_inference(
         messageNode["content"] = generated_responses[i].c_str();
         messageNode["refusal"] = Json::nullValue;
         choiceNode["message"] = messageNode;
-        choicesNode.append(choiceNode);
         choiceNode["logprobs"] = Json::nullValue;
         choiceNode["finish_reason"] = finish_reason;
+        choicesNode.append(choiceNode);
     }
     rootNode["choices"] = choicesNode;
     
@@ -1062,26 +1057,7 @@ static void run_inference_stream(
         params->SetGuidance(guidance_string_type.c_str(), guidance_string.c_str());
     }
 #if TOKEN_BACKSTOP
-    int32_t chat_end_id = tokenizer->ToTokenId("<|im_end|>");
-    int32_t file_end_id = tokenizer->ToTokenId("<|endoftext|>");
-    int32_t chat_start_id = tokenizer->ToTokenId("<|im_start|>");
-    int32_t head_start_id = tokenizer->ToTokenId("<|start_header_id|>");
-    int32_t pad_id = tokenizer->ToTokenId("<pad>");
-    int32_t bos_id = tokenizer->ToTokenId("<bos>");
-    int32_t turn_start_id = tokenizer->ToTokenId("<start_of_turn>");
-    int32_t turn_end_id = tokenizer->ToTokenId("<end_of_turn>");
-    int32_t end_id = tokenizer->ToTokenId("<|end|>");
-
-    std::unordered_set<int32_t> stop_tokens = {
-        chat_end_id,
-        file_end_id,
-        chat_start_id,
-        head_start_id,
-        pad_id,
-        bos_id,
-        turn_start_id,
-        turn_end_id,
-        end_id};
+    std::unordered_set<int32_t> stop_tokens = BuildStopTokenSet(tokenizer);
 #endif
     // Create Generator
     // Generator is stateful; we need 1 per request.
@@ -1670,8 +1646,7 @@ static std::string run_colbert_reranking(
             
             if (ids.size() > static_cast<size_t>(max_position_embeddings)) {
                 ids.resize(max_position_embeddings - 1);
-                if (ranking_mode == RERANKING_BERT) ids.push_back(102);
-                else if (ranking_mode == RERANKING_ROBERTA) ids.push_back(2);
+                ids.push_back(sep_id);
             }
             
             if ((int)ids.size() > max_seq_len) {
