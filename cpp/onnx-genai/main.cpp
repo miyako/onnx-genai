@@ -98,34 +98,10 @@ static int GetOptimalIntraOpThreads() {
             // Absolute fallback
             threads = std::thread::hardware_concurrency();
         }
-
-    // --- Windows Implementation ---
-    #elif defined(_WIN32)
-        // Getting strictly physical cores on Windows is complex (requires iterating SYSTEM_LOGICAL_PROCESSOR_INFORMATION).
-        // For a simple implementation, hardware_concurrency (Logical Cores) is often acceptable,
-        // but dividing by 2 is a common heuristic for Hyper-threaded Intel/AMD CPUs to estimate physical cores.
-        
-        unsigned int logical_cores = std::thread::hardware_concurrency();
-        // Heuristic: If we have many cores, assume Hyper-threading and divide by 2.
-        // Otherwise, use all.
-        if (logical_cores > 4) {
-            threads = logical_cores / 2;
-        } else {
-            threads = logical_cores;
-        }
-
-    // --- Linux / Generic Implementation ---
-    #else
-        // Similar heuristic for Linux
-        unsigned int logical_cores = std::thread::hardware_concurrency();
-        if (logical_cores > 4) {
-             threads = logical_cores / 2;
-        } else {
-             threads = logical_cores;
-        }
-    #endif
-
-    // Safety clamp: Ensure we have at least 1 thread and not an insane amount (cap at 16 for client devices)
+#else  // Windows and Linux
+    unsigned int logical_cores = std::thread::hardware_concurrency();
+    threads = (logical_cores > 4) ? (int)(logical_cores / 2) : (int)logical_cores;
+#endif
     return std::max(1, std::min(threads, 16));
 }
 
@@ -150,7 +126,6 @@ std::string LoadChatTemplate(const std::string& model_path) {
     }
     
     if (fs::exists(chat_template_path) && chat_template_path.extension() == ".jinja") {
-//        std::cout << "[Chat] Loading jinja from: " << chat_template_path << std::endl;
         return LoadBytesFromFile(chat_template_path.string());
     }
     
@@ -167,7 +142,6 @@ RerankingMode LoadRerankingMode(const std::string& model_path) {
     }
     
     if (fs::exists(config_path) && config_path.extension() == ".json") {
-//        std::cout << "Loading model_type from: " << config_path << std::endl;
         
         std::string json = LoadBytesFromFile(config_path.string());
         
@@ -267,7 +241,6 @@ int LoadMaxPositionEmbeddings(const std::string& model_path) {
     }
     
     if (fs::exists(config_path) && config_path.extension() == ".json") {
-//        std::cout << "Loading max_position_embeddings from: " << config_path << std::endl;
         
         std::string json = LoadBytesFromFile(config_path.string());
         
@@ -313,14 +286,12 @@ std::unique_ptr<Tokenizer> LoadTokenizer(const std::string& model_path) {
 
     // 2. Try to load Hugging Face JSON first (preferred for modern models)
     if (fs::exists(json_path) && json_path.extension() == ".json") {
-//        std::cout << "Loading HF Tokenizer from: " << json_path << std::endl;
         std::string blob = LoadBytesFromFile(json_path.string());
         return Tokenizer::FromBlobJSON(blob);
     }
     
     // 3. Fallback to SentencePiece
     if (fs::exists(model_file_path) && model_file_path.extension() == ".model") {
-//        std::cout << "Loading SentencePiece from: " << model_file_path << std::endl;
         std::string blob = LoadBytesFromFile(model_file_path.string());
         return Tokenizer::FromBlobSentencePiece(blob);
     }
@@ -548,7 +519,6 @@ static long long get_created_timestamp() {
     return static_cast<long long>(std::time(nullptr));
 }
 
-namespace fs = std::filesystem;
 static std::string get_model_name(std::string model_path) {
     // 1. Create a path object
     fs::path path(model_path);
@@ -599,7 +569,7 @@ static std::string get_openai_style_id() {
 
 static void parse_request_reranking(const std::string &json,
                                      std::string &query,
-                                     int *top_n,
+                                     int& top_n,
                                      std::vector<std::string> &documents
                                      ) {
     
@@ -625,7 +595,7 @@ static void parse_request_reranking(const std::string &json,
             Json::Value top_n_node = root["top_n"];
             if(top_n_node.isNumeric())
             {
-                *top_n = top_n_node.asInt();
+                top_n = top_n_node.asInt();
             }
             
             Json::Value documents_node = root["documents"];
@@ -738,14 +708,14 @@ static void parse_request_embeddings(const std::string &json,
 static void parse_request(
                           const std::string &json,
                           std::string &prompt,
-                          unsigned int *max_tokens,
-                          unsigned int *top_k,
-                          double *top_p,
-                          double *temperature,
-                          double *repetition_penalty,
-                          unsigned int *n,
-                          bool *is_stream,
-                          OgaTokenizer* tokenizer,
+                          unsigned int& max_tokens,
+                          unsigned int& top_k,
+                          double& top_p,
+                          double& temperature,
+                          double& repetition_penalty,
+                          unsigned int& n,
+                          bool& is_stream,
+                          OgaTokenizer& tokenizer,
                           std::string& chat_template,
                           std::string& guidance_string_type,
                           std::string& guidance_string) {
@@ -770,27 +740,27 @@ static void parse_request(
                 Json::StreamWriterBuilder writer;
                 writer["indentation"] = "";
                 std::string messages_json = Json::writeString(writer, messages_node);
-                prompt = tokenizer->ApplyChatTemplate(chat_template.c_str(), messages_json.c_str(), nullptr, true);
+                prompt = tokenizer.ApplyChatTemplate(chat_template.c_str(), messages_json.c_str(), nullptr, true);
             }
             Json::Value top_p_node = root["top_p"];
             if(top_p_node.isNumeric())
             {
-                *top_p = top_p_node.asDouble();
+                top_p = top_p_node.asDouble();
             }
             Json::Value top_k_node = root["top_k"];
             if(top_k_node.isNumeric())
             {
-                *top_k = top_k_node.asInt();
+                top_k = top_k_node.asInt();
             }
             Json::Value max_tokens_node = root["max_tokens"];
             if(max_tokens_node.isNumeric())
             {
-                *max_tokens = max_tokens_node.asInt();
+                max_tokens = max_tokens_node.asInt();
             }
             Json::Value repetition_penalty_node = root["repetition_penalty"];
             if(repetition_penalty_node.isNumeric())
             {
-                *repetition_penalty = repetition_penalty_node.asDouble();
+                repetition_penalty = repetition_penalty_node.asDouble();
             }
             /*
              only these are set by AI-Kit
@@ -798,22 +768,22 @@ static void parse_request(
             Json::Value temperature_node = root["temperature"];
             if(temperature_node.isNumeric())
             {
-                *temperature = temperature_node.asDouble();
+                temperature = temperature_node.asDouble();
             }
             Json::Value n_node = root["n"];
             if(n_node.isNumeric())
             {
-                *n = n_node.asInt();
+                n = n_node.asInt();
             }
             max_tokens_node = root["max_completion_tokens"];
             if(max_tokens_node.isNumeric())
             {
-                *max_tokens = max_tokens_node.asInt();
+                max_tokens = max_tokens_node.asInt();
             }
             Json::Value stream_node = root["stream"];
             if(stream_node.isBool())
             {
-                *is_stream = stream_node.asBool();
+                is_stream = stream_node.asBool();
             }
             Json::Value response_format_node = root["response_format"];
             if(response_format_node.isObject())
@@ -863,7 +833,7 @@ static void parse_request(
 static void before_run_reranking(
                                  const std::string& request_body,
                                  std::string &query,
-                                 int *top_n,
+                                 int& top_n,
                                  std::vector<std::string> &documents
                                  ) {
     parse_request_reranking(request_body, query, top_n, documents);
@@ -886,14 +856,14 @@ static void before_run_embeddings(
 static void before_run_inference(
                                  const std::string& request_body,
                                  std::string &prompt,
-                                 unsigned int *max_tokens,
-                                 unsigned int *top_k,
-                                 double *top_p,
-                                 double *temperature,
-                                 double *repetition_penalty,
-                                 unsigned int *n,
-                                 bool *is_stream,
-                                 OgaTokenizer* tokenizer,
+                                 unsigned int& max_tokens,
+                                 unsigned int& top_k,
+                                 double& top_p,
+                                 double& temperature,
+                                 double& repetition_penalty,
+                                 unsigned int& n,
+                                 bool& is_stream,
+                                 OgaTokenizer& tokenizer,
                                  std::string& chat_template,
                                  std::string& guidance_string_type,
                                  std::string& guidance_string) {
@@ -1904,6 +1874,19 @@ static std::string run_colbert_reranking(
     }
 }
 
+static std::string MakeErrorJson(const std::string& message, const std::string& type = "invalid_request_error") {
+    Json::Value root(Json::objectValue);
+    Json::Value err(Json::objectValue);
+    err["message"] = message;
+    err["type"] = type;
+    err["param"] = Json::nullValue;
+    err["code"] = Json::nullValue;
+    root["error"] = err;
+    Json::StreamWriterBuilder w;
+    w["indentation"] = "";
+    return Json::writeString(w, root);
+}
+
 #pragma mark -
 
 int main(int argc, OPTARG_T argv[]) {
@@ -2327,14 +2310,14 @@ int main(int argc, OPTARG_T argv[]) {
                 
                 before_run_inference(req.body,
                                      prompt,
-                                     &max_tokens,
-                                     &top_k,
-                                     &top_p,
-                                     &temperature,
-                                     &repetition_penalty,
-                                     &n,
-                                     &is_stream,
-                                     tokenizer.get(),
+                                     max_tokens,
+                                     top_k,
+                                     top_p,
+                                     temperature,
+                                     repetition_penalty,
+                                     n,
+                                     is_stream,
+                                     *tokenizer.get(),
                                      chat_template,
                                      guidance_string_type,
                                      guidance_string);
@@ -2412,7 +2395,7 @@ int main(int argc, OPTARG_T argv[]) {
                         sink.write(done.data(), done.size());
                         
                         sink.done(); // Close the connection
-                        return true;
+                        return false;
                     }
                                                      );
                     
@@ -2438,19 +2421,7 @@ int main(int argc, OPTARG_T argv[]) {
                     res.status = 200;
                 }
             } catch (const std::exception& e) {
-                // Build Error JSON
-                Json::Value rootNode(Json::objectValue);
-                Json::Value errorNode(Json::objectValue);
-                errorNode["message"] = e.what();
-                errorNode["type"] = "invalid_request_error";
-                errorNode["param"] = Json::nullValue;
-                errorNode["code"] = Json::nullValue;
-                rootNode["error"] = errorNode;
-                
-                Json::StreamWriterBuilder writer;
-                writer["indentation"] = "";
-                std::string error_str = Json::writeString(writer, rootNode);
-                
+                std::string error_str = MakeErrorJson(e.what(), "invalid_request_error");
                 res.set_content(error_str, "application/json");
                 res.status = 400; // Bad Request as per requirement
                 std::cerr << "[Server] Error: " << e.what() << std::endl;
@@ -2516,7 +2487,7 @@ int main(int argc, OPTARG_T argv[]) {
                 std::string query;
                 int top_n = -1;
                 std::vector<std::string> documents;
-                before_run_reranking(req.body, query, &top_n, documents);
+                before_run_reranking(req.body, query, top_n, documents);
                 
                 std::string response_json;
                     
@@ -2613,20 +2584,7 @@ int main(int argc, OPTARG_T argv[]) {
                 res.set_content(response_json, "application/json");
                 res.status = 200;
             } catch (const std::exception& e) {
-                
-                // Build Error JSON
-                Json::Value rootNode(Json::objectValue);
-                Json::Value errorNode(Json::objectValue);
-                errorNode["message"] = e.what();
-                errorNode["type"] = "invalid_request_error";
-                errorNode["param"] = Json::nullValue;
-                errorNode["code"] = Json::nullValue;
-                rootNode["error"] = errorNode;
-                
-                Json::StreamWriterBuilder writer;
-                writer["indentation"] = "";
-                std::string error_str = Json::writeString(writer, rootNode);
-                
+                std::string error_str = MakeErrorJson(e.what(), "invalid_request_error");
                 res.set_content(error_str, "application/json");
                 res.status = 400; // Bad Request as per requirement
                 std::cerr << "[Server] Error: " << e.what() << std::endl;
@@ -2678,24 +2636,11 @@ int main(int argc, OPTARG_T argv[]) {
                 res.set_content(response_json, "application/json");
                 res.status = 200;
             } catch (const std::exception& e) {
-                // Build Error JSON
-                Json::Value rootNode(Json::objectValue);
-                Json::Value errorNode(Json::objectValue);
-                errorNode["message"] = e.what();
-                errorNode["type"] = "invalid_request_error";
-                errorNode["param"] = Json::nullValue;
-                errorNode["code"] = Json::nullValue;
-                rootNode["error"] = errorNode;
-                
-                Json::StreamWriterBuilder writer;
-                writer["indentation"] = "";
-                std::string error_str = Json::writeString(writer, rootNode);
-                
+                std::string error_str = MakeErrorJson(e.what(), "invalid_request_error");
                 res.set_content(error_str, "application/json");
                 res.status = 400; // Bad Request as per requirement
                 std::cerr << "[Server] Error: " << e.what() << std::endl;
             }
-            
         });
         
         // Route: /v1/contextualizedembeddings
@@ -2743,24 +2688,11 @@ int main(int argc, OPTARG_T argv[]) {
                 res.set_content(response_json, "application/json");
                 res.status = 200;
             } catch (const std::exception& e) {
-                // Build Error JSON
-                Json::Value rootNode(Json::objectValue);
-                Json::Value errorNode(Json::objectValue);
-                errorNode["message"] = e.what();
-                errorNode["type"] = "invalid_request_error";
-                errorNode["param"] = Json::nullValue;
-                errorNode["code"] = Json::nullValue;
-                rootNode["error"] = errorNode;
-                
-                Json::StreamWriterBuilder writer;
-                writer["indentation"] = "";
-                std::string error_str = Json::writeString(writer, rootNode);
-                
+                std::string error_str = MakeErrorJson(e.what(), "invalid_request_error");
                 res.set_content(error_str, "application/json");
                 res.status = 400; // Bad Request as per requirement
                 std::cerr << "[Server] Error: " << e.what() << std::endl;
             }
-            
         };
 
         svr.Post("/v1/contextualizedembeddings", contextualized_embeddings_handler);
@@ -2814,14 +2746,14 @@ int main(int argc, OPTARG_T argv[]) {
             
             before_run_inference(request_str,
                                  prompt,
-                                 &max_tokens,
-                                 &top_k,
-                                 &top_p,
-                                 &temperature,
-                                 &repetition_penalty,
-                                 &n,
-                                 &is_stream,
-                                 tokenizer.get(),
+                                 max_tokens,
+                                 top_k,
+                                 top_p,
+                                 temperature,
+                                 repetition_penalty,
+                                 n,
+                                 is_stream,
+                                 *tokenizer.get(),
                                  chat_template,
                                  guidance_string_type,
                                  guidance_string);
@@ -2844,16 +2776,7 @@ int main(int argc, OPTARG_T argv[]) {
                                      );
             
         } catch (const std::exception& e) {
-            // CLI Error Format
-            Json::Value rootNode(Json::objectValue);
-            Json::Value errorNode(Json::objectValue);
-            rootNode["error"] = errorNode;
-            errorNode["message"] = e.what();
-            errorNode["type"] = "invalid_request_error";
-            
-            Json::StreamWriterBuilder writer;
-            writer["indentation"] = "";
-            response = Json::writeString(writer, rootNode);
+            response = MakeErrorJson(e.what(), "invalid_request_error");
         }
         
         // Output logic

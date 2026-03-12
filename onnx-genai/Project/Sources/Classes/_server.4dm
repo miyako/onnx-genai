@@ -21,11 +21,11 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		$command+=" "
 	End if 
 	
-	If (Value type:C1509($option.embeggings_model)=Is object:K8:27)\
-		 && (OB Instance of:C1731($option.embeggings_model; 4D:C1709.Folder))\
-		 && ($option.embeggings_model.exists)
+	If (Value type:C1509($option.embeddings_model)=Is object:K8:27)\
+		 && (OB Instance of:C1731($option.embeddings_model; 4D:C1709.Folder))\
+		 && ($option.embeddings_model.exists)
 		$command+=" -e "
-		$command+=This:C1470.escape(This:C1470.expand($option.embeggings_model).file($option.embeggings_model_name).path)
+		$command+=This:C1470.escape(This:C1470.expand($option.embeddings_model).file($option.embeggings_model_name).path)
 		$command+=" "
 	End if 
 	
@@ -49,7 +49,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	var $chat_template : Text
 	If (Value type:C1509($option.chat_template)=Is text:K8:3) && ($option.chat_template#"")
-		$command+=" -j "
+		$command+=" -t "
 		$chat_template:=$option.chat_template
 	End if 
 	
@@ -76,7 +76,14 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	
 	For each ($arg; OB Entries:C1720($option))
 		Case of 
-			: (["m"; "e"; "i"; "o"; "h"; "r"; "rerank"; "host"; "p"; "port"; "j"; "chat_template"; "pooling"; "rerank_model_name"; "embeggings_model_name"; "HF_TOKEN"].includes($arg.key))
+			: (["i"; "o"; "s"; "j"; "c"; "l"; "b"; "d"; "_"; \
+				"h"; "host"; \
+				"p"; "port"; \
+				"t"; "chat_template"; \
+				"pooling"; \
+				"r"; "rerank_model"; "rerank_model_name"; \
+				"e"; "embeggings_model_name"; \
+				"m"; "chat_completion_model"; "HF_TOKEN"].includes($arg.key))
 				continue
 		End case 
 		$valueType:=Value type:C1509($arg.value)

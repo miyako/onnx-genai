@@ -1,5 +1,5 @@
 property chat_completion_model : 4D:C1709.Folder
-property embeggings_model : 4D:C1709.Folder
+property embeddings_model : 4D:C1709.Folder
 property embeggings_model_name : Text
 property rerank_model : 4D:C1709.Folder
 property rerank_model_name : Text
@@ -40,7 +40,7 @@ Function onDownload($oid : Text)
 			: ($downloaded.domain="chat.completion")
 				This:C1470.options.chat_completion_model:=$model
 			: ($downloaded.domain="embedding")
-				This:C1470.options.embeggings_model:=$model
+				This:C1470.options.embeddings_model:=$model
 				This:C1470.options.embeggings_model_name:=$downloaded.name
 			: ($downloaded.domain="rerank")
 				This:C1470.options.rerank_model:=$model
