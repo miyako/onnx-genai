@@ -1330,7 +1330,7 @@ static std::string colbert_pooling_batch_json(
                     if (attention_mask[b * max_seq_len + i] == 0) continue; // skip padding
 
                     if (!first_token) result += ',';
-                    first_token = true;  // bug: should be false — see note below
+                    first_token = false;
 
                     result += '[';
                     for (int j = 0; j < (int)hidden_size; ++j) {
