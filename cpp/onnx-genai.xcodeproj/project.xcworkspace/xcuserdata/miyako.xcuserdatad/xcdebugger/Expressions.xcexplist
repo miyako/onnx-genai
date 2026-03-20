@@ -3,6 +3,17 @@
    version = "1.0">
    <ContextStates>
       <ContextState
+         contextName = "main:main.cpp">
+         <PersistentStrings>
+            <PersistentString
+               value = "input_node_names">
+            </PersistentString>
+            <PersistentString
+               value = "max_position_embeddings">
+            </PersistentString>
+         </PersistentStrings>
+      </ContextState>
+      <ContextState
          contextName = "main::$_2::operator()(httplib::Request const&amp;, httplib::Response&amp;) const:main.cpp">
          <PersistentStrings>
             <PersistentString

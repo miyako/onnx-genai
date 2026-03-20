@@ -78,6 +78,10 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.ONNX/MrBERT/model_quantized.onnx"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/.ONNX/multilingual-e5-base/model_quantized.onnx"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
@@ -129,7 +133,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "8081"
+            argument = "8080"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

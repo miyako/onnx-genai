@@ -1592,7 +1592,8 @@ static std::string run_embeddings(
                                   Tokenizer* tokenizer,
                                   PoolingMode pooling_mode,
                                   int cls_id,
-                                  int sep_id)
+                                  int sep_id,
+                                  bool using_coreml = false)
 {
     if (tokenizer == nullptr || inputs.empty()) {
         return "{\"object\":\"list\",\"data\":[]}";
@@ -1621,6 +1622,10 @@ static std::string run_embeddings(
                 max_seq_len = (int)ids.size();
             }
             tokenized_inputs.push_back(std::move(ids));
+        }
+        
+        if (using_coreml) {
+            max_seq_len = max_position_embeddings;  // force exact shape
         }
 
         // 2. Allocate flat memory for tensors (Zero initialized for padding)
@@ -2173,6 +2178,13 @@ int main(int argc, OPTARG_T argv[]) {
     std::unique_ptr<OgaConfig> config;
     
     std::unordered_set<int32_t> stop_tokens;
+    bool embedding_coreml = false;
+    
+#define USE_COREML_FOR_EMBEDDINGS 0
+    /*
+     INT8 through CoreML is generally not worth the overhead.
+     The right candidates for CoreML acceleration are larger unquantized models where the ANE's fp16 throughput beats CPU fp32, and where the graph is clean enough that CoreML can take the majority of nodes without excessive partition boundaries.
+     */
     
     if (model_path.length() != 0) {
         if (fs::exists(model_path)) {
@@ -2244,6 +2256,8 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
+    const OrtApi* ort_api = OrtGetApiBase()->GetApi(ORT_API_VERSION);
+
     std::string embedding_fingerprint;
     long long embedding_model_created = 0;
     std::string embedding_modelName;
@@ -2278,14 +2292,106 @@ int main(int argc, OPTARG_T argv[]) {
 #endif
                     Ort::SessionOptions session_options;
                     session_options.SetIntraOpNumThreads(intra_op_threads);
-                    
+#ifdef WIN32
+                    max_position_embeddings = LoadMaxPositionEmbeddings(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
+#else
+                    max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(embedding_model_path).parent_path());
+#endif
 #if defined(__APPLE__)
-//                    std::unordered_map<std::string, std::string> provider_options;
-//                    provider_options["ModelFormat"] = "MLProgram";
-//                    provider_options["MLComputeUnits"] = "ALL";
-//                    provider_options["RequireStaticShapes"] = "0";
-//                    provider_options["EnableSubgraphs"] = "0";
-//                    session_options.AppendExecutionProvider("CoreML", provider_options);
+                    // ── 1. Throwaway session — CPU only, just to read dim names ──────────────
+                    std::vector<std::string> sym_dim_names;
+                    {
+                        Ort::SessionOptions probe_opts;
+                        probe_opts.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
+                        Ort::Session probe(*embeddings_env, embedding_model_path.c_str(), probe_opts);
+
+                        const OrtApi* ort_api = OrtGetApiBase()->GetApi(ORT_API_VERSION);
+                        size_t input_count = probe.GetInputCount();
+                        OrtStatus* s = nullptr;
+                        
+                        for (size_t i = 0; i < input_count; i++) {
+                            // Get OrtTypeInfo* — must stay alive until we finish reading strings
+                            OrtTypeInfo* type_info_ptr = nullptr;
+                            s = ort_api->SessionGetInputTypeInfo(probe, i, &type_info_ptr);
+                            if (!type_info_ptr) continue;
+                            // Cast to tensor shape info — this is a non-owning view into type_info_ptr
+                            const OrtTensorTypeAndShapeInfo* tensor_info = nullptr;
+                            s = ort_api->CastTypeInfoToTensorInfo(type_info_ptr, &tensor_info);
+                            if (tensor_info) {
+                                size_t dim_count = 0;
+                                s = ort_api->GetDimensionsCount(tensor_info, &dim_count);
+                                // Allocate arrays for numeric dims and symbolic names
+                                std::vector<int64_t> dims(dim_count);
+                                std::vector<const char*> sym(dim_count, nullptr);
+                                s = ort_api->GetDimensions(tensor_info, dims.data(), dim_count);
+                                s = ort_api->GetSymbolicDimensions(tensor_info, sym.data(), dim_count);
+                                // Read strings NOW while type_info_ptr is still alive
+                                for (size_t d = 0; d < dim_count; d++) {
+                                    if (sym[d] && sym[d][0] != '\0') {
+                                        std::string name(sym[d]);  // copy before release
+                                        std::cerr << "[Embedding] input[" << i << "] dim[" << d
+                                                  << "] = '" << name << "'" << std::endl;
+                                        sym_dim_names.push_back(name);
+                                    }
+                                }
+                            }
+                            // Release AFTER we've copied all strings out
+                            ort_api->ReleaseTypeInfo(type_info_ptr);
+                        }
+                    }
+                    
+                    auto override_dim = [&](const char* name, int64_t value) {
+                        OrtStatus* s = ort_api->AddFreeDimensionOverrideByName(
+                            session_options,  // implicit OrtSessionOptions* conversion
+                            name,
+                            value
+                        );
+                        if (s) {
+                            std::cerr << "[CoreML] dim override failed for '" << name << "': "
+                                      << ort_api->GetErrorMessage(s) << std::endl;
+                            ort_api->ReleaseStatus(s);
+                        }
+                    };
+                    
+                    // ── 2. Apply overrides using the names we just found ─────────────────────
+                    std::unordered_map<std::string, int64_t> dim_overrides;
+                    for (const auto& name : sym_dim_names) {
+                        if (dim_overrides.count(name)) continue;  // already seen
+                        // Heuristic: first unique name is batch, second is sequence.
+                        // Works for all standard encoder exports.
+                        int64_t val = (dim_overrides.empty())
+                            ? 1
+                            : static_cast<int64_t>(max_position_embeddings);
+                        dim_overrides[name] = val;
+                    }
+#if USE_COREML_FOR_EMBEDDINGS
+                    for (const auto& [name, value] : dim_overrides) {
+                        override_dim(name.c_str(), value);
+                        std::cerr << "[Embedding] override '" << name
+                                  << "' = " << value << std::endl;
+                    }
+                    embedding_coreml = true;
+                    // CoreML: runs on ANE (Apple Neural Engine) + GPU on Apple Silicon.
+                    // Falls back to CPU automatically for any unsupported ops.
+                    std::unordered_map<std::string, std::string> coreml_opts;
+                    coreml_opts["ModelCacheDirectory"] = (fs::path(embedding_model_path).parent_path() / "coreml_cache").string();
+                    coreml_opts["MLComputeUnits"] = "ALL";
+                    coreml_opts["ModelFormat"]            = "MLProgram"; // Core ML 5+ (.mlpackage)
+                    coreml_opts["RequireStaticInputShapes"] = "0";       // allow dynamic batch
+                    coreml_opts["EnableOnSubgraphs"]        = "0";
+                    try {
+                        session_options.AppendExecutionProvider("CoreML", coreml_opts);
+                        embedding_fingerprint = get_system_fingerprint(embedding_model_path, "CoreML");
+                        std::cerr << "[Embedding] CoreML EP loaded." << std::endl;
+                    } catch (const std::exception& e) {
+                        std::cerr << "[Embedding] CoreML EP unavailable, using CPU: "
+                        << e.what() << std::endl;
+                        embedding_fingerprint = get_system_fingerprint(embedding_model_path, "CPU");
+                    }
+#else
+                    embedding_fingerprint = get_system_fingerprint(embedding_model_path, "CPU");
+#endif
+
 #endif
 
                     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
@@ -2316,7 +2422,6 @@ int main(int argc, OPTARG_T argv[]) {
                     }
 #ifdef WIN32
                     embeddings_tokenizer = LoadTokenizer(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
-                    max_position_embeddings = LoadMaxPositionEmbeddings(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
                     ranking_mode_embeddings = LoadRerankingMode(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
                     LoadSpecialTokenIds(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()),
                                         ranking_mode_embeddings,
@@ -2324,7 +2429,6 @@ int main(int argc, OPTARG_T argv[]) {
                                         sep_id_embeddings);
 #else
                     embeddings_tokenizer = LoadTokenizer(fs::path(embedding_model_path).parent_path());
-                    max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(embedding_model_path).parent_path());
                     ranking_mode_embeddings = LoadRerankingMode(fs::path(embedding_model_path).parent_path());
                     LoadSpecialTokenIds(fs::path(embedding_model_path).parent_path(),
                                         ranking_mode_embeddings,
@@ -2846,7 +2950,8 @@ int main(int argc, OPTARG_T argv[]) {
                                                        embeddings_tokenizer.get(),
                                                        pooling_mode,
                                                        cls_id_embeddings,
-                                                       sep_id_embeddings);
+                                                       sep_id_embeddings,
+                                                       embedding_coreml);
                         break;
                 }
                 res.set_content(response_json, "application/json");
