@@ -1681,16 +1681,20 @@ static std::string run_embeddings(
 }
 
 static std::string run_embeddings_e2e(
-                                      Ort::Session *session,
-                                      std::vector<std::string> &inputs,
-                                      std::vector<const char*>&  input_names_c_array,
-                                      size_t num_input_nodes,
-                                      std::vector<const char*>&   output_names_c_array,
-                                      size_t num_output_nodes) {
+    Ort::Session*              session,
+    std::vector<std::string>&  inputs,
+    std::vector<const char*>&  input_names_c_array,
+    size_t                     num_input_nodes,
+    std::vector<const char*>&  output_names_c_array,
+    size_t                     num_output_nodes)
+{
+    if (inputs.empty()) {
+        return "{\"object\":\"list\",\"data\":[]}";
+    }
 
     const OrtApi& api = Ort::GetApi();
 
-    // Get allocator once — reused across all inputs
+    // --- 1. Build a single [N] string tensor holding all inputs ---
     OrtAllocator* allocator = nullptr;
     OrtStatus* status = api.GetAllocatorWithDefaultOptions(&allocator);
     if (status != nullptr) {
@@ -1698,42 +1702,46 @@ static std::string run_embeddings_e2e(
         return "{\"object\":\"list\",\"data\":[]}";
     }
 
-    std::string result;
-    result.reserve(64 + inputs.size() * 512); // rough heuristic, grows if needed
-    result += "{\"object\":\"list\",\"data\":[";
+    const int64_t batch_size = static_cast<int64_t>(inputs.size());
+    int64_t input_shape[] = { batch_size };
 
-    char num_buf[32];
-    bool first = true;
+    // Build a C-string pointer array that FillStringTensorElement expects
+    std::vector<const char*> input_cstrs;
+    input_cstrs.reserve(batch_size);
+    for (const auto& s : inputs) {
+        input_cstrs.push_back(s.c_str());
+    }
 
-    for (int b = 0; b < (int)inputs.size(); ++b) {
-        const char* input_strings[] = { inputs[b].c_str() };
-        int64_t input_shape[] = { 1 };
+    OrtValue* raw_tensor_ptr = nullptr;
+    status = api.CreateTensorAsOrtValue(
+        allocator,
+        input_shape,
+        1,                                       // rank = 1 (flat batch)
+        ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING,
+        &raw_tensor_ptr
+    );
+    if (status != nullptr) {
+        std::cerr << "[E2E] CreateTensorAsOrtValue failed: "
+                  << api.GetErrorMessage(status) << std::endl;
+        api.ReleaseStatus(status);
+        return "{\"object\":\"list\",\"data\":[]}";
+    }
 
-        OrtValue* raw_tensor_ptr = nullptr;
-        status = api.CreateTensorAsOrtValue(
-            allocator,
-            input_shape,
-            1,
-            ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING,
-            &raw_tensor_ptr
-        );
-        if (status != nullptr) {
-            std::cerr << "CreateTensorAsOrtValue() failed: " << api.GetErrorMessage(status) << std::endl;
-            api.ReleaseStatus(status);
-            if (raw_tensor_ptr) api.ReleaseValue(raw_tensor_ptr);
-            continue; // skip this input, keep going
-        }
+    // Fill all strings in one call
+    status = api.FillStringTensor(raw_tensor_ptr, input_cstrs.data(), batch_size);
+    if (status != nullptr) {
+        std::cerr << "[E2E] FillStringTensor failed: "
+                  << api.GetErrorMessage(status) << std::endl;
+        api.ReleaseStatus(status);
+        api.ReleaseValue(raw_tensor_ptr);
+        return "{\"object\":\"list\",\"data\":[]}";
+    }
 
-        status = api.FillStringTensor(raw_tensor_ptr, input_strings, 1);
-        if (status != nullptr) {
-            std::cerr << "FillStringTensor() failed: " << api.GetErrorMessage(status) << std::endl;
-            api.ReleaseStatus(status);
-            api.ReleaseValue(raw_tensor_ptr);
-            continue;
-        }
-
-        Ort::Value input_tensor(raw_tensor_ptr);
-        auto outputs = session->Run(
+    // --- 2. Single Run() for the whole batch ---
+    Ort::Value input_tensor(raw_tensor_ptr);
+    std::vector<Ort::Value> outputs;
+    try {
+        outputs = session->Run(
             Ort::RunOptions{nullptr},
             input_names_c_array.data(),
             &input_tensor,
@@ -1741,29 +1749,45 @@ static std::string run_embeddings_e2e(
             output_names_c_array.data(),
             num_output_nodes
         );
+    } catch (const Ort::Exception& e) {
+        std::cerr << "[E2E] session->Run failed: " << e.what() << std::endl;
+        return "{\"object\":\"list\",\"data\":[]}";
+    }
 
-        if (outputs.empty()) continue;
+    if (outputs.empty()) {
+        return "{\"object\":\"list\",\"data\":[]}";
+    }
 
-        auto output_info  = outputs[0].GetTensorTypeAndShapeInfo();
-        auto shape        = output_info.GetShape();
-        if (shape.size() < 2) continue;
+    // --- 3. Slice output [N, dim] and build JSON ---
+    // Output shape is [batch_size, embedding_dim]
+    auto shape = outputs[0].GetTensorTypeAndShapeInfo().GetShape();
+    if (shape.size() < 2) {
+        std::cerr << "[E2E] Unexpected output rank: " << shape.size() << std::endl;
+        return "{\"object\":\"list\",\"data\":[]}";
+    }
 
-        const float* floatarr   = outputs[0].GetTensorMutableData<float>();
-        const int64_t embed_dim = shape[1];
+    const int64_t embed_dim = shape[1];
+    const float*  data      = outputs[0].GetTensorMutableData<float>();
 
-        if (!first) result += ',';
-        first = false;
+    // Pre-allocate: each item is ~32 chars of envelope + embed_dim * ~11 chars per float
+    std::string result;
+    result.reserve(64 + static_cast<size_t>(batch_size) *
+                        (32 + static_cast<size_t>(embed_dim) * 11));
+    result += "{\"object\":\"list\",\"data\":[";
 
+    char num_buf[32];
+    for (int64_t b = 0; b < batch_size; ++b) {
+        if (b > 0) result += ',';
         result += "{\"object\":\"embedding\",\"index\":";
         result += std::to_string(b);
         result += ",\"embedding\":[";
 
+        const float* row = data + b * embed_dim;   // pointer arithmetic into [N, dim]
         for (int64_t i = 0; i < embed_dim; ++i) {
             if (i > 0) result += ',';
-            snprintf(num_buf, sizeof(num_buf), "%.9g", floatarr[i]);
+            snprintf(num_buf, sizeof(num_buf), "%.9g", row[i]);
             result += num_buf;
         }
-
         result += "]}";
     }
 
