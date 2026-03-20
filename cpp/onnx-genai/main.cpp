@@ -1076,11 +1076,12 @@ static std::string create_stream_chunk(int n,
                                        const std::string& model,
                                        const std::string& fingerprint,
                                        const std::string& content,
-                                       bool finish) {
+                                       bool finish,
+                                       Json::UInt64 created) {
     Json::Value root;
     root["id"] = id;
     root["object"] = "chat.completion.chunk";
-    root["created"] = (Json::UInt64)std::time(nullptr);
+    root["created"] = created;
     root["model"] = model;
     root["system_fingerprint"] = fingerprint;//Deprecated
     
@@ -2472,18 +2473,21 @@ int main(int argc, OPTARG_T argv[]) {
                                                          guidance_string
                                                      ](size_t offset, httplib::DataSink &sink) {
 
+                                                         const Json::UInt64 stream_created =
+                                                             static_cast<Json::UInt64>(std::time(nullptr));
+                                                         
                         // Send initial role packet (optional but good practice)
                         for (int i = 0; i < n; i++) {
-                            std::string role_chunk = create_stream_chunk(i, req_id, modelName, fingerprint, "");
+                            std::string role_chunk = create_stream_chunk(i, req_id, modelName, fingerprint, "", false, stream_created);
                             sink.write(role_chunk.data(), role_chunk.size());
                         }
-                        
+                                                                                 
                         // Define a callback to handle tokens as they are generated
-                        auto token_callback = [&](const std::string& token, unsigned int choice_index, bool is_tool) {
+                        auto token_callback = [&, stream_created](const std::string& token, unsigned int choice_index, bool is_tool) {
                             Json::Value root(Json::objectValue);
                             root["id"] = req_id;
                             root["object"] = "chat.completion.chunk";
-                            root["created"] = (Json::UInt64)get_created_timestamp();
+                            root["created"] = stream_created;
                             root["model"] = modelName;
                             root["system_fingerprint"] = fingerprint;
                             Json::Value choices(Json::arrayValue);
@@ -2554,7 +2558,7 @@ int main(int argc, OPTARG_T argv[]) {
                                              token_callback
                                              );
                         // 4. Send finish reason
-                        std::string finish_chunk = create_stream_chunk(n, req_id, modelName, fingerprint, "", true);
+                        std::string finish_chunk = create_stream_chunk(n, req_id, modelName, fingerprint, "", true, stream_created);
                         sink.write(finish_chunk.data(), finish_chunk.size());
                         
                         // 5. Send [DONE] to close the stream for the client
