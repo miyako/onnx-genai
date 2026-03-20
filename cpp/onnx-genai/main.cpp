@@ -1279,13 +1279,17 @@ static std::vector<std::vector<float>> last_token_pooling_batch(
         Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
             raw_matrix(floatarr + (b * max_seq_len * hidden_size), max_seq_len, hidden_size);
         
-        int last_token_index = 0;
+        int last_token_index = -1;
         for (int i = 0; i < max_seq_len; ++i) {
             if (attention_mask[b * max_seq_len + i] == 1) {
-                last_token_index = i;
-            } else {
-                break; // Padding found
+                last_token_index = i;   // keep updating — never break early
             }
+        }
+        
+        if (last_token_index == -1) {
+            // Entire mask is zero — degenerate input, emit a zero vector
+            batch_embeddings.push_back(std::vector<float>(hidden_size, 0.0f));
+            continue;
         }
         
         Eigen::VectorXf final_embedding = raw_matrix.row(last_token_index).normalized();
