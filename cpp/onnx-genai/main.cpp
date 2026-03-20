@@ -2339,7 +2339,7 @@ int main(int argc, OPTARG_T argv[]) {
                             ort_api->ReleaseTypeInfo(type_info_ptr);
                         }
                     }
-                    
+#if USE_COREML_FOR_EMBEDDINGS
                     auto override_dim = [&](const char* name, int64_t value) {
                         OrtStatus* s = ort_api->AddFreeDimensionOverrideByName(
                             session_options,  // implicit OrtSessionOptions* conversion
@@ -2352,7 +2352,6 @@ int main(int argc, OPTARG_T argv[]) {
                             ort_api->ReleaseStatus(s);
                         }
                     };
-                    
                     // ── 2. Apply overrides using the names we just found ─────────────────────
                     std::unordered_map<std::string, int64_t> dim_overrides;
                     for (const auto& name : sym_dim_names) {
@@ -2364,7 +2363,6 @@ int main(int argc, OPTARG_T argv[]) {
                             : static_cast<int64_t>(max_position_embeddings);
                         dim_overrides[name] = val;
                     }
-#if USE_COREML_FOR_EMBEDDINGS
                     for (const auto& [name, value] : dim_overrides) {
                         override_dim(name.c_str(), value);
                         std::cerr << "[Embedding] override '" << name
