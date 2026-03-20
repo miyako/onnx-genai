@@ -907,7 +907,8 @@ static std::string run_inference(
                                  std::string prompt,
                                  std::string guidance_string_type,
                                  std::string guidance_string,
-                                 bool has_tools
+                                 bool has_tools,
+                                 const std::unordered_set<int32_t>& stop_tokens
                                  ) {
     /*
      The chat completion object
@@ -937,9 +938,7 @@ static std::string run_inference(
     if(guidance_string_type != ""){
         params->SetGuidance(guidance_string_type.c_str(), guidance_string.c_str());
     }
-#if TOKEN_BACKSTOP
-    std::unordered_set<int32_t> stop_tokens = BuildStopTokenSet(tokenizer);
-#endif
+
     // Create Generator
     // Generator is stateful; we need 1 per request.
     auto generator = OgaGenerator::Create(*model, *params);
@@ -1125,6 +1124,7 @@ static void run_inference_stream(
                                  std::string guidance_string_type,
                                  std::string guidance_string,
                                  bool has_tools,
+                                 const std::unordered_set<int32_t>& stop_tokens,
                                  std::function<bool(const std::string&, int, bool)> on_token_generated
                                  ) {
     
@@ -1149,9 +1149,7 @@ static void run_inference_stream(
     if(guidance_string_type != ""){
         params->SetGuidance(guidance_string_type.c_str(), guidance_string.c_str());
     }
-#if TOKEN_BACKSTOP
-    std::unordered_set<int32_t> stop_tokens = BuildStopTokenSet(tokenizer);
-#endif
+
     // Create Generator
     // Generator is stateful; we need 1 per request.
     auto generator = OgaGenerator::Create(*model, *params);
@@ -2137,6 +2135,8 @@ int main(int argc, OPTARG_T argv[]) {
     std::unique_ptr<OgaTokenizer> tokenizer;
     std::unique_ptr<OgaConfig> config;
     
+    std::unordered_set<int32_t> stop_tokens;
+    
     if (model_path.length() != 0) {
         if (fs::exists(model_path)) {
             if (fs::is_directory(model_path)) {
@@ -2190,6 +2190,10 @@ int main(int argc, OPTARG_T argv[]) {
                     
                     // 5. Create Tokenizer
                     tokenizer = OgaTokenizer::Create(*model);
+                    
+                    if (tokenizer) {
+                        stop_tokens = BuildStopTokenSet(tokenizer.get());
+                    }
                                         
                     // 7. Load Templates
                     if(chat_template == "") {
@@ -2470,7 +2474,8 @@ int main(int argc, OPTARG_T argv[]) {
                                                          n,
                                                          has_tools,
                                                          guidance_string_type,
-                                                         guidance_string
+                                                         guidance_string,
+                                                         stop_tokens
                                                      ](size_t offset, httplib::DataSink &sink) {
 
                                                          const Json::UInt64 stream_created =
@@ -2555,6 +2560,7 @@ int main(int argc, OPTARG_T argv[]) {
                                              guidance_string_type,
                                              guidance_string,
                                              has_tools,
+                                             stop_tokens,
                                              token_callback
                                              );
                         // 4. Send finish reason
@@ -2587,7 +2593,8 @@ int main(int argc, OPTARG_T argv[]) {
                                                               prompt,
                                                               guidance_string_type,
                                                               guidance_string,
-                                                              has_tools
+                                                              has_tools,
+                                                              stop_tokens
                                                               );
                     res.set_content(response_json, "application/json");
                     res.status = 200;
@@ -2950,7 +2957,8 @@ int main(int argc, OPTARG_T argv[]) {
                                      prompt,
                                      guidance_string_type,
                                      guidance_string,
-                                     has_tools
+                                     has_tools,
+                                     stop_tokens
                                      );
             
         } catch (const std::exception& e) {
