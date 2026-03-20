@@ -111,6 +111,20 @@ struct RerankResult {
     std::string text;   // (Optional) The document text
 };
 
+enum class ToolCallState {
+    TEXT,       // normal streaming — emit tokens immediately
+    TAG_OPEN,   // inside a partial <tool_call> prefix match
+    BUFFERING,  // confirmed open tag — accumulate JSON body silently
+};
+
+struct SequenceState {
+    ToolCallState state    = ToolCallState::TEXT;
+    std::string   pending  ; // partial tag match buffer (TAG_OPEN)
+    std::string   body     ; // JSON accumulation buffer (BUFFERING)
+    std::string   prev_text; // last flushed cumulative text (for delta extraction)
+    bool          finished = false;
+};
+
 struct RerankItem {
     std::vector<int> ids;
     std::vector<int> type_ids;
@@ -1156,10 +1170,12 @@ static void run_inference_stream(
     generator->AppendTokenSequences(*input_sequences);
     // Create a vector of streams
     // Decoding is stateful; we need 1 decoder per sequence.
-    std::vector<std::string> generated_responses(n, "");
-    std::vector<std::string> previous_text(n, "");
-    std::vector<bool> tool_mode(n, false);
-    std::vector<bool> finished(n, false);
+//    std::vector<std::string> generated_responses(n, "");
+//    std::vector<std::string> previous_text(n, "");
+//    std::vector<bool> tool_mode(n, false);
+//    std::vector<bool> finished(n, false);
+    std::vector<std::string>   generated_responses(n, "");
+    std::vector<SequenceState> seq_state(n);
     
     std::vector<std::unique_ptr<OgaTokenizerStream>> streams;
     for (int i = 0; i < n; i++) {
@@ -1172,74 +1188,100 @@ static void run_inference_stream(
         if(generator->IsDone()) break;
         // Iterate through each sequence (0 to n-1) to collect results
         for (int i = 0; i < n; i++) {
-            // Get the full sequence data for the i-th choice
             const auto* seq_data = generator->GetSequenceData(i);
-            size_t seq_len = generator->GetSequenceCount(i);
-            // Safety check to ensure we have data
+            size_t      seq_len  = generator->GetSequenceCount(i);
             if (seq_len == 0) continue;
-            // Get the most recently generated token
-            int32_t new_token = seq_data[seq_len - 1];
-            bool hit_stop = false;
-#if TOKEN_BACKSTOP
-            if (stop_tokens.count(new_token)) {
-                hit_stop = true;
-            }
-#endif
-            const char* token_str = streams[i]->Decode(new_token);
-            if (token_str) {
-                generated_responses[i] += token_str;
-                std::string current_text = generated_responses[i];
 
-                // 1. DYNAMIC TOOL INTERCEPTION
-                if (has_tools && !tool_mode[i]) {
-                    size_t tag_pos = current_text.find("<tool_call>");
-                    if (tag_pos != std::string::npos) {
-                        tool_mode[i] = true;
-                        std::string text_before_tag = current_text.substr(0, tag_pos);
-                        if (text_before_tag.length() > previous_text[i].length()) {
-                            std::string new_text = text_before_tag.substr(previous_text[i].length());
-                            if (!new_text.empty()) {
-                                if (!on_token_generated(new_text, i, false)) break;
-                            }
-                        }
-                        previous_text[i] = current_text;
+            int32_t     new_token = seq_data[seq_len - 1];
+            bool        hit_stop  = false;
+        #if TOKEN_BACKSTOP
+            if (stop_tokens.count(new_token)) hit_stop = true;
+        #endif
+            const char* token_str = streams[i]->Decode(new_token);
+            if (!token_str) continue;
+
+            const std::string tok(token_str);
+            generated_responses[i] += tok;
+            SequenceState& ss = seq_state[i];
+
+            // ── Replacement for the old tool_mode / TEXT / BUFFERING logic ──
+
+            if (ss.state == ToolCallState::TEXT) {
+
+                if (!has_tools) {
+                    // Fast path — no tool detection needed at all
+                    if (!tok.empty() && tok.find("\xef\xbf\xbd") == std::string::npos) {
+                        ss.prev_text = generated_responses[i];
+                        if (hit_stop) break;
+                        if (!on_token_generated(tok, i, false)) break;
                     }
+                    continue;
                 }
-                
-                // 2. TOOL MODE (Silent JSON Buffering)
-                if (tool_mode[i]) {
-                    if (hit_stop || current_text.find("</tool_call>") != std::string::npos) {
-                        finished[i] = true;
-                        
-                        size_t start = current_text.find("<tool_call>");
-                        size_t end = current_text.find("</tool_call>");
-                        
-                        std::string json_str = "";
-                        if (start != std::string::npos && end != std::string::npos) {
-                            json_str = current_text.substr(start + 11, end - (start + 11));
-                        } else if (start != std::string::npos) {
-                            json_str = current_text.substr(start + 11);
-                        }
-                        
-                        if (!json_str.empty()) {
-                            if (!on_token_generated(json_str, i, true)) break;
+
+                // Append new text and scan for opening tag incrementally.
+                // We only need to check the tail — anything before ss.prev_text
+                // was already streamed.
+                std::string new_text = generated_responses[i].substr(ss.prev_text.size());
+
+                size_t tag_pos = new_text.find("<tool_call>");
+                if (tag_pos == std::string::npos) {
+                    // No tag yet — check for a partial match at the tail so we
+                    // don't accidentally stream the opening angle bracket and then
+                    // have to retract it.
+                    const std::string& open_tag = "<tool_call>";
+                    size_t flush_up_to = new_text.size();
+                    for (size_t plen = std::min(new_text.size(), open_tag.size() - 1);
+                         plen > 0; --plen) {
+                        if (new_text.substr(new_text.size() - plen) ==
+                            open_tag.substr(0, plen)) {
+                            flush_up_to = new_text.size() - plen;
+                            break;
                         }
                     }
-                    continue; // Suppress output
+                    // Stream everything up to the potential partial tag
+                    std::string safe = new_text.substr(0, flush_up_to);
+                    if (!safe.empty() && safe.find("\xef\xbf\xbd") == std::string::npos) {
+                        ss.prev_text += safe;
+                        if (hit_stop) break;
+                        if (!on_token_generated(safe, i, false)) break;
+                    }
+                } else {
+                    // Tag found — stream any text before it, then switch state
+                    std::string before_tag = new_text.substr(0, tag_pos);
+                    if (!before_tag.empty() &&
+                        before_tag.find("\xef\xbf\xbd") == std::string::npos) {
+                        if (!on_token_generated(before_tag, i, false)) break;
+                    }
+                    ss.prev_text = generated_responses[i]; // freeze cursor at tag
+                    ss.state     = ToolCallState::BUFFERING;
+                    // Extract anything after <tool_call> that arrived in this same token
+                    std::string after_tag = new_text.substr(tag_pos + 11);
+                    ss.body += after_tag;
                 }
-                
-                // 3. NORMAL TEXT STREAMING
-                if (!tool_mode[i]) {
-                    if (current_text.length() > previous_text[i].length()) {
-                        std::string new_text = current_text.substr(previous_text[i].length());
-                        
-                        // Normal token: Wait for complete UTF-8 characters
-                        if (new_text.find("\xef\xbf\xbd") == std::string::npos) {
-                            previous_text[i] = current_text;
-                            if (hit_stop) break; // Break out if stop hit and not in tool
-                            if (!on_token_generated(new_text, i, false)) break;
-                        }
+
+            } else if (ss.state == ToolCallState::BUFFERING) {
+
+                ss.body += tok;
+
+                size_t close_pos = ss.body.find("</tool_call>");
+                if (close_pos != std::string::npos || hit_stop) {
+                    // Trim to just the JSON between the tags
+                    std::string json_str = (close_pos != std::string::npos)
+                        ? ss.body.substr(0, close_pos)
+                        : ss.body;
+
+                    // Trim whitespace
+                    auto ltrim = json_str.find_first_not_of(" \t\r\n");
+                    auto rtrim = json_str.find_last_not_of(" \t\r\n");
+                    if (ltrim != std::string::npos)
+                        json_str = json_str.substr(ltrim, rtrim - ltrim + 1);
+
+                    if (!json_str.empty()) {
+                        ss.finished = true;
+                        on_token_generated(json_str, i, true); // is_tool = true
                     }
+                    ss.state = ToolCallState::TEXT; // reset for potential chained calls
+                    ss.body.clear();
                 }
             }
         }
@@ -1247,15 +1289,10 @@ static void run_inference_stream(
 
     // Flush remaining tool calls if abruptly ended (e.g., max length reached)
     for (int i = 0; i < n; i++) {
-        if (tool_mode[i] && !finished[i]) {
-            std::string current_text = generated_responses[i];
-            size_t start = current_text.find("<tool_call>");
-            if (start != std::string::npos) {
-                std::string json_str = current_text.substr(start + 11);
-                if (!json_str.empty()) {
-                    on_token_generated(json_str, i, true);
-                }
-            }
+        SequenceState& ss = seq_state[i];
+        if (ss.state == ToolCallState::BUFFERING && !ss.finished && !ss.body.empty()) {
+            // Model hit max_length mid-tool-call — flush whatever we have
+            on_token_generated(ss.body, i, true);
         }
     }
 }
