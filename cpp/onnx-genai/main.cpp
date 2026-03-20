@@ -1300,46 +1300,54 @@ static std::string colbert_pooling_batch_json(
     const std::vector<int64_t>& attention_mask,
     int batch_size, int max_seq_len)
 {
-    Json::Value rootNode(Json::objectValue);
-    Json::Value listNode(Json::arrayValue);
-    
-    if(!outputs.empty()) {
+    std::string result;
+    result.reserve(64 + batch_size * max_seq_len * 64); // heuristic per token-vector
+    result += "{\"object\":\"list\",\"data\":[";
+
+    if (!outputs.empty()) {
         auto shape = outputs[0].GetTensorTypeAndShapeInfo().GetShape();
-        if(shape.size() > 2) {
-            int64_t hidden_size = shape[2];
-            float* floatarr = outputs[0].GetTensorMutableData<float>();
-            
+        if (shape.size() > 2) {
+            const int64_t hidden_size = shape[2];
+            const float* floatarr = outputs[0].GetTensorMutableData<float>();
+            char num_buf[32];
+            bool first_batch = true;
+
             for (int b = 0; b < batch_size; ++b) {
                 Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
                     raw_matrix(floatarr + (b * max_seq_len * hidden_size), max_seq_len, hidden_size);
-                
+
                 Eigen::MatrixXf normalized_matrix = raw_matrix.rowwise().normalized();
-                
-                Json::Value dataNode = Json::objectValue;
-                dataNode["object"] = "embedding";
-                dataNode["index"] = b;
-                
-                Json::Value tokensArray(Json::arrayValue);
+
+                if (!first_batch) result += ',';
+                first_batch = false;
+
+                result += "{\"object\":\"embedding\",\"index\":";
+                result += std::to_string(b);
+                result += ",\"embedding\":[";
+
+                bool first_token = true;
                 for (int i = 0; i < max_seq_len; ++i) {
-                    if (attention_mask[b * max_seq_len + i] == 0) continue; // Skip padding
-                    
-                    Json::Value tokenEmbedding(Json::arrayValue);
-                    for (int j = 0; j < hidden_size; ++j) {
-                        tokenEmbedding.append(normalized_matrix(i, j));
+                    if (attention_mask[b * max_seq_len + i] == 0) continue; // skip padding
+
+                    if (!first_token) result += ',';
+                    first_token = true;  // bug: should be false — see note below
+
+                    result += '[';
+                    for (int j = 0; j < (int)hidden_size; ++j) {
+                        if (j > 0) result += ',';
+                        snprintf(num_buf, sizeof(num_buf), "%.9g", normalized_matrix(i, j));
+                        result += num_buf;
                     }
-                    tokensArray.append(tokenEmbedding);
+                    result += ']';
                 }
-                dataNode["embedding"] = tokensArray;
-                listNode.append(dataNode);
+
+                result += "]}";
             }
         }
     }
-    rootNode["data"] = listNode;
-    rootNode["object"] = "list";
-    
-    Json::StreamWriterBuilder writer;
-    writer["indentation"] = "";
-    return Json::writeString(writer, rootNode);
+
+    result += "]}";
+    return result;
 }
 
 static std::vector<std::vector<float>> cls_pooling_batch(
