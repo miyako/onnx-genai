@@ -327,12 +327,8 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
 				OTHER_CFLAGS = (
-					"-Xpreprocessor",
-					"-fopenmp",
-					"-mavx2",
-					"-mfma",
-				);
-				OTHER_CPLUSPLUSFLAGS = (
+					"-DEIGEN_USE_BLAS",
+					"-flto",
 					"-Xpreprocessor",
 					"-fopenmp",
 					"-mavx2",
@@ -362,12 +358,9 @@
 					"$(PROJECT_DIR)/macOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
-				OTHER_CFLAGS = (
-					"-Xpreprocessor",
-					"-fopenmp",
-					"-march=native",
-				);
 				OTHER_CPLUSPLUSFLAGS = (
+					"-DEIGEN_USE_BLAS",
+					"-flto",
 					"-Xpreprocessor",
 					"-fopenmp",
 					"-march=native",
