@@ -18,6 +18,7 @@
 		D18C696D2EFFE33600A4774A /* libtokenizers_cpp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C696C2EFFE33600A4774A /* libtokenizers_cpp.a */; };
 		D1C53D6A2EFB5F750013E31F /* libortextensions.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D1C53D642EFB5F630013E31F /* libortextensions.dylib */; };
 		D1C53D6B2EFB5F750013E31F /* libortextensions.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = D1C53D642EFB5F630013E31F /* libortextensions.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		D1E2123F2F6CE30D00D88A5F /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1E2123E2F6CE30D00D88A5F /* Accelerate.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -56,6 +57,7 @@
 		D18C696A2EFFE32E00A4774A /* libsentencepiece.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libsentencepiece.a; path = a/libsentencepiece.a; sourceTree = "<group>"; };
 		D18C696C2EFFE33600A4774A /* libtokenizers_cpp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtokenizers_cpp.a; path = a/libtokenizers_cpp.a; sourceTree = "<group>"; };
 		D1C53D642EFB5F630013E31F /* libortextensions.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libortextensions.dylib; path = macOS/libortextensions.dylib; sourceTree = "<group>"; };
+		D1E2123E2F6CE30D00D88A5F /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -71,6 +73,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D1E2123F2F6CE30D00D88A5F /* Accelerate.framework in Frameworks */,
 				D18C696D2EFFE33600A4774A /* libtokenizers_cpp.a in Frameworks */,
 				D18C696B2EFFE32E00A4774A /* libsentencepiece.a in Frameworks */,
 				D18C69692EFFE31600A4774A /* libtokenizers_c.a in Frameworks */,
@@ -88,6 +91,7 @@
 		D157F30B2E612DD500DF46D3 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				D1E2123E2F6CE30D00D88A5F /* Accelerate.framework */,
 				D18C696C2EFFE33600A4774A /* libtokenizers_cpp.a */,
 				D18C696A2EFFE32E00A4774A /* libsentencepiece.a */,
 				D18C69682EFFE31600A4774A /* libtokenizers_c.a */,
@@ -315,7 +319,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D164789E2E61216B00FC9914 /* onnx-genai.xcconfig */;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = x86_64;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Y69CWUC25B;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -326,13 +330,13 @@
 					"$(PROJECT_DIR)/macOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
-				OTHER_CFLAGS = (
+				OTHER_CFLAGS = "";
+				OTHER_CPLUSPLUSFLAGS = (
 					"-DEIGEN_USE_BLAS",
 					"-flto",
 					"-Xpreprocessor",
 					"-fopenmp",
-					"-mavx2",
-					"-mfma",
+					"-march=native",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
@@ -346,7 +350,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D164789E2E61216B00FC9914 /* onnx-genai.xcconfig */;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = x86_64;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Y69CWUC25B;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -363,7 +367,8 @@
 					"-flto",
 					"-Xpreprocessor",
 					"-fopenmp",
-					"-march=native",
+					"-mavx2",
+					"-mfma",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (

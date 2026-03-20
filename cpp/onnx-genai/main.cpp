@@ -1621,10 +1621,9 @@ static std::string run_embeddings(
 
         // 6. Pooling & Build JSON
         if (pooling_mode == POOLING_COLBERT) {
-            // Colbert requires specialized nested JSON construction
             return colbert_pooling_batch_json(outputs, flat_attention_mask, batch_size, max_seq_len);
         }
-        
+
         std::vector<std::vector<float>> batch_embeddings;
         switch (pooling_mode) {
             case POOLING_CLS:
@@ -1639,27 +1638,34 @@ static std::string run_embeddings(
                 break;
         }
 
-        Json::Value rootNode(Json::objectValue);
-        Json::Value listNode(Json::arrayValue);
-        
+        // Pre-size the result string to avoid repeated reallocations.
+        // Heuristic: each float ~10 chars + punctuation overhead.
+        std::string result;
+        const size_t embedding_dim = batch_embeddings.empty() ? 0 : batch_embeddings[0].size();
+        result.reserve(64 + batch_size * (32 + embedding_dim * 11));
+
+        result += "{\"object\":\"list\",\"data\":[";
+
+        char num_buf[32];
         for (int b = 0; b < batch_size; ++b) {
-            Json::Value dataNode = Json::objectValue;
-            Json::Value embeddingsNode(Json::arrayValue);
-            for (float val : batch_embeddings[b]) {
-                embeddingsNode.append(val);
+            if (b > 0) result += ',';
+            result += "{\"object\":\"embedding\",\"index\":";
+            result += std::to_string(b);
+            result += ",\"embedding\":[";
+
+            const auto& emb = batch_embeddings[b];
+            for (size_t i = 0; i < emb.size(); ++i) {
+                if (i > 0) result += ',';
+                // snprintf is locale-independent and always uses '.' as decimal separator
+                snprintf(num_buf, sizeof(num_buf), "%.9g", emb[i]);
+                result += num_buf;
             }
-            dataNode["object"] = "embedding";
-            dataNode["embedding"] = embeddingsNode;
-            dataNode["index"] = b;
-            listNode.append(dataNode);
+
+            result += "]}";
         }
-        
-        rootNode["data"] = listNode;
-        rootNode["object"] = "list";
-        
-        Json::StreamWriterBuilder writer;
-        writer["indentation"] = "";
-        return Json::writeString(writer, rootNode);
+
+        result += "]}";
+        return result;
 
     } catch (const std::exception& e) {
         throw; // Controller handles the JSON error formatting
@@ -1673,86 +1679,88 @@ static std::string run_embeddings_e2e(
                                       size_t num_input_nodes,
                                       std::vector<const char*>&   output_names_c_array,
                                       size_t num_output_nodes) {
-        
-    // Build JSON Response
-    Json::Value rootNode(Json::objectValue);
-    Json::Value listNode(Json::arrayValue);
-    int b = 0;
-    for (const auto& input : inputs) {
-        const char* input_strings[] = { input.c_str() };
-        size_t batch_size = 1;
-        int64_t input_shape[] = { (int64_t)batch_size };
-        const OrtApi& api = Ort::GetApi();
-        OrtAllocator* allocator;
-        OrtStatus* status = api.GetAllocatorWithDefaultOptions(&allocator);
+
+    const OrtApi& api = Ort::GetApi();
+
+    // Get allocator once — reused across all inputs
+    OrtAllocator* allocator = nullptr;
+    OrtStatus* status = api.GetAllocatorWithDefaultOptions(&allocator);
+    if (status != nullptr) {
+        api.ReleaseStatus(status);
+        return "{\"object\":\"list\",\"data\":[]}";
+    }
+
+    std::string result;
+    result.reserve(64 + inputs.size() * 512); // rough heuristic, grows if needed
+    result += "{\"object\":\"list\",\"data\":[";
+
+    char num_buf[32];
+    bool first = true;
+
+    for (int b = 0; b < (int)inputs.size(); ++b) {
+        const char* input_strings[] = { inputs[b].c_str() };
+        int64_t input_shape[] = { 1 };
+
         OrtValue* raw_tensor_ptr = nullptr;
         status = api.CreateTensorAsOrtValue(
-                                            allocator,                            // 1. Allocator
-                                            input_shape,                          // 2. Shape
-                                            1,                                    // 3. Shape Rank
-                                            ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING, // 4. Type
-                                            &raw_tensor_ptr                       // 5. Output
-                                            );
+            allocator,
+            input_shape,
+            1,
+            ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING,
+            &raw_tensor_ptr
+        );
         if (status != nullptr) {
             std::cerr << "CreateTensorAsOrtValue() failed: " << api.GetErrorMessage(status) << std::endl;
             api.ReleaseStatus(status);
-            api.ReleaseValue(raw_tensor_ptr);
-            return "";
+            if (raw_tensor_ptr) api.ReleaseValue(raw_tensor_ptr);
+            continue; // skip this input, keep going
         }
-        
-        status = api.FillStringTensor(
-                                      raw_tensor_ptr,                       // Tensor to fill
-                                      input_strings,                        // Array of C-strings
-                                      batch_size                            // Number of strings
-                                      );
+
+        status = api.FillStringTensor(raw_tensor_ptr, input_strings, 1);
         if (status != nullptr) {
             std::cerr << "FillStringTensor() failed: " << api.GetErrorMessage(status) << std::endl;
             api.ReleaseStatus(status);
-            return "";
+            api.ReleaseValue(raw_tensor_ptr);
+            continue;
         }
-        
+
         Ort::Value input_tensor(raw_tensor_ptr);
         auto outputs = session->Run(
-                                    Ort::RunOptions{nullptr},
-                                    input_names_c_array.data(),
-                                    &input_tensor,
-                                    num_input_nodes,
-                                    output_names_c_array.data(),
-                                    num_output_nodes
-                                    );
-        
-        size_t dimensions = outputs.size();
-        if(dimensions > 0) {
-            
-            auto output_info = outputs[0].GetTensorTypeAndShapeInfo();
-            float* floatarr  = outputs[0].GetTensorMutableData<float>();
-            
-            auto shape = output_info.GetShape();
-            if(shape.size() > 0) {
-                int64_t embedding_dim = shape[1];
-                // Create the std::vector
-                std::vector<float> embeddings(floatarr, floatarr + embedding_dim);
-                
-                Json::Value dataNode = Json::objectValue;
-                dataNode["object"] = "embedding";
-                Json::Value embeddingsNode(Json::arrayValue);
-                for (float val : embeddings) {
-                    embeddingsNode.append(val);
-                }
-                dataNode["embedding"] = embeddingsNode;
-                dataNode["index"] = b;
-                listNode.append(dataNode);
-            }
+            Ort::RunOptions{nullptr},
+            input_names_c_array.data(),
+            &input_tensor,
+            num_input_nodes,
+            output_names_c_array.data(),
+            num_output_nodes
+        );
+
+        if (outputs.empty()) continue;
+
+        auto output_info  = outputs[0].GetTensorTypeAndShapeInfo();
+        auto shape        = output_info.GetShape();
+        if (shape.size() < 2) continue;
+
+        const float* floatarr   = outputs[0].GetTensorMutableData<float>();
+        const int64_t embed_dim = shape[1];
+
+        if (!first) result += ',';
+        first = false;
+
+        result += "{\"object\":\"embedding\",\"index\":";
+        result += std::to_string(b);
+        result += ",\"embedding\":[";
+
+        for (int64_t i = 0; i < embed_dim; ++i) {
+            if (i > 0) result += ',';
+            snprintf(num_buf, sizeof(num_buf), "%.9g", floatarr[i]);
+            result += num_buf;
         }
-        b++;
+
+        result += "]}";
     }
-    
-    rootNode["data"] = listNode;
-    rootNode["object"] = "list";
-    
-    Json::StreamWriterBuilder writer;
-    writer["indentation"] = "";
-    return Json::writeString(writer, rootNode);
+
+    result += "]}";
+    return result;
 }
 
 static std::string run_colbert_reranking(
