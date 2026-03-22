@@ -23,10 +23,6 @@ static const std::unordered_map<std::string, RerankingMode> kModelTypeMap = {
     {"llama", RERANKING_LLM}, {"gemma", RERANKING_LLM}, {"gemma2", RERANKING_LLM}, {"phi3", RERANKING_LLM},
 };
 
-//LoadRerankingMode
-//LoadMaxPositionEmbeddings
-//LoadSpecialTokenIds
-
 static std::string LoadBytesFromFile(const std::string& path) {
     std::ifstream ifs(path, std::ios::in | std::ios::binary);
     if (!ifs) throw std::runtime_error("Could not open file: " + path);
@@ -39,6 +35,10 @@ static std::string LoadBytesFromFile(const std::string& path) {
     
     return data;
 }
+
+//LoadRerankingMode
+//LoadMaxPositionEmbeddings
+//LoadSpecialTokenIds
 
 static void LoadModelConfig(const std::string& model_path,
                             int& cls_id,
@@ -2518,19 +2518,29 @@ int main(int argc, OPTARG_T argv[]) {
                         output_names_c_array.push_back(name.c_str());
                     }
 #ifdef WIN32
+                    LoadModelConfig(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str())),
+                                    cls_id_embeddings,
+                                    sep_id_embeddings,
+                                    max_position_embeddings,
+                                    ranking_mode_embeddings);
                     embeddings_tokenizer = LoadTokenizer(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
-                    ranking_mode_embeddings = LoadRerankingMode(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
-                    LoadSpecialTokenIds(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()),
-                                        ranking_mode_embeddings,
-                                        cls_id_embeddings,
-                                        sep_id_embeddings);
+//                    ranking_mode_embeddings = LoadRerankingMode(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
+//                    LoadSpecialTokenIds(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()),
+//                                        ranking_mode_embeddings,
+//                                        cls_id_embeddings,
+//                                        sep_id_embeddings);
 #else
+                    LoadModelConfig(fs::path(embedding_model_path).parent_path(),
+                                    cls_id_embeddings,
+                                    sep_id_embeddings,
+                                    max_position_embeddings,
+                                    ranking_mode_embeddings);
                     embeddings_tokenizer = LoadTokenizer(fs::path(embedding_model_path).parent_path());
-                    ranking_mode_embeddings = LoadRerankingMode(fs::path(embedding_model_path).parent_path());
-                    LoadSpecialTokenIds(fs::path(embedding_model_path).parent_path(),
-                                        ranking_mode_embeddings,
-                                        cls_id_embeddings,
-                                        sep_id_embeddings);
+//                    ranking_mode_embeddings = LoadRerankingMode(fs::path(embedding_model_path).parent_path());
+//                    LoadSpecialTokenIds(fs::path(embedding_model_path).parent_path(),
+//                                        ranking_mode_embeddings,
+//                                        cls_id_embeddings,
+//                                        sep_id_embeddings);
 #endif
                     embedding_model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
@@ -2612,21 +2622,31 @@ int main(int argc, OPTARG_T argv[]) {
                         reranking_output_names_c_array.push_back(name.c_str());
                     }
 #ifdef WIN32
+                    LoadModelConfig(fs::path(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()),
+                                    rerank_cls_id,
+                                    rerank_sep_id,
+                                    rerank_max_position_embeddings,
+                                    ranking_mode);
                     rerank_tokenizer = LoadTokenizer(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
-                    rerank_max_position_embeddings = LoadMaxPositionEmbeddings(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
-                    ranking_mode = LoadRerankingMode(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
-                    LoadSpecialTokenIds(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()),
-                                        ranking_mode,
-                                        rerank_cls_id,
-                                        rerank_sep_id);
+//                    rerank_max_position_embeddings = LoadMaxPositionEmbeddings(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
+//                    ranking_mode = LoadRerankingMode(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
+//                    LoadSpecialTokenIds(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()),
+//                                        ranking_mode,
+//                                        rerank_cls_id,
+//                                        rerank_sep_id);
 #else
+                    LoadModelConfig(fs::path(embedding_model_path).parent_path(),
+                                    rerank_cls_id,
+                                    rerank_sep_id,
+                                    rerank_max_position_embeddings,
+                                    ranking_mode);
                     rerank_tokenizer = LoadTokenizer(fs::path(reranker_model_path).parent_path());
-                    rerank_max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(reranker_model_path).parent_path());
-                    ranking_mode = LoadRerankingMode(fs::path(reranker_model_path).parent_path());
-                    LoadSpecialTokenIds(fs::path(reranker_model_path).parent_path(),
-                                        ranking_mode,
-                                        rerank_cls_id,
-                                        rerank_sep_id);
+//                    rerank_max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(reranker_model_path).parent_path());
+//                    ranking_mode = LoadRerankingMode(fs::path(reranker_model_path).parent_path());
+//                    LoadSpecialTokenIds(fs::path(reranker_model_path).parent_path(),
+//                                        ranking_mode,
+//                                        rerank_cls_id,
+//                                        rerank_sep_id);
 #endif
                     reranking_model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
