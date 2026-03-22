@@ -2350,7 +2350,7 @@ int main(int argc, OPTARG_T argv[]) {
                         output_names_c_array.push_back(name.c_str());
                     }
 #ifdef WIN32
-                    LoadModelConfig(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str())),
+                    LoadModelConfig(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()),
                                     cls_id_embeddings,
                                     sep_id_embeddings,
                                     max_position_embeddings,
