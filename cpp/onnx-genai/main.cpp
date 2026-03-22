@@ -979,17 +979,32 @@ static void before_run_inference(
 }
 
 static std::unordered_set<int32_t> BuildStopTokenSet(OgaTokenizer* tokenizer) {
-    return {
-        tokenizer->ToTokenId("<|im_end|>"),
-        tokenizer->ToTokenId("<|endoftext|>"),
-        tokenizer->ToTokenId("<|im_start|>"),
-        tokenizer->ToTokenId("<|start_header_id|>"),
-        tokenizer->ToTokenId("<pad>"),
-        tokenizer->ToTokenId("<bos>"),
-        tokenizer->ToTokenId("<start_of_turn>"),
-        tokenizer->ToTokenId("<end_of_turn>"),
-        tokenizer->ToTokenId("<|end|>")
+    // ToTokenId returns this sentinel for unknown tokens.
+    // Typically -1 or 0 depending on the OGA version/model.
+    // We probe a string that cannot exist in any real vocabulary.
+    const int32_t UNKNOWN_SENTINEL = tokenizer->ToTokenId("<|__oga_unknown_probe__|>");
+
+    static const char* kCandidates[] = {
+        "<|im_end|>",
+        "<|endoftext|>",
+        "<|im_start|>",
+        "<|start_header_id|>",
+        "<pad>",
+        "<bos>",
+        "<start_of_turn>",
+        "<end_of_turn>",
+        "<|end|>"
     };
+
+    std::unordered_set<int32_t> stop_tokens;
+    for (const char* token_str : kCandidates) {
+        int32_t id = tokenizer->ToTokenId(token_str);
+        if (id != UNKNOWN_SENTINEL) {
+            stop_tokens.insert(id);
+            std::cout << "[StopTokens] '" << token_str << "' -> " << id << std::endl;
+        }
+    }
+    return stop_tokens;
 }
 
 static std::string run_inference(
