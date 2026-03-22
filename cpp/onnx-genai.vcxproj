@@ -94,7 +94,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;LIBESPEAK_NG_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>include;include\onnxruntime;include\json;include\custom_op;include\onnxruntime\core\session</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -106,7 +106,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>lib\windows64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>speechPlayer.lib;sonic.lib;espeak-ng.lib;ucd.lib;ntdll.lib;Userenv.lib;tokenizers_cpp.lib;sentencepiece.lib;tokenizers_c.lib;onnxruntime-genai.lib;onnxruntime.lib;ortextensions.lib;ortcustomops.lib;onnxruntime_providers_shared.lib;ocos_operators.lib;noexcep_operators.lib;jsoncpp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>espeak-ng.lib;ucd.lib;ntdll.lib;Userenv.lib;tokenizers_cpp.lib;sentencepiece.lib;tokenizers_c.lib;onnxruntime-genai.lib;onnxruntime.lib;ortextensions.lib;ortcustomops.lib;onnxruntime_providers_shared.lib;ocos_operators.lib;noexcep_operators.lib;jsoncpp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
@@ -127,7 +127,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_WIN64;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN64;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;LIBESPEAK_NG_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
