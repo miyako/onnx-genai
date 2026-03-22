@@ -109,6 +109,8 @@ extern "C" {
 #endif  /* _WINGETOPT_H_ */
 #endif
 
+#include <espeak-ng/speak_lib.h>
+
 enum PoolingMode {
     POOLING_MEAN,         // E5, BGE, Ruri, Sentence-BERT, Sarashina
     POOLING_COLBERT,      // JaColBERT / ColBERTv2

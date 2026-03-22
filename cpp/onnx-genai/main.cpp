@@ -1978,6 +1978,16 @@ static std::string MakeErrorJson(const std::string& message, const std::string& 
     return Json::writeString(w, root);
 }
 
+std::string Phonemize(const std::string& text) {
+    std::string result;
+    // espeak-ng writes phonemes via callback or returns them
+    // depending on which API you use — TextToPhonemes is simplest
+    const char* phonemes = espeak_TextToPhonemes(
+        (const void**)&text, espeakCHARS_UTF8, espeakPHONEMES_IPA);
+    if (phonemes) result = phonemes;
+    return result;
+}
+
 #pragma mark -
 
 int main(int argc, OPTARG_T argv[]) {
@@ -2464,6 +2474,9 @@ int main(int argc, OPTARG_T argv[]) {
             }
         }
     }
+    
+    espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, 0, nullptr, 0);
+    espeak_SetVoiceByName("en-us");
     
 //    const std::string instruction = "Given a web search query, retrieve relevant passages that answer the query";
 

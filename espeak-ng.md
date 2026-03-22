@@ -12,7 +12,3 @@ cmake .. -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX=../install
 cmake --build . --config Release
 cmake --install . --config Release
 ```
-
--DWITH_PCAUDIOLIB=OFF
--framework AudioUnit -framework CoreAudio
-winmm.lib

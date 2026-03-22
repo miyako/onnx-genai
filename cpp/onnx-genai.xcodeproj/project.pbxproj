@@ -18,6 +18,11 @@
 		D18C696D2EFFE33600A4774A /* libtokenizers_cpp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D18C696C2EFFE33600A4774A /* libtokenizers_cpp.a */; };
 		D1C53D6A2EFB5F750013E31F /* libortextensions.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D1C53D642EFB5F630013E31F /* libortextensions.dylib */; };
 		D1C53D6B2EFB5F750013E31F /* libortextensions.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = D1C53D642EFB5F630013E31F /* libortextensions.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		D1D3BC962F7027AC0000663F /* libespeak-ng.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D1D3BC952F7027AC0000663F /* libespeak-ng.a */; };
+		D1D3BC982F7029040000663F /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1D3BC972F7029030000663F /* AVFoundation.framework */; };
+		D1D3BC9A2F7029260000663F /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1D3BC992F7029260000663F /* Foundation.framework */; };
+		D1D3BC9C2F70296C0000663F /* Speech.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1D3BC9B2F70296C0000663F /* Speech.framework */; };
+		D1D3BC9E2F702D7B0000663F /* libucd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D1D3BC9D2F702D7B0000663F /* libucd.a */; };
 		D1E2123F2F6CE30D00D88A5F /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1E2123E2F6CE30D00D88A5F /* Accelerate.framework */; };
 /* End PBXBuildFile section */
 
@@ -57,6 +62,13 @@
 		D18C696A2EFFE32E00A4774A /* libsentencepiece.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libsentencepiece.a; path = a/libsentencepiece.a; sourceTree = "<group>"; };
 		D18C696C2EFFE33600A4774A /* libtokenizers_cpp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtokenizers_cpp.a; path = a/libtokenizers_cpp.a; sourceTree = "<group>"; };
 		D1C53D642EFB5F630013E31F /* libortextensions.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libortextensions.dylib; path = macOS/libortextensions.dylib; sourceTree = "<group>"; };
+		D1D3BC912F7027970000663F /* AudioUnit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioUnit.framework; path = System/Library/Frameworks/AudioUnit.framework; sourceTree = SDKROOT; };
+		D1D3BC932F7027A10000663F /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
+		D1D3BC952F7027AC0000663F /* libespeak-ng.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libespeak-ng.a"; path = "a/libespeak-ng.a"; sourceTree = "<group>"; };
+		D1D3BC972F7029030000663F /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		D1D3BC992F7029260000663F /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		D1D3BC9B2F70296C0000663F /* Speech.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Speech.framework; path = System/Library/Frameworks/Speech.framework; sourceTree = SDKROOT; };
+		D1D3BC9D2F702D7B0000663F /* libucd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libucd.a; path = a/libucd.a; sourceTree = "<group>"; };
 		D1E2123E2F6CE30D00D88A5F /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -73,14 +85,19 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D1D3BC9E2F702D7B0000663F /* libucd.a in Frameworks */,
+				D1D3BC9C2F70296C0000663F /* Speech.framework in Frameworks */,
+				D1D3BC9A2F7029260000663F /* Foundation.framework in Frameworks */,
+				D1D3BC982F7029040000663F /* AVFoundation.framework in Frameworks */,
 				D1E2123F2F6CE30D00D88A5F /* Accelerate.framework in Frameworks */,
+				D1D3BC962F7027AC0000663F /* libespeak-ng.a in Frameworks */,
 				D18C696D2EFFE33600A4774A /* libtokenizers_cpp.a in Frameworks */,
 				D18C696B2EFFE32E00A4774A /* libsentencepiece.a in Frameworks */,
 				D18C69692EFFE31600A4774A /* libtokenizers_c.a in Frameworks */,
 				D18C69672EFEEAC400A4774A /* libomp.a in Frameworks */,
+				D157F3122E612DD500DF46D3 /* libjsoncpp.a in Frameworks */,
 				D178B3E82EF9EC2E00F0F0A7 /* libonnxruntime.dylib in Frameworks */,
 				D1C53D6A2EFB5F750013E31F /* libortextensions.dylib in Frameworks */,
-				D157F3122E612DD500DF46D3 /* libjsoncpp.a in Frameworks */,
 				D178B3E42EF9E91B00F0F0A7 /* libonnxruntime-genai.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -91,6 +108,13 @@
 		D157F30B2E612DD500DF46D3 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				D1D3BC9D2F702D7B0000663F /* libucd.a */,
+				D1D3BC9B2F70296C0000663F /* Speech.framework */,
+				D1D3BC992F7029260000663F /* Foundation.framework */,
+				D1D3BC972F7029030000663F /* AVFoundation.framework */,
+				D1D3BC952F7027AC0000663F /* libespeak-ng.a */,
+				D1D3BC932F7027A10000663F /* CoreAudio.framework */,
+				D1D3BC912F7027970000663F /* AudioUnit.framework */,
 				D1E2123E2F6CE30D00D88A5F /* Accelerate.framework */,
 				D18C696C2EFFE33600A4774A /* libtokenizers_cpp.a */,
 				D18C696A2EFFE32E00A4774A /* libsentencepiece.a */,
