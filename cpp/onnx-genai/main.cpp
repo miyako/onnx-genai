@@ -10,6 +10,23 @@
 namespace fs = std::filesystem;
 using namespace tokenizers;
 
+struct ModelConfig {
+    RerankingMode ranking_mode;
+    int max_position_embeddings;
+    int cls_id, sep_id;
+};
+
+static const std::unordered_map<std::string, RerankingMode> kModelTypeMap = {
+    {"xlm-roberta", RERANKING_ROBERTA}, {"roberta", RERANKING_ROBERTA}, {"camembert", RERANKING_ROBERTA},
+    {"bert", RERANKING_BERT}, {"mpnet", RERANKING_BERT}, {"deberta-v2", RERANKING_BERT}, {"modernbert", RERANKING_MODERNBERT},
+    {"qwen3", RERANKING_LLM}, {"qwen2", RERANKING_LLM}, {"mistral", RERANKING_LLM},
+    {"llama", RERANKING_LLM}, {"gemma", RERANKING_LLM}, {"gemma2", RERANKING_LLM}, {"phi3", RERANKING_LLM},
+};
+
+//LoadRerankingMode
+//LoadMaxPositionEmbeddings
+//LoadSpecialTokenIds
+
 static std::string LoadBytesFromFile(const std::string& path) {
     std::ifstream ifs(path, std::ios::in | std::ios::binary);
     if (!ifs) throw std::runtime_error("Could not open file: " + path);
@@ -21,6 +38,95 @@ static std::string LoadBytesFromFile(const std::string& path) {
     ifs.read(&data[0], size);
     
     return data;
+}
+
+static void LoadModelConfig(const std::string& model_path,
+                            int& cls_id,
+                            int& sep_id,
+                            int& positionEmbeddings,
+                            RerankingMode& ranking_mode) {
+    
+    // --- 1. Set defaults ---
+    positionEmbeddings = 512;
+    ranking_mode       = RERANKING_ROBERTA;
+    cls_id             = 0;   // roberta default
+    sep_id             = 2;
+    
+    // --- 2. Resolve config.json path ---
+    fs::path config_path(model_path);
+    if (fs::is_directory(config_path)) {
+        config_path = config_path / "config.json";
+    }
+    if (!fs::exists(config_path) || config_path.extension() != ".json") {
+        return;
+    }
+    
+    // --- 3. Parse once ---
+    std::string json = LoadBytesFromFile(config_path.string());
+    Json::Value root;
+    Json::CharReaderBuilder builder;
+    std::string errors;
+    std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+    if (!reader->parse(json.c_str(), json.c_str() + json.size(), &root, &errors)) {
+        return;
+    }
+    if (!root.isObject()) {
+        return;
+    }
+    
+    // --- 4. Resolve ranking_mode from model_type ---
+    if (root.isMember("model_type") && root["model_type"].isString()) {
+        const std::string model_type = root["model_type"].asString();
+        auto it = kModelTypeMap.find(model_type);
+        if (it != kModelTypeMap.end()) {
+            ranking_mode = it->second;
+            std::cout << "[Config] model_type: " << model_type << std::endl;
+        } else {
+            std::cout << "[Config] model_type: '" << model_type
+            << "' unrecognized, defaulting to roberta" << std::endl;
+        }
+    }
+    
+    // --- 5. Set architecture-specific token ID defaults ---
+    switch (ranking_mode) {
+        case RERANKING_MODERNBERT:
+            cls_id = 50281;
+            sep_id = 50282;
+            break;
+        case RERANKING_ROBERTA:
+            cls_id = 0;
+            sep_id = 2;
+            break;
+        case RERANKING_BERT:
+        default:
+            cls_id = 101;
+            sep_id = 102;
+            break;
+    }
+    
+    // --- 6. Override token IDs from config if present ---
+    if (root.isMember("cls_token_id") && root["cls_token_id"].isNumeric()) {
+        cls_id = root["cls_token_id"].asInt();
+    } else if (root.isMember("bos_token_id") && root["bos_token_id"].isNumeric()) {
+        cls_id = root["bos_token_id"].asInt();
+    }
+    
+    if (root.isMember("sep_token_id") && root["sep_token_id"].isNumeric()) {
+        sep_id = root["sep_token_id"].asInt();
+    } else if (root.isMember("eos_token_id") && root["eos_token_id"].isNumeric()) {
+        sep_id = root["eos_token_id"].asInt();
+    }
+    
+    // --- 7. max_position_embeddings ---
+    if (root.isMember("max_position_embeddings") && root["max_position_embeddings"].isNumeric()) {
+        positionEmbeddings = root["max_position_embeddings"].asInt();
+    }
+    
+    std::cout << "[Config] ranking_mode=" << ranking_mode
+    << " cls=" << cls_id
+    << " sep=" << sep_id
+    << " max_pos=" << positionEmbeddings
+    << std::endl;
 }
 
 static void LoadSpecialTokenIds(const std::string& model_path,
@@ -190,13 +296,6 @@ std::string LoadChatTemplate(const std::string& model_path) {
     
     return "";
 }
-
-static const std::unordered_map<std::string, RerankingMode> kModelTypeMap = {
-    {"xlm-roberta", RERANKING_ROBERTA}, {"roberta", RERANKING_ROBERTA}, {"camembert", RERANKING_ROBERTA},
-    {"bert", RERANKING_BERT}, {"mpnet", RERANKING_BERT}, {"deberta-v2", RERANKING_BERT}, {"modernbert", RERANKING_MODERNBERT},
-    {"qwen3", RERANKING_LLM}, {"qwen2", RERANKING_LLM}, {"mistral", RERANKING_LLM},
-    {"llama", RERANKING_LLM}, {"gemma", RERANKING_LLM}, {"gemma2", RERANKING_LLM}, {"phi3", RERANKING_LLM},
-};
 
 static // Helper to read the template file from the model directory
 RerankingMode LoadRerankingMode(const std::string& model_path) {
