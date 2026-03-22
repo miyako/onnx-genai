@@ -1210,6 +1210,26 @@ static void run_inference_stream(
                     std::string_view after_tag = new_text.substr(tag_pos + 11);
                     ss.body += after_tag;
                 }
+            } else if (ss.state == ToolCallState::BUFFERING) {
+                ss.body += tok;
+                size_t search_from = ss.body.size() > 12 ? ss.body.size() - 12 : 0;
+                size_t close_pos = ss.body.find("</tool_call>", search_from);
+                if (close_pos != std::string::npos || hit_stop) {
+                    std::string json_str = (close_pos != std::string::npos)
+                        ? ss.body.substr(0, close_pos)
+                        : ss.body;
+                    // trim whitespace
+                    auto ltrim = json_str.find_first_not_of(" \t\r\n");
+                    auto rtrim = json_str.find_last_not_of(" \t\r\n");
+                    if (ltrim != std::string::npos)
+                        json_str = json_str.substr(ltrim, rtrim - ltrim + 1);
+                    if (!json_str.empty()) {
+                        ss.finished = true;
+                        on_token_generated(json_str, i, true);
+                    }
+                    ss.state = ToolCallState::TEXT;
+                    ss.body.clear();
+                }
             }
             
         }
