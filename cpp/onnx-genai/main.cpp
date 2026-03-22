@@ -49,8 +49,6 @@ static std::string LoadBytesFromFile(const std::string& path) {
     return data;
 }
 
-//LoadMaxPositionEmbeddings
-
 static void LoadModelConfig(const std::string& model_path,
                             int& cls_id,
                             int& sep_id,
@@ -238,45 +236,6 @@ std::string LoadChatTemplate(const std::string& model_path) {
     }
     
     return "";
-}
-
-static // Helper to read the template file from the model directory
-int LoadMaxPositionEmbeddings(const std::string& model_path) {
-    fs::path path(model_path);
-    fs::path config_path = path;
-
-    if (fs::is_directory(path)) {
-        config_path = path / "config.json";
-    }
-    
-    if (fs::exists(config_path) && config_path.extension() == ".json") {
-        
-        std::string json = LoadBytesFromFile(config_path.string());
-        
-        Json::Value root;
-        Json::CharReaderBuilder builder;
-        std::string errors;
-        
-        std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-        bool parse = reader->parse(json.c_str(),
-                                   json.c_str() + json.size(),
-                                   &root,
-                                   &errors);
-        
-        if(parse)
-        {
-            if(root.isObject())
-            {
-                Json::Value max_position_embeddings_node = root["max_position_embeddings"];
-                if(max_position_embeddings_node.isNumeric())
-                {
-                    return  max_position_embeddings_node.asInt();
-                }
-            }
-        }
-    }
-    
-    return 512;
 }
 
 static // Unified Loader
@@ -2249,11 +2208,6 @@ int main(int argc, OPTARG_T argv[]) {
 #endif
                     Ort::SessionOptions session_options;
                     session_options.SetIntraOpNumThreads(intra_op_threads);
-#ifdef WIN32
-                    max_position_embeddings = LoadMaxPositionEmbeddings(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
-#else
-                    max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(embedding_model_path).parent_path());
-#endif
 #if defined(__APPLE__)
                     // ── 1. Throwaway session — CPU only, just to read dim names ──────────────
                     std::vector<std::string> sym_dim_names;
@@ -2476,7 +2430,6 @@ int main(int argc, OPTARG_T argv[]) {
                                     rerank_max_position_embeddings,
                                     ranking_mode);
                     rerank_tokenizer = LoadTokenizer(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
-//                    rerank_max_position_embeddings = LoadMaxPositionEmbeddings(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
 #else
                     LoadModelConfig(fs::path(reranker_model_path).parent_path(),
                                     rerank_cls_id,
@@ -2484,7 +2437,6 @@ int main(int argc, OPTARG_T argv[]) {
                                     rerank_max_position_embeddings,
                                     ranking_mode);
                     rerank_tokenizer = LoadTokenizer(fs::path(reranker_model_path).parent_path());
-//                    rerank_max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(reranker_model_path).parent_path());
 #endif
                     reranking_model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
