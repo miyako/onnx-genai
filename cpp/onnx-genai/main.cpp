@@ -488,44 +488,32 @@ static std::string wchar_to_utf8(const wchar_t* wstr) {
 #endif
 
 Eigen::MatrixXf mean_pool_batch(
-    const std::vector<Eigen::MatrixXf>& hidden_batch,
-    const std::vector<Eigen::VectorXi>& mask_batch
+    const float*                     flat_hidden,   // raw ORT output pointer
+    const std::vector<int64_t>&      attention_mask,
+    int                              batch_size,
+    int                              max_seq_len,
+    int                              hidden_dim
 ) {
-    // 1. Safety Checks
-    if (hidden_batch.empty()) {
-        return Eigen::MatrixXf(0, 0);
-    }
-    if (hidden_batch.size() != mask_batch.size()) {
-        throw std::invalid_argument("Batch size mismatch between hidden states and masks.");
-    }
-
-    long batch_size = hidden_batch.size();
-    long hidden_dim = hidden_batch[0].cols();
-
-    // Allocate the result matrix once
     Eigen::MatrixXf out(batch_size, hidden_dim);
 
-    // 2. Parallel Processing (OpenMP)
-    // This distributes the rows across available CPU cores.
     #pragma omp parallel for
     for (long i = 0; i < batch_size; ++i) {
-        
-        // --- Step A: Optimized Mean Pooling (Inlined) ---
-        // We write directly into out.row(i) to avoid creating temporary VectorXf objects.
-        
-        const auto& hidden = hidden_batch[i];
-        const auto& mask = mask_batch[i];
 
-        // Convert mask to float for calculation
-        Eigen::VectorXf mask_f = mask.cast<float>();
+        // Zero-cost view into the correct row-slice of the flat buffer
+        Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+            hidden(flat_hidden + i * max_seq_len * hidden_dim, max_seq_len, hidden_dim);
+
+        // Build mask vector for this item
+        Eigen::VectorXf mask_f(max_seq_len);
+        for (int j = 0; j < max_seq_len; ++j) {
+            mask_f(j) = static_cast<float>(attention_mask[i * max_seq_len + j]);
+        }
+
         float count = mask_f.sum();
-
-        if (count > 1e-9f) { // Use a small epsilon instead of 0.0f
-            // Matrix Mult: [1, seq] * [seq, dim] -> [1, dim]
+        if (count > 1e-9f) {
             out.row(i) = mask_f.transpose() * hidden;
-            out.row(i) /= count; // Average
+            out.row(i) /= count;
         } else {
-            // Handle edge case: empty mask -> zero vector
             out.row(i).setZero();
         }
     }
@@ -1521,34 +1509,22 @@ static std::vector<std::vector<float>> mean_pooling_batch(
 {
     std::vector<std::vector<float>> batch_embeddings;
     if (outputs.empty()) return batch_embeddings;
-        
+
     auto shape = outputs[0].GetTensorTypeAndShapeInfo().GetShape();
     if (shape.size() <= 2) return batch_embeddings;
-    
-    int64_t hidden_size = shape[2];
-    float* floatarr = outputs[0].GetTensorMutableData<float>();
-    
-    std::vector<Eigen::MatrixXf> hidden_batch_vec;
-    std::vector<Eigen::VectorXi> mask_batch_vec;
-    
-    for (int b = 0; b < batch_size; ++b) {
-        Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-            mapped_hidden(floatarr + (b * max_seq_len * hidden_size), max_seq_len, hidden_size);
-        hidden_batch_vec.push_back(mapped_hidden);
-        
-        Eigen::VectorXi mask_vec(max_seq_len);
-        for(int i = 0; i < max_seq_len; ++i) {
-            mask_vec(i) = (int)attention_mask[b * max_seq_len + i];
-        }
-        mask_batch_vec.push_back(mask_vec);
-    }
-    
-    // Process the entire batch using OpenMP optimized function
-    Eigen::MatrixXf pooled = mean_pool_batch(hidden_batch_vec, mask_batch_vec); // Returns [Batch, Hidden]
-    
+
+    int64_t hidden_dim = shape[2];
+    const float* floatarr = outputs[0].GetTensorMutableData<float>();
+
+    // Pass the raw pointer — no matrix copies at all
+    Eigen::MatrixXf pooled = mean_pool_batch(
+        floatarr, attention_mask, batch_size, max_seq_len, (int)hidden_dim);
+
     for (int b = 0; b < batch_size; ++b) {
         Eigen::VectorXf final_embedding = l2_normalize(pooled.row(b));
-        batch_embeddings.push_back(std::vector<float>(final_embedding.data(), final_embedding.data() + final_embedding.size()));
+        batch_embeddings.push_back(
+            std::vector<float>(final_embedding.data(),
+                               final_embedding.data() + final_embedding.size()));
     }
     return batch_embeddings;
 }
