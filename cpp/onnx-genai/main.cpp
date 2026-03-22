@@ -16,6 +16,19 @@ struct ModelConfig {
     int cls_id, sep_id;
 };
 
+enum class ToolCallState {
+    TEXT,       // normal streaming — emit tokens immediately
+    TAG_OPEN,   // inside a partial <tool_call> prefix match
+    BUFFERING,  // confirmed open tag — accumulate JSON body silently
+};
+
+struct SequenceState {
+    ToolCallState state    = ToolCallState::TEXT;
+    std::string   body;         // JSON accumulation buffer (BUFFERING only)
+    size_t        sent_offset = 0; // replaces prev_text entirely
+    bool          finished   = false;
+};
+
 static const std::unordered_map<std::string, RerankingMode> kModelTypeMap = {
     {"xlm-roberta", RERANKING_ROBERTA}, {"roberta", RERANKING_ROBERTA}, {"camembert", RERANKING_ROBERTA},
     {"bert", RERANKING_BERT}, {"mpnet", RERANKING_BERT}, {"deberta-v2", RERANKING_BERT}, {"modernbert", RERANKING_MODERNBERT},
@@ -215,20 +228,6 @@ struct RerankResult {
     int index;          // Original index in the document list
     float score;        // Relevance score
     std::string text;   // (Optional) The document text
-};
-
-enum class ToolCallState {
-    TEXT,       // normal streaming — emit tokens immediately
-    TAG_OPEN,   // inside a partial <tool_call> prefix match
-    BUFFERING,  // confirmed open tag — accumulate JSON body silently
-};
-
-struct SequenceState {
-    ToolCallState state    = ToolCallState::TEXT;
-    std::string   pending  ; // partial tag match buffer (TAG_OPEN)
-    std::string   body     ; // JSON accumulation buffer (BUFFERING)
-    std::string   prev_text; // last flushed cumulative text (for delta extraction)
-    bool          finished = false;
 };
 
 struct RerankItem {
@@ -1296,81 +1295,51 @@ static void run_inference_stream(
             if (ss.state == ToolCallState::TEXT) {
 
                 if (!has_tools) {
-                    // Fast path — no tool detection needed at all
+                    // Fast path: just send the new token directly, no substr at all
                     if (!tok.empty() && tok.find("\xef\xbf\xbd") == std::string::npos) {
-                        ss.prev_text = generated_responses[i];
-                        if (hit_stop) break;
+                        ss.sent_offset = generated_responses[i].size();
                         if (!on_token_generated(tok, i, false)) break;
                     }
                     continue;
                 }
 
-                // Append new text and scan for opening tag incrementally.
-                // We only need to check the tail — anything before ss.prev_text
-                // was already streamed.
-                std::string new_text = generated_responses[i].substr(ss.prev_text.size());
+                // Unsent tail — a string_view, zero allocation
+                const std::string& full = generated_responses[i];
+                std::string_view new_text(full.data() + ss.sent_offset,
+                                          full.size() - ss.sent_offset);
 
                 size_t tag_pos = new_text.find("<tool_call>");
                 if (tag_pos == std::string::npos) {
-                    // No tag yet — check for a partial match at the tail so we
-                    // don't accidentally stream the opening angle bracket and then
-                    // have to retract it.
-                    const std::string& open_tag = "<tool_call>";
+                    // Check for partial tag match at the tail
+                    const std::string_view open_tag = "<tool_call>";
                     size_t flush_up_to = new_text.size();
                     for (size_t plen = std::min(new_text.size(), open_tag.size() - 1);
                          plen > 0; --plen) {
-                        if (new_text.substr(new_text.size() - plen) ==
-                            open_tag.substr(0, plen)) {
+                        if (new_text.substr(new_text.size() - plen) == open_tag.substr(0, plen)) {
                             flush_up_to = new_text.size() - plen;
                             break;
                         }
                     }
-                    // Stream everything up to the potential partial tag
-                    std::string safe = new_text.substr(0, flush_up_to);
+                    std::string_view safe = new_text.substr(0, flush_up_to);
                     if (!safe.empty() && safe.find("\xef\xbf\xbd") == std::string::npos) {
-                        ss.prev_text += safe;
-                        if (hit_stop) break;
-                        if (!on_token_generated(safe, i, false)) break;
+                        ss.sent_offset += safe.size();  // advance cursor, no copy
+                        if (!on_token_generated(std::string(safe), i, false)) break;
                     }
                 } else {
-                    // Tag found — stream any text before it, then switch state
-                    std::string before_tag = new_text.substr(0, tag_pos);
+                    // Stream text before the tag
+                    std::string_view before_tag = new_text.substr(0, tag_pos);
                     if (!before_tag.empty() &&
                         before_tag.find("\xef\xbf\xbd") == std::string::npos) {
-                        if (!on_token_generated(before_tag, i, false)) break;
+                        on_token_generated(std::string(before_tag), i, false);
                     }
-                    ss.prev_text = generated_responses[i]; // freeze cursor at tag
-                    ss.state     = ToolCallState::BUFFERING;
-                    // Extract anything after <tool_call> that arrived in this same token
-                    std::string after_tag = new_text.substr(tag_pos + 11);
+                    // Freeze cursor at the tag position — no string copy
+                    ss.sent_offset = full.size();
+                    ss.state = ToolCallState::BUFFERING;
+                    std::string_view after_tag = new_text.substr(tag_pos + 11);
                     ss.body += after_tag;
                 }
-
-            } else if (ss.state == ToolCallState::BUFFERING) {
-
-                ss.body += tok;
-
-                size_t close_pos = ss.body.find("</tool_call>");
-                if (close_pos != std::string::npos || hit_stop) {
-                    // Trim to just the JSON between the tags
-                    std::string json_str = (close_pos != std::string::npos)
-                        ? ss.body.substr(0, close_pos)
-                        : ss.body;
-
-                    // Trim whitespace
-                    auto ltrim = json_str.find_first_not_of(" \t\r\n");
-                    auto rtrim = json_str.find_last_not_of(" \t\r\n");
-                    if (ltrim != std::string::npos)
-                        json_str = json_str.substr(ltrim, rtrim - ltrim + 1);
-
-                    if (!json_str.empty()) {
-                        ss.finished = true;
-                        on_token_generated(json_str, i, true); // is_tool = true
-                    }
-                    ss.state = ToolCallState::TEXT; // reset for potential chained calls
-                    ss.body.clear();
-                }
             }
+            
         }
     }
 
