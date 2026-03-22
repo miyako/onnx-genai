@@ -23,6 +23,53 @@ static std::string LoadBytesFromFile(const std::string& path) {
     return data;
 }
 
+// ─── TTS State ────────────────────────────────────────────────────────────────
+// Each voice is stored as a flat float array of shape [-1, 1, 256].
+// To get the style vector for a given token sequence of length L:
+//   style = voice_data[L * 256 ... (L+1) * 256]   (shape [1, 256])
+// The number of available length steps = voice_data.size() / 256
+struct KokoroVoice {
+    std::string            name;
+    std::vector<float>     data;      // flat float32, size = steps * 256
+    size_t                 steps;     // data.size() / 256
+};
+
+// ─── Load vocab from config.json ──────────────────────────────────────────────
+// config.json has a "vocab" key: { "phoneme_char": token_id, ... }
+static std::unordered_map<std::string, int64_t>
+LoadKokoroVocab(const std::string& model_dir) {
+    std::unordered_map<std::string, int64_t> vocab;
+
+    fs::path config_path = fs::path(model_dir) / "config.json";
+    if (!fs::exists(config_path)) {
+        std::cerr << "[TTS] config.json not found in " << model_dir << std::endl;
+        return vocab;
+    }
+
+    std::string json = LoadBytesFromFile(config_path.string());
+    Json::Value root;
+    Json::CharReaderBuilder builder;
+    std::string errors;
+    std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+    if (!reader->parse(json.c_str(), json.c_str() + json.size(), &root, &errors)) {
+        std::cerr << "[TTS] Failed to parse config.json: " << errors << std::endl;
+        return vocab;
+    }
+
+    // vocab lives under root["vocab"]
+    if (!root.isMember("vocab") || !root["vocab"].isObject()) {
+        std::cerr << "[TTS] config.json has no 'vocab' object." << std::endl;
+        return vocab;
+    }
+
+    const Json::Value& v = root["vocab"];
+    for (const auto& key : v.getMemberNames()) {
+        vocab[key] = v[key].asInt64();
+    }
+    std::cout << "[TTS] Loaded vocab: " << vocab.size() << " entries." << std::endl;
+    return vocab;
+}
+
 struct ModelConfig {
     RerankingMode ranking_mode;
     int max_position_embeddings;
@@ -42,71 +89,75 @@ struct SequenceState {
     bool          finished   = false;
 };
 
-// Call once at startup, before svr.listen
-static bool InitEspeak() {
-    int result = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, 0, nullptr, 0);
+// ─── espeak-ng init ────────────────────────────────────────────────────────────
+static bool InitEspeak(const std::string& model_dir) {
+    
+    fs::path data_path = fs::path(model_dir) / "espeak-ng-data";
+    std::string data_path_str = data_path.string();
+    const char* path = fs::exists(data_path) ? data_path_str.c_str() : nullptr;
+    
+    int result = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, 0, path, 0);
     if (result < 0) {
         std::cerr << "[TTS] espeak_Initialize failed: " << result << std::endl;
         return false;
     }
     espeak_SetVoiceByName("en-us");
-    espeak_SetParameter(espeakRATE,    175, 0);
-    espeak_SetParameter(espeakPITCH,   50,  0);
-    espeak_SetParameter(espeakVOLUME, 100,  0);
+    espeak_SetParameter(espeakRATE,   175, 0);
+    espeak_SetParameter(espeakPITCH,   50, 0);
+    espeak_SetParameter(espeakVOLUME, 100, 0);
     std::cout << "[TTS] espeak-ng initialized." << std::endl;
     return true;
 }
 
-// Converts text to IPA phoneme string via espeak-ng
+// ─── Text → IPA phoneme string ────────────────────────────────────────────────
 static std::string TextToPhonemes(const std::string& text) {
     std::string result;
-
-    // espeak_TextToPhonemes works on a pointer-to-pointer;
-    // it advances the pointer as it consumes input.
-    const char* input = text.c_str();
-    const void* ptr   = input;
-
+    const void* ptr = text.c_str();
     while (ptr && *(const char*)ptr != '\0') {
-        const char* phonemes = espeak_TextToPhonemes(
-            &ptr,
-            espeakCHARS_UTF8,
-            espeakPHONEMES_IPA
-        );
-        if (phonemes) result += phonemes;
+        const char* ph = espeak_TextToPhonemes(
+            &ptr, espeakCHARS_UTF8, espeakPHONEMES_IPA);
+        if (ph) result += ph;
     }
     return result;
 }
 
-// Maps IPA phoneme string to Kokoro token IDs using vocab.json
-// vocab.json format: { "a": 1, "b": 2, "i": 3, ... }
+// ─── IPA phoneme string → token IDs ──────────────────────────────────────────
+// Tokens are wrapped with pad token 0 at start and end.
+// The "inner" token count (without pads) is what indexes the style vector.
 static std::vector<int64_t> PhonemesToTokens(
     const std::string& phonemes,
     const std::unordered_map<std::string, int64_t>& vocab)
 {
-    std::vector<int64_t> ids;
-    ids.push_back(0); // BOS
+    std::vector<int64_t> inner; // tokens without BOS/EOS pads
 
-    // Walk UTF-8 — IPA characters can be multi-byte
+    // Walk UTF-8 — IPA chars can be 1-3 bytes
     size_t i = 0;
     while (i < phonemes.size()) {
-        // Try longest match first (up to 3 bytes for most IPA chars)
         bool matched = false;
         for (int len = 3; len >= 1; --len) {
-            if (i + len > phonemes.size()) continue;
+            if (i + (size_t)len > phonemes.size()) continue;
             std::string ch = phonemes.substr(i, len);
             auto it = vocab.find(ch);
             if (it != vocab.end()) {
-                ids.push_back(it->second);
+                inner.push_back(it->second);
                 i += len;
                 matched = true;
                 break;
             }
         }
-        if (!matched) ++i; // skip unknown character
+        if (!matched) ++i; // skip unknown
     }
 
-    ids.push_back(0); // EOS
-    return ids;
+    // Wrap with pad token 0, enforce max context 510 inner tokens
+    if (inner.size() > 510) inner.resize(510);
+
+    std::vector<int64_t> tokens;
+    tokens.reserve(inner.size() + 2);
+    tokens.push_back(0); // BOS pad
+    tokens.insert(tokens.end(), inner.begin(), inner.end());
+    tokens.push_back(0); // EOS pad
+
+    return tokens;
 }
 
 // Loads vocab.json: { "phoneme": token_id, ... }
@@ -131,50 +182,60 @@ LoadVocab(const std::string& model_dir) {
     return vocab;
 }
 
-// Loads voices.json + voices.bin
-// voices.json: { "af_heart": 0, "af_sky": 1, ... }
-// voices.bin:  flat float32 array, [num_voices, style_dim]
-static std::unordered_map<std::string, std::vector<float>>
-LoadKokoroVoices(const std::string& model_dir, size_t style_dim = 256) {
-    std::unordered_map<std::string, std::vector<float>> voices;
+// ─── Load voices from individual .bin files in voices/ subdirectory ───────────
+// Each file is raw float32 with shape [-1, 1, 256].
+// The filename stem is the voice name (e.g. "af_heart.bin" → "af_heart").
+static std::unordered_map<std::string, KokoroVoice>
+LoadKokoroVoices(const std::string& model_dir) {
+    std::unordered_map<std::string, KokoroVoice> voices;
 
-    fs::path json_path = fs::path(model_dir) / "voices.json";
-    fs::path bin_path  = fs::path(model_dir) / "voices.bin";
-    if (!fs::exists(json_path) || !fs::exists(bin_path)) {
-        std::cerr << "[TTS] voices.json or voices.bin not found in "
-                  << model_dir << std::endl;
+    fs::path voices_dir = fs::path(model_dir) / "voices";
+    if (!fs::exists(voices_dir) || !fs::is_directory(voices_dir)) {
+        std::cerr << "[TTS] voices/ directory not found in " << model_dir << std::endl;
         return voices;
     }
 
-    std::string json = LoadBytesFromFile(json_path.string());
-    Json::Value root;
-    Json::CharReaderBuilder builder;
-    std::string errors;
-    std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-    if (!reader->parse(json.c_str(), json.c_str() + json.size(), &root, &errors))
-        return voices;
+    for (const auto& entry : fs::directory_iterator(voices_dir)) {
+        if (!entry.is_regular_file()) continue;
+        if (entry.path().extension() != ".bin") continue;
 
-    std::string bin = LoadBytesFromFile(bin_path.string());
-    const float* data = reinterpret_cast<const float*>(bin.data());
-    size_t total_floats = bin.size() / sizeof(float);
+        std::string voice_name = entry.path().stem().string();
+        std::string raw = LoadBytesFromFile(entry.path().string());
 
-    for (const auto& name : root.getMemberNames()) {
-        int idx = root[name].asInt();
-        size_t offset = (size_t)idx * style_dim;
-        if (offset + style_dim > total_floats) continue;
-        voices[name] = std::vector<float>(data + offset, data + offset + style_dim);
+        if (raw.size() % sizeof(float) != 0) {
+            std::cerr << "[TTS] Voice file " << voice_name
+                      << " has unexpected size " << raw.size() << std::endl;
+            continue;
+        }
+
+        KokoroVoice voice;
+        voice.name  = voice_name;
+        size_t count = raw.size() / sizeof(float);
+        voice.data.resize(count);
+        std::memcpy(voice.data.data(), raw.data(), raw.size());
+        voice.steps = count / 256; // each step is 256 floats
+
+        if (voice.steps == 0) {
+            std::cerr << "[TTS] Voice " << voice_name << " has no steps." << std::endl;
+            continue;
+        }
+
+        voices[voice_name] = std::move(voice);
+        std::cout << "[TTS] Loaded voice '" << voice_name
+                  << "' steps=" << voices[voice_name].steps << std::endl;
     }
     std::cout << "[TTS] Loaded " << voices.size() << " voices." << std::endl;
     return voices;
 }
 
+// ─── WAV encoder ──────────────────────────────────────────────────────────────
 static std::vector<uint8_t> FloatPCMToWav(
     const float* samples, size_t num_samples, int sample_rate)
 {
     std::vector<int16_t> pcm(num_samples);
     for (size_t i = 0; i < num_samples; ++i) {
-        float clamped = std::max(-1.0f, std::min(1.0f, samples[i]));
-        pcm[i] = static_cast<int16_t>(clamped * 32767.0f);
+        float c = std::max(-1.0f, std::min(1.0f, samples[i]));
+        pcm[i] = static_cast<int16_t>(c * 32767.0f);
     }
 
     uint32_t data_size  = (uint32_t)(num_samples * sizeof(int16_t));
@@ -184,8 +245,7 @@ static std::vector<uint8_t> FloatPCMToWav(
     wav.reserve(44 + data_size);
 
     auto w2 = [&](uint16_t v) {
-        wav.push_back(v & 0xFF);
-        wav.push_back(v >> 8);
+        wav.push_back(v & 0xFF); wav.push_back(v >> 8);
     };
     auto w4 = [&](uint32_t v) {
         wav.push_back( v        & 0xFF);
@@ -203,64 +263,79 @@ static std::vector<uint8_t> FloatPCMToWav(
     w2(1);                          // PCM
     w2(1);                          // mono
     w4((uint32_t)sample_rate);
-    w4((uint32_t)sample_rate * 2);  // byte rate
+    w4((uint32_t)sample_rate * 2);  // byte rate (1 ch * 2 bytes)
     w2(2);                          // block align
     w2(16);                         // bits per sample
     ws("data"); w4(data_size);
 
-    const uint8_t* pcm_bytes = reinterpret_cast<const uint8_t*>(pcm.data());
-    wav.insert(wav.end(), pcm_bytes, pcm_bytes + data_size);
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(pcm.data());
+    wav.insert(wav.end(), p, p + data_size);
     return wav;
 }
 
+// ─── Core TTS inference ───────────────────────────────────────────────────────
 static std::vector<uint8_t> run_tts(
-    Ort::Session*                                    session,
-    const std::string&                               text,
-    const std::vector<float>&                        voice_embedding,
-    float                                            speed,
-    const std::unordered_map<std::string, int64_t>&  vocab,
-    std::vector<const char*>&                        input_names,
-    size_t                                           num_inputs,
-    std::vector<const char*>&                        output_names,
-    size_t                                           num_outputs)
+    Ort::Session*                                          session,
+    const std::string&                                     text,
+    const KokoroVoice&                                     voice,
+    float                                                  speed,
+    const std::unordered_map<std::string, int64_t>&        vocab,
+    std::vector<const char*>&                              input_names,
+    size_t                                                 num_inputs,
+    std::vector<const char*>&                              output_names,
+    size_t                                                 num_outputs)
 {
-    // 1. Text → phonemes via espeak-ng
+    // 1. Text → IPA phonemes
     std::string phonemes = TextToPhonemes(text);
     if (phonemes.empty()) {
-        std::cerr << "[TTS] Phonemization produced empty output." << std::endl;
+        std::cerr << "[TTS] Phonemization produced empty output for: "
+                  << text << std::endl;
         return {};
     }
     std::cout << "[TTS] Phonemes: " << phonemes << std::endl;
 
-    // 2. Phonemes → token IDs
+    // 2. Phonemes → token IDs (with BOS/EOS pads)
     std::vector<int64_t> tokens = PhonemesToTokens(phonemes, vocab);
-    if (tokens.size() <= 2) { // only BOS/EOS
+    if (tokens.size() <= 2) {
         std::cerr << "[TTS] No tokens after vocab mapping." << std::endl;
         return {};
     }
+
+    // 3. Select style vector indexed by inner token count (tokens minus 2 pads)
+    // Clamp to available steps in this voice file.
+    size_t inner_len  = tokens.size() - 2;
+    size_t style_idx  = std::min(inner_len, voice.steps - 1);
+    // style slice: voice.data[style_idx * 256 ... style_idx * 256 + 256]
+    // shape fed to model: [1, 256]
+    std::vector<float> style_vec(
+        voice.data.begin() + style_idx * 256,
+        voice.data.begin() + style_idx * 256 + 256);
+
+    // 4. Build tensors
+    Ort::MemoryInfo mem = Ort::MemoryInfo::CreateCpu(
+        OrtArenaAllocator, OrtMemTypeDefault);
+
     int64_t seq_len = (int64_t)tokens.size();
-
-    Ort::MemoryInfo mem = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-
     std::vector<int64_t> token_dims = {1, seq_len};
-    std::vector<int64_t> style_dims = {1, (int64_t)voice_embedding.size()};
+    std::vector<int64_t> style_dims = {1, 256};
     std::vector<int64_t> speed_dims = {1};
-
-    std::vector<float> style_vec = voice_embedding;
-    std::vector<float> speed_vec = {speed};
+    std::vector<float>   speed_vec  = {speed};
 
     std::vector<Ort::Value> inputs;
+    // Input 0: tokens  [1, seq_len]  int64
     inputs.push_back(Ort::Value::CreateTensor<int64_t>(
         mem, tokens.data(), tokens.size(),
         token_dims.data(), token_dims.size()));
+    // Input 1: style   [1, 256]      float32
     inputs.push_back(Ort::Value::CreateTensor<float>(
         mem, style_vec.data(), style_vec.size(),
         style_dims.data(), style_dims.size()));
+    // Input 2: speed   [1]           float32
     inputs.push_back(Ort::Value::CreateTensor<float>(
         mem, speed_vec.data(), speed_vec.size(),
         speed_dims.data(), speed_dims.size()));
 
-    // 3. Run ONNX inference
+    // 5. Run
     std::vector<Ort::Value> outputs;
     try {
         outputs = session->Run(
@@ -274,7 +349,7 @@ static std::vector<uint8_t> run_tts(
 
     if (outputs.empty()) return {};
 
-    // 4. Waveform → WAV bytes
+    // 6. Output waveform → WAV
     auto shape = outputs[0].GetTensorTypeAndShapeInfo().GetShape();
     size_t num_samples = 1;
     for (auto d : shape) num_samples *= (size_t)d;
@@ -637,8 +712,16 @@ static void usage(void)
     fprintf(stderr, " -%c path     : %s\n", 'm' , "model");
     fprintf(stderr, " -%c path     : %s\n", 'e' , "embedding model");
     fprintf(stderr, " -%c path     : %s\n", 'r' , "reranker model");
-    fprintf(stderr, " -%c          : %s\n", 'j' , "chat template from stdin");
+    fprintf(stderr, " -%c path     : %s\n", 'T' , "text to speach model");
     fprintf(stderr, " -%c path     : %s\n", 't' , "chat template");
+    fprintf(stderr, " -%c          : %s\n", 'j' , "chat template from stdin");
+    fprintf(stderr, " %c           : %s\n", 'd' , "pooling=e2e");
+    fprintf(stderr, " %c           : %s\n", 'b' , "pooling=multi-vector");
+    fprintf(stderr, " %c           : %s\n", 'l' , "pooling=last-token");
+    fprintf(stderr, " %c           : %s\n", 'c' , "pooling=cls");
+    fprintf(stderr, " %c           : %s\n", 's' , "server");
+    fprintf(stderr, " %c           : %s\n", 'p' , "server listening port (default=8080)");
+    fprintf(stderr, " %c           : %s\n", 'h' , "server host (default=127.0.0.1)  ");
     fprintf(stderr, " -%c path     : %s\n", 'i' , "input");
     fprintf(stderr, " %c           : %s\n", '-' , "use stdin for input");
     fprintf(stderr, " -%c path     : %s\n", 'o' , "output (default=stdout)");
@@ -2726,47 +2809,50 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
     
-    std::unique_ptr<Ort::Session>                    tts_session;
-    std::unique_ptr<Ort::Env>                        tts_env;
-    std::string                                      tts_modelName;
-    long long                                        tts_model_created = 0;
-    std::vector<std::string>                         tts_input_node_names;
-    std::vector<std::string>                         tts_output_node_names;
-    std::vector<const char*>                         tts_input_names_c_array;
-    std::vector<const char*>                         tts_output_names_c_array;
-    size_t                                           num_tts_input_nodes  = 0;
-    size_t                                           num_tts_output_nodes = 0;
-    std::unordered_map<std::string, std::vector<float>> tts_voices;
-    std::unordered_map<std::string, int64_t>         tts_vocab;
-    bool                                             tts_espeak_ready = false;
-    
+    std::unique_ptr<Ort::Session>                        tts_session;
+    std::unique_ptr<Ort::Env>                            tts_env;
+    std::string                                          tts_modelName;
+    long long                                            tts_model_created = 0;
+    std::vector<std::string>                             tts_input_node_names;
+    std::vector<std::string>                             tts_output_node_names;
+    std::vector<const char*>                             tts_input_names_c_array;
+    std::vector<const char*>                             tts_output_names_c_array;
+    size_t                                               num_tts_input_nodes  = 0;
+    size_t                                               num_tts_output_nodes = 0;
+    std::unordered_map<std::string, KokoroVoice>         tts_voices;
+    std::unordered_map<std::string, int64_t>             tts_vocab;
+    bool                                                 tts_espeak_ready = false;
+
     if (tts_model_path.length() != 0) {
         if (fs::exists(tts_model_path) && fs::is_regular_file(tts_model_path)) {
             std::cerr << "[TTS] Loading from " << tts_model_path << std::endl;
             try {
-                tts_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "TTS");
-                tts_modelName = get_model_name(
-                    fs::path(tts_model_path).parent_path());
+                tts_env = std::make_unique<Ort::Env>(
+                    ORT_LOGGING_LEVEL_WARNING, "TTS");
 
-                Ort::SessionOptions session_options;
-                session_options.SetIntraOpNumThreads(intra_op_threads);
-                session_options.SetGraphOptimizationLevel(
+                std::string tts_dir =
+                    fs::path(tts_model_path).parent_path().string();
+                tts_modelName = get_model_name(tts_dir);
+
+                Ort::SessionOptions sopts;
+                sopts.SetIntraOpNumThreads(intra_op_threads);
+                sopts.SetGraphOptimizationLevel(
                     GraphOptimizationLevel::ORT_ENABLE_ALL);
-                session_options.AddConfigEntry(
-                    "session.intra_op.allow_spinning", "0");
+                sopts.AddConfigEntry("session.intra_op.allow_spinning", "0");
 
                 tts_session = std::make_unique<Ort::Session>(
-                    *tts_env, tts_model_path.c_str(), session_options);
+                    *tts_env, tts_model_path.c_str(), sopts);
 
-                Ort::AllocatorWithDefaultOptions tts_allocator;
+                Ort::AllocatorWithDefaultOptions tts_alloc;
                 num_tts_input_nodes  = tts_session->GetInputCount();
                 num_tts_output_nodes = tts_session->GetOutputCount();
+
                 for (size_t i = 0; i < num_tts_input_nodes; i++) {
-                    auto p = tts_session->GetInputNameAllocated(i, tts_allocator);
+                    auto p = tts_session->GetInputNameAllocated(i, tts_alloc);
                     tts_input_node_names.push_back(p.get());
                 }
                 for (size_t i = 0; i < num_tts_output_nodes; i++) {
-                    auto p = tts_session->GetOutputNameAllocated(i, tts_allocator);
+                    auto p = tts_session->GetOutputNameAllocated(i, tts_alloc);
                     tts_output_node_names.push_back(p.get());
                 }
                 for (const auto& n : tts_input_node_names)
@@ -2774,11 +2860,15 @@ int main(int argc, OPTARG_T argv[]) {
                 for (const auto& n : tts_output_node_names)
                     tts_output_names_c_array.push_back(n.c_str());
 
-                std::string model_dir =
-                    fs::path(tts_model_path).parent_path().string();
-                tts_voices  = LoadKokoroVoices(model_dir);
-                tts_vocab   = LoadVocab(model_dir);
-                tts_espeak_ready = InitEspeak();
+                // Log actual input names so mismatches are immediately visible
+                std::cout << "[TTS] Model inputs (" << num_tts_input_nodes << "):";
+                for (const auto& n : tts_input_node_names)
+                    std::cout << " '" << n << "'";
+                std::cout << std::endl;
+
+                tts_vocab        = LoadKokoroVocab(tts_dir);
+                tts_voices       = LoadKokoroVoices(tts_dir);
+                tts_espeak_ready = InitEspeak(tts_dir);
                 tts_model_created = get_created_timestamp();
 
             } catch (const std::exception& e) {
@@ -3279,16 +3369,20 @@ int main(int argc, OPTARG_T argv[]) {
 
         svr.Post("/v1/audio/speech", [&](const httplib::Request& req, httplib::Response& res) {
             std::lock_guard<std::mutex> lock(tts_mutex);
+            
             std::cout << "[Server] /v1/audio/speech request received." << std::endl;
+            
             try {
                 if (tts_model_created == 0)
                     throw std::invalid_argument("[TTS] Model not loaded.");
                 if (!tts_espeak_ready)
                     throw std::runtime_error("[TTS] espeak-ng not initialized.");
                 if (tts_vocab.empty())
-                    throw std::runtime_error("[TTS] vocab.json not loaded.");
+                    throw std::runtime_error("[TTS] vocab not loaded (missing config.json).");
+                if (tts_voices.empty())
+                    throw std::runtime_error("[TTS] No voices loaded (missing voices/*.bin).");
 
-                // Parse request
+                // Parse request body
                 Json::Value root;
                 Json::CharReaderBuilder builder;
                 std::string errors;
@@ -3298,28 +3392,26 @@ int main(int argc, OPTARG_T argv[]) {
                                    &root, &errors) || !root.isObject())
                     throw std::invalid_argument("Invalid JSON body.");
 
-                std::string input  = root.get("input",           "").asString();
-                std::string voice  = root.get("voice",    "af_heart").asString();
-                std::string fmt    = root.get("response_format", "wav").asString();
-                float       speed  = root.get("speed",          1.0f).asFloat();
+                std::string input = root.get("input",           "").asString();
+                std::string voice = root.get("voice",    "af_heart").asString();
+                std::string fmt   = root.get("response_format", "wav").asString();
+                float       speed = root.get("speed",          1.0f).asFloat();
 
                 if (input.empty())
                     throw std::invalid_argument("'input' field is required.");
 
-                // Clamp speed to a sane range
-                speed = std::max(0.25f, std::min(4.0f, speed));
+                // Clamp speed
+                speed = std::max(0.5f, std::min(2.0f, speed));
 
-                // Resolve voice — fall back to first available if not found
+                // Resolve voice — fall back to first available
                 auto voice_it = tts_voices.find(voice);
                 if (voice_it == tts_voices.end()) {
-                    if (tts_voices.empty())
-                        throw std::runtime_error("No voice embeddings loaded.");
                     voice_it = tts_voices.begin();
                     std::cerr << "[TTS] Voice '" << voice
-                              << "' not found, using '" << voice_it->first << "'." << std::endl;
+                              << "' not found, using '" << voice_it->first
+                              << "'." << std::endl;
                 }
 
-                // Run inference
                 std::vector<uint8_t> audio = run_tts(
                     tts_session.get(),
                     input,
@@ -3330,17 +3422,15 @@ int main(int argc, OPTARG_T argv[]) {
                     tts_output_names_c_array, num_tts_output_nodes);
 
                 if (audio.empty())
-                    throw std::runtime_error("TTS inference produced no audio.");
+                    throw std::runtime_error("TTS produced no audio output.");
 
-                // Return appropriate format
                 if (fmt == "pcm") {
-                    // Raw int16 PCM — strip the 44-byte WAV header
+                    // Raw int16 PCM — skip the 44-byte WAV header
                     res.set_content(
                         reinterpret_cast<const char*>(audio.data() + 44),
                         audio.size() - 44,
                         "application/octet-stream");
                 } else {
-                    // Default: WAV
                     res.set_content(
                         reinterpret_cast<const char*>(audio.data()),
                         audio.size(),
