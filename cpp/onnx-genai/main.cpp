@@ -51,7 +51,6 @@ static std::string LoadBytesFromFile(const std::string& path) {
 
 //LoadRerankingMode
 //LoadMaxPositionEmbeddings
-//LoadSpecialTokenIds
 
 static void LoadModelConfig(const std::string& model_path,
                             int& cls_id,
@@ -140,60 +139,6 @@ static void LoadModelConfig(const std::string& model_path,
     << " sep=" << sep_id
     << " max_pos=" << positionEmbeddings
     << std::endl;
-}
-
-static void LoadSpecialTokenIds(const std::string& model_path,
-                                RerankingMode ranking_mode,
-                                int& cls_id,
-                                int& sep_id) {
-    
-    // 1. Set Defaults based on architecture
-    switch (ranking_mode) {
-        case RERANKING_MODERNBERT:
-            cls_id = 50281;
-            sep_id = 50282;
-            break;
-        case RERANKING_ROBERTA:
-            cls_id = 0;
-            sep_id = 2;
-            break;
-        case RERANKING_BERT:
-        default:
-            cls_id = 101;
-            sep_id = 102;
-            break;
-    }
-    
-    // 2. Try to read overrides from config.json
-    fs::path config_path = fs::path(model_path);
-    if (fs::is_directory(config_path)) {
-        config_path = config_path / "config.json";
-    }
-    
-    if (fs::exists(config_path) && config_path.extension() == ".json") {
-        std::string json = LoadBytesFromFile(config_path.string());
-        Json::Value root;
-        Json::CharReaderBuilder builder;
-        std::string errors;
-        std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-        if (reader->parse(json.c_str(), json.c_str() + json.size(), &root, &errors) && root.isObject()) {
-            
-            // Look for CLS or BOS token
-            if (root.isMember("cls_token_id") && root["cls_token_id"].isNumeric()) {
-                cls_id = root["cls_token_id"].asInt();
-            } else if (root.isMember("bos_token_id") && root["bos_token_id"].isNumeric()) {
-                cls_id = root["bos_token_id"].asInt();
-            }
-            
-            // Look for SEP or EOS token
-            if (root.isMember("sep_token_id") && root["sep_token_id"].isNumeric()) {
-                sep_id = root["sep_token_id"].asInt();
-            } else if (root.isMember("eos_token_id") && root["eos_token_id"].isNumeric()) {
-                sep_id = root["eos_token_id"].asInt();
-            }
-        }
-    }
-    std::cout << "[Tokens] CLS/BOS ID: " << cls_id << " | SEP/EOS ID: " << sep_id << std::endl;
 }
 
 static int GetOptimalIntraOpThreads() {
@@ -2485,10 +2430,6 @@ int main(int argc, OPTARG_T argv[]) {
                                     ranking_mode_embeddings);
                     embeddings_tokenizer = LoadTokenizer(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
 //                    ranking_mode_embeddings = LoadRerankingMode(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()));
-//                    LoadSpecialTokenIds(wchar_to_utf8(fs::path(embedding_model_path).parent_path().c_str()),
-//                                        ranking_mode_embeddings,
-//                                        cls_id_embeddings,
-//                                        sep_id_embeddings);
 #else
                     LoadModelConfig(fs::path(embedding_model_path).parent_path(),
                                     cls_id_embeddings,
@@ -2497,10 +2438,6 @@ int main(int argc, OPTARG_T argv[]) {
                                     ranking_mode_embeddings);
                     embeddings_tokenizer = LoadTokenizer(fs::path(embedding_model_path).parent_path());
 //                    ranking_mode_embeddings = LoadRerankingMode(fs::path(embedding_model_path).parent_path());
-//                    LoadSpecialTokenIds(fs::path(embedding_model_path).parent_path(),
-//                                        ranking_mode_embeddings,
-//                                        cls_id_embeddings,
-//                                        sep_id_embeddings);
 #endif
                     embedding_model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
@@ -2582,7 +2519,7 @@ int main(int argc, OPTARG_T argv[]) {
                         reranking_output_names_c_array.push_back(name.c_str());
                     }
 #ifdef WIN32
-                    LoadModelConfig(fs::path(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()),
+                    LoadModelConfig(fs::path(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str())),
                                     rerank_cls_id,
                                     rerank_sep_id,
                                     rerank_max_position_embeddings,
@@ -2590,12 +2527,8 @@ int main(int argc, OPTARG_T argv[]) {
                     rerank_tokenizer = LoadTokenizer(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
 //                    rerank_max_position_embeddings = LoadMaxPositionEmbeddings(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
 //                    ranking_mode = LoadRerankingMode(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()));
-//                    LoadSpecialTokenIds(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()),
-//                                        ranking_mode,
-//                                        rerank_cls_id,
-//                                        rerank_sep_id);
 #else
-                    LoadModelConfig(fs::path(embedding_model_path).parent_path(),
+                    LoadModelConfig(fs::path(reranker_model_path).parent_path(),
                                     rerank_cls_id,
                                     rerank_sep_id,
                                     rerank_max_position_embeddings,
@@ -2603,10 +2536,6 @@ int main(int argc, OPTARG_T argv[]) {
                     rerank_tokenizer = LoadTokenizer(fs::path(reranker_model_path).parent_path());
 //                    rerank_max_position_embeddings = LoadMaxPositionEmbeddings(fs::path(reranker_model_path).parent_path());
 //                    ranking_mode = LoadRerankingMode(fs::path(reranker_model_path).parent_path());
-//                    LoadSpecialTokenIds(fs::path(reranker_model_path).parent_path(),
-//                                        ranking_mode,
-//                                        rerank_cls_id,
-//                                        rerank_sep_id);
 #endif
                     reranking_model_created = get_created_timestamp();
                 } catch (const std::exception& e) {
