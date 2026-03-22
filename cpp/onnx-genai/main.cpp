@@ -1152,9 +1152,7 @@ static void run_inference_stream(
 
             int32_t     new_token = seq_data[seq_len - 1];
             bool        hit_stop  = false;
-        #if TOKEN_BACKSTOP
             if (stop_tokens.count(new_token)) hit_stop = true;
-        #endif
             const char* token_str = streams[i]->Decode(new_token);
             if (!token_str) continue;
 
@@ -2473,11 +2471,12 @@ int main(int argc, OPTARG_T argv[]) {
     // SERVER MODE
     // ---------------------------------------------------------
     if (server_mode) {
+        std::mutex inference_mutex;
         httplib::Server svr;
         
         // Route: /v1/chat/completions
         svr.Post("/v1/chat/completions", [&](const httplib::Request& req, httplib::Response& res) {
-            
+            std::lock_guard<std::mutex> lock(inference_mutex);
             std::cout << "[Server] /v1/chat/completions request received." << std::endl;
             
             try {
