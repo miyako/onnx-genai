@@ -2452,7 +2452,7 @@ int main(int argc, OPTARG_T argv[]) {
                         reranking_output_names_c_array.push_back(name.c_str());
                     }
 #ifdef WIN32
-                    LoadModelConfig(fs::path(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str())),
+                    LoadModelConfig(wchar_to_utf8(fs::path(reranker_model_path).parent_path().c_str()),
                                     rerank_cls_id,
                                     rerank_sep_id,
                                     rerank_max_position_embeddings,

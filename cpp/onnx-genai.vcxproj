@@ -106,7 +106,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>lib\windows64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ntdll.lib;Userenv.lib;tokenizers_cpp.lib;sentencepiece.lib;tokenizers_c.lib;onnxruntime-genai.lib;onnxruntime.lib;ortextensions.lib;ortcustomops.lib;onnxruntime_providers_shared.lib;ocos_operators.lib;noexcep_operators.lib;jsoncpp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>speechPlayer.lib;sonic.lib;espeak-ng.lib;ucd.lib;ntdll.lib;Userenv.lib;tokenizers_cpp.lib;sentencepiece.lib;tokenizers_c.lib;onnxruntime-genai.lib;onnxruntime.lib;ortextensions.lib;ortcustomops.lib;onnxruntime_providers_shared.lib;ocos_operators.lib;noexcep_operators.lib;jsoncpp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
@@ -133,11 +133,12 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>include;include\onnxruntime;include\json;include\custom_op;include\onnxruntime\core\session</AdditionalIncludeDirectories>
       <AdditionalOptions>/Zc:lambda /Zc:preprocessor /Ob3 /Ot /arch:armv8.2 /favor:ARM64 %(AdditionalOptions)</AdditionalOptions>
+      <DisableSpecificWarnings>4018;4101;5033;4819;4068</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ntdll.lib;Userenv.lib;tokenizers_cpp.lib;sentencepiece.lib;tokenizers_c.lib;onnxruntime-genai.lib;onnxruntime.lib;ortextensions.lib;ortcustomops.lib;onnxruntime_providers_shared.lib;ocos_operators.lib;noexcep_operators.lib;jsoncpp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>espeak-ng.lib;ucd.lib;ntdll.lib;Userenv.lib;tokenizers_cpp.lib;sentencepiece.lib;tokenizers_c.lib;onnxruntime-genai.lib;onnxruntime.lib;ortextensions.lib;ortcustomops.lib;onnxruntime_providers_shared.lib;ocos_operators.lib;noexcep_operators.lib;jsoncpp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>lib\arm64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
