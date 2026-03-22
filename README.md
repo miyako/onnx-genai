@@ -8,15 +8,19 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
  -m path     : chat completion model
  -e path     : embedding model (pooling=mean)
  -r path     : rerank model
- -j          : read chat template from stdin
- -t path     : read chat template from path
- -d          : pooling=e2e (Universal Sentence Encoder)
- -b          : pooling=multi-vector (ColBERT)
- -l          : pooling=last-token (Llama)
+ -T path     : text to speach model
+ -t path     : chat template
+ -j          : chat template from stdin
+ -d          : pooling=e2e 
+ -b          : pooling=multi-vector 
+ -l          : pooling=last-token
  -c          : pooling=cls
- -s          : server (OpenAI compatible endpoint)
+ -s          : server
  -p          : server listening port (default=8080)
- -h host     : server host (default=127.0.0.1)    
+ -h host     : server host (default=127.0.0.1)
+ -i          : input
+ -o          : output (default=stdout)
+ -           : use stdin for input
 ```
 
 The CLI is built for `4` platforms:
