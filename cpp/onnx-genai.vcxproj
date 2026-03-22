@@ -94,18 +94,19 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;LIBESPEAK_NG_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>include;include\onnxruntime;include\json;include\custom_op;include\onnxruntime\core\session</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DisableSpecificWarnings>4819;5033;4104</DisableSpecificWarnings>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/Zc:lambda /Zc:preprocessor /Ob3 /Ot /arch:AVX2 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>lib\windows64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ntdll.lib;Userenv.lib;tokenizers_cpp.lib;sentencepiece.lib;tokenizers_c.lib;onnxruntime-genai.lib;onnxruntime.lib;ortextensions.lib;ortcustomops.lib;onnxruntime_providers_shared.lib;ocos_operators.lib;noexcep_operators.lib;jsoncpp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>espeak-ng.lib;ucd.lib;ntdll.lib;Userenv.lib;tokenizers_cpp.lib;sentencepiece.lib;tokenizers_c.lib;onnxruntime-genai.lib;onnxruntime.lib;ortextensions.lib;ortcustomops.lib;onnxruntime_providers_shared.lib;ocos_operators.lib;noexcep_operators.lib;jsoncpp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
@@ -126,16 +127,18 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN64;_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;LIBESPEAK_NG_EXPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>include;include\onnxruntime;include\json;include\custom_op;include\onnxruntime\core\session</AdditionalIncludeDirectories>
+      <AdditionalOptions>/Zc:lambda /Zc:preprocessor /Ob3 /Ot /arch:armv8.2 /favor:ARM64 %(AdditionalOptions)</AdditionalOptions>
+      <DisableSpecificWarnings>4018;4101;5033;4819;4068</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>ntdll.lib;Userenv.lib;tokenizers_cpp.lib;sentencepiece.lib;tokenizers_c.lib;onnxruntime-genai.lib;onnxruntime.lib;ortextensions.lib;ortcustomops.lib;onnxruntime_providers_shared.lib;ocos_operators.lib;noexcep_operators.lib;jsoncpp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>espeak-ng.lib;ucd.lib;ntdll.lib;Userenv.lib;tokenizers_cpp.lib;sentencepiece.lib;tokenizers_c.lib;onnxruntime-genai.lib;onnxruntime.lib;ortextensions.lib;ortcustomops.lib;onnxruntime_providers_shared.lib;ocos_operators.lib;noexcep_operators.lib;jsoncpp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>lib\arm64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
