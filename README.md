@@ -41,7 +41,8 @@ The CLI is built for `4` platforms:
 - `/v1/models`
 - `/v1/chat/completions`
 - `/v1/embeddings`
-
+- `/v1/audio/speech`
+ 
 ## Cohere Compatible Endpoints
 
 - `/v1/rerank`
