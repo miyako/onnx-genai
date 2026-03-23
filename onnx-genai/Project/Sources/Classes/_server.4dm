@@ -41,7 +41,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		 && (OB Instance of:C1731($option.tts_model; 4D:C1709.Folder))\
 		 && ($option.tts_model.exists)
 		$command+=" -T "
-		$command+=This:C1470.escape(This:C1470.expand($option.tts_model).file($option.tts_model_name).path)
+		$command+=This:C1470.escape(This:C1470.expand($option.tts_model).path)
 		$command+=" "
 	End if 
 	
@@ -114,5 +114,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 	End for each 
 	
 	//SET TEXT TO PASTEBOARD($command)
+	
+	ALERT:C41($command)
 	
 	return This:C1470.controller.execute($command; $chat_template#"" ? $chat_template : Null:C1517).worker

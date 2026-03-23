@@ -52,17 +52,16 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 		If ($request.response.status=Null:C1517)
 			This:C1470._models.push([$USER; $REPO].join("/"))
 			Case of 
-				: ($huggingface.domain="chat.completion")
+				: ($huggingface.domain="chat.completion") && (This:C1470.options.chat_completion_model=Null:C1517)
 					This:C1470.options.chat_completion_model:=$huggingface.folder
-				: ($huggingface.domain="embedding")
+				: ($huggingface.domain="embedding") && (This:C1470.options.embeddings_model=Null:C1517)
 					This:C1470.options.embeddings_model:=$huggingface.folder
 					This:C1470.options.embeddings_model_name:=$huggingface.name
-				: ($huggingface.domain="rerank")
+				: ($huggingface.domain="rerank") && (This:C1470.options.rerank_model=Null:C1517)
 					This:C1470.options.rerank_model:=$huggingface.folder
 					This:C1470.options.rerank_model_name:=$huggingface.name
-				: ($huggingface.domain="tts")
+				: ($huggingface.domain="tts") && (This:C1470.options.tts_model=Null:C1517)
 					This:C1470.options.tts_model:=$huggingface.folder
-					This:C1470.options.tts_model_name:=$huggingface.name
 			End case 
 			This:C1470.offline:=True:C214
 			continue

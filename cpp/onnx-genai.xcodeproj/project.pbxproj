@@ -346,7 +346,13 @@
 					"-mavx2",
 					"-mfma",
 				);
-				OTHER_CPLUSPLUSFLAGS = "";
+				OTHER_CPLUSPLUSFLAGS = (
+					"-DEIGEN_USE_BLAS",
+					"-flto",
+					"-Xpreprocessor",
+					"-fopenmp",
+					"-march=native",
+				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					include,
