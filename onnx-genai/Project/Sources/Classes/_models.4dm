@@ -56,10 +56,13 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 					This:C1470.options.chat_completion_model:=$huggingface.folder
 				: ($huggingface.domain="embedding")
 					This:C1470.options.embeddings_model:=$huggingface.folder
-					This:C1470.options.embeggings_model_name:=$huggingface.name
+					This:C1470.options.embeddings_model_name:=$huggingface.name
 				: ($huggingface.domain="rerank")
 					This:C1470.options.rerank_model:=$huggingface.folder
 					This:C1470.options.rerank_model_name:=$huggingface.name
+				: ($huggingface.domain="tts")
+					This:C1470.options.tts_model:=$huggingface.folder
+					This:C1470.options.tts_model_name:=$huggingface.name
 			End case 
 			This:C1470.offline:=True:C214
 			continue
