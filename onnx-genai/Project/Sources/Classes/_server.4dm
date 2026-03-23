@@ -41,7 +41,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		 && (OB Instance of:C1731($option.tts_model; 4D:C1709.Folder))\
 		 && ($option.tts_model.exists)
 		$command+=" -T "
-		$command+=This:C1470.escape(This:C1470.expand($option.tts_model).path)
+		$command+=This:C1470.escape(This:C1470.expand($option.tts_model).file($option.tts_model_name).path)
 		$command+=" "
 	End if 
 	

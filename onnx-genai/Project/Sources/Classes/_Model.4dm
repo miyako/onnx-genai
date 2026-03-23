@@ -4,6 +4,7 @@ property embeddings_model_name : Text
 property rerank_model : 4D:C1709.Folder
 property rerank_model_name : Text
 property tts_model : 4D:C1709.Folder
+property tts_model_name : Text
 
 Class extends _models
 
@@ -48,6 +49,7 @@ Function onDownload($oid : Text)
 				This:C1470.options.rerank_model_name:=$downloaded.name
 			: ($downloaded.domain="tts") && This:C1470.options.tts_model=Null:C1517
 				This:C1470.options.tts_model:=$model
+				This:C1470.options.tts_model_name:=$downloaded.name
 		End case 
 	End if 
 	
