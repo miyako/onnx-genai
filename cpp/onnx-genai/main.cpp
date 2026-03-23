@@ -2745,9 +2745,11 @@ int main(int argc, OPTARG_T argv[]) {
             std::cerr << "[TTS] Loading from " << tts_model_path << std::endl;
             try {
                 tts_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "TTS");
-                tts_modelName = get_model_name(
-                    fs::path(tts_model_path).parent_path());
-
+#ifdef WIN32
+                tts_modelName = get_model_name(wchar_to_utf8(fs::path(tts_model_path).parent_path().c_str()));
+#else
+                tts_modelName = get_model_name(fs::path(tts_model_path).parent_path());
+#endif
                 Ort::SessionOptions session_options;
                 session_options.SetIntraOpNumThreads(intra_op_threads);
                 session_options.SetGraphOptimizationLevel(
@@ -2755,8 +2757,14 @@ int main(int argc, OPTARG_T argv[]) {
                 session_options.AddConfigEntry(
                     "session.intra_op.allow_spinning", "0");
 
+#ifdef WIN32
                 tts_session = std::make_unique<Ort::Session>(
-                    *tts_env, tts_model_path.c_str(), session_options);
+                    *tts_env, tts_model_path_u16.c_str(), session_options); 
+#else
+                tts_session = std::make_unique<Ort::Session>(
+                    *tts_env, tts_model_path.c_str(), session_options); 
+#endif
+                
 
                 Ort::AllocatorWithDefaultOptions tts_allocator;
                 num_tts_input_nodes  = tts_session->GetInputCount();
