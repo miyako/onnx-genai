@@ -101,6 +101,12 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 		
 		$huggingface:=cs:C1710.event.huggingface.new($folder; $URL; $path; "embedding"; "model_quantized.onnx")
 		
+		$folder:=$homeFolder.folder("Kokoro-82M")
+		$path:="Kokoro-82M-onnx-f32"
+		$URL:="keisuke-miyako/Kokoro-82M-onnx-f32"
+		$options:={}
+		
+		$huggingface:=cs:C1710.event.huggingface.new($folder; $URL; $path; "tts"; "model.onnx")
 		$huggingfaces:=cs:C1710.event.huggingfaces.new([$huggingface])
 		
 		$ONNX:=cs:C1710.ONNX.new($port; $huggingfaces; $homeFolder; $options; $event)

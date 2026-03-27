@@ -25,7 +25,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		 && (OB Instance of:C1731($option.embeddings_model; 4D:C1709.Folder))\
 		 && ($option.embeddings_model.exists)
 		$command+=" -e "
-		$command+=This:C1470.escape(This:C1470.expand($option.embeddings_model).file($option.embeggings_model_name).path)
+		$command+=This:C1470.escape(This:C1470.expand($option.embeddings_model).file($option.embeddings_model_name).path)
 		$command+=" "
 	End if 
 	
@@ -34,6 +34,14 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		 && ($option.rerank_model.exists)
 		$command+=" -r "
 		$command+=This:C1470.escape(This:C1470.expand($option.rerank_model).file($option.rerank_model_name).path)
+		$command+=" "
+	End if 
+	
+	If (Value type:C1509($option.tts_model)=Is object:K8:27)\
+		 && (OB Instance of:C1731($option.tts_model; 4D:C1709.Folder))\
+		 && ($option.tts_model.exists)
+		$command+=" -T "
+		$command+=This:C1470.escape(This:C1470.expand($option.tts_model).file($option.tts_model_name).path)
 		$command+=" "
 	End if 
 	
@@ -81,8 +89,9 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 				"p"; "port"; \
 				"t"; "chat_template"; \
 				"pooling"; \
+				"T"; "tts_model"; "tts_model_name"; \
 				"r"; "rerank_model"; "rerank_model_name"; \
-				"e"; "embeggings_model_name"; \
+				"e"; "embeddings_model"; "embeddings_model_name"; \
 				"m"; "chat_completion_model"; "HF_TOKEN"].includes($arg.key))
 				continue
 		End case 

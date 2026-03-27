@@ -1,8 +1,10 @@
 property chat_completion_model : 4D:C1709.Folder
 property embeddings_model : 4D:C1709.Folder
-property embeggings_model_name : Text
+property embeddings_model_name : Text
 property rerank_model : 4D:C1709.Folder
 property rerank_model_name : Text
+property tts_model : 4D:C1709.Folder
+property tts_model_name : Text
 
 Class extends _models
 
@@ -37,14 +39,17 @@ Function onDownload($oid : Text)
 			 ? $downloaded.folder.folder($downloaded.path).parent : $downloaded.folder
 		
 		Case of 
-			: ($downloaded.domain="chat.completion")
+			: ($downloaded.domain="chat.completion") && (This:C1470.options.chat_completion_model=Null:C1517)
 				This:C1470.options.chat_completion_model:=$model
-			: ($downloaded.domain="embedding")
+			: ($downloaded.domain="embedding") && (This:C1470.options.embeddings_model=Null:C1517)
 				This:C1470.options.embeddings_model:=$model
-				This:C1470.options.embeggings_model_name:=$downloaded.name
-			: ($downloaded.domain="rerank")
+				This:C1470.options.embeddings_model_name:=$downloaded.name
+			: ($downloaded.domain="rerank") && (This:C1470.options.rerank_model=Null:C1517)
 				This:C1470.options.rerank_model:=$model
 				This:C1470.options.rerank_model_name:=$downloaded.name
+			: ($downloaded.domain="tts") && This:C1470.options.tts_model=Null:C1517
+				This:C1470.options.tts_model:=$model
+				This:C1470.options.tts_model_name:=$downloaded.name
 		End case 
 	End if 
 	
