@@ -2827,6 +2827,17 @@ int main(int argc, OPTARG_T argv[]) {
         if (fs::exists(tts_model_path) && fs::is_regular_file(tts_model_path)) {
             std::cerr << "[TTS] Loading from " << tts_model_path << std::endl;
             try {
+<<<<<<< HEAD
+                tts_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "TTS");
+#ifdef WIN32
+                tts_modelName = get_model_name(wchar_to_utf8(fs::path(tts_model_path).parent_path().c_str()));
+#else
+                tts_modelName = get_model_name(fs::path(tts_model_path).parent_path());
+#endif
+                Ort::SessionOptions session_options;
+                session_options.SetIntraOpNumThreads(intra_op_threads);
+                session_options.SetGraphOptimizationLevel(
+=======
                 tts_env = std::make_unique<Ort::Env>(
                     ORT_LOGGING_LEVEL_WARNING, "TTS");
 
@@ -2837,11 +2848,22 @@ int main(int argc, OPTARG_T argv[]) {
                 Ort::SessionOptions sopts;
                 sopts.SetIntraOpNumThreads(intra_op_threads);
                 sopts.SetGraphOptimizationLevel(
+>>>>>>> e11077349c8111668f1ad9eaa67a0b3842dbbcf7
                     GraphOptimizationLevel::ORT_ENABLE_ALL);
                 sopts.AddConfigEntry("session.intra_op.allow_spinning", "0");
 
+#ifdef WIN32
                 tts_session = std::make_unique<Ort::Session>(
+<<<<<<< HEAD
+                    *tts_env, tts_model_path_u16.c_str(), session_options); 
+#else
+                tts_session = std::make_unique<Ort::Session>(
+                    *tts_env, tts_model_path.c_str(), session_options); 
+#endif
+                
+=======
                     *tts_env, tts_model_path.c_str(), sopts);
+>>>>>>> e11077349c8111668f1ad9eaa67a0b3842dbbcf7
 
                 Ort::AllocatorWithDefaultOptions tts_alloc;
                 num_tts_input_nodes  = tts_session->GetInputCount();
