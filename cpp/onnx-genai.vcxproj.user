@@ -3,9 +3,11 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LocalDebuggerCommandArguments>-s  -e C:/Users/miyako/.ONNX/all-MiniLM-L6-v2/model.onnx  -p 8080</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArgumentsHistory>-s  -e C:/Users/miyako/.ONNX/all-MiniLM-L6-v2/model.onnx  -p 8080|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LocalDebuggerCommandArguments>-s  -e C:/Users/miyako/.ONNX/all-MiniLM-L6-v2/model.onnx  -p 8080</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArgumentsHistory>-s  -e C:/Users/miyako/.ONNX/all-MiniLM-L6-v2/model.onnx  -p 8080|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
 </Project>
