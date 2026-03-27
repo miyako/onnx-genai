@@ -31,7 +31,7 @@
       shouldAutocreateTestPlan = "YES">
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Release"
+      buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
@@ -62,7 +62,7 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-e"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.ONNX/ModernBERT/model_quantized.onnx"
@@ -82,6 +82,14 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.ONNX/multilingual-e5-base/model_quantized.onnx"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-T"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/.ONNX/Kokoro-82M/model.onnx"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
