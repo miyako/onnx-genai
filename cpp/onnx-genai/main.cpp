@@ -1930,7 +1930,7 @@ static std::string run_embeddings(
         // Without this, every unique seq_len gets its own cached plan and buffers,
         // causing unbounded memory growth across requests.
         static const std::array<int, 9> buckets = {
-            64, 128, 256, 512, 1024, 2048, 3072, 4096, 8192
+            64, 128, 256, 512, 1024, 2048, 3072, 4096, ABSOLUTE_max_tokens
         };
         for (int bucket : buckets) {
             if (max_seq_len <= bucket) {
