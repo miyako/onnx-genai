@@ -2785,6 +2785,7 @@ int main(int argc, OPTARG_T argv[]) {
                     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
 
                     session_options.AddConfigEntry("session.intra_op.allow_spinning", "0");
+                    session_options.DisableMemPattern();
 
                     Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
 #ifdef WIN32
@@ -2863,7 +2864,8 @@ int main(int argc, OPTARG_T argv[]) {
                 sopts.SetGraphOptimizationLevel(
                     GraphOptimizationLevel::ORT_ENABLE_ALL);
                 sopts.AddConfigEntry("session.intra_op.allow_spinning", "0");
-
+                sopts.DisableMemPattern();
+                sopts.DisableCpuMemArena();
 #ifdef WIN32
                 tts_session = std::make_unique<Ort::Session>(*tts_env, tts_model_path_u16.c_str(), sopts);
 #else
