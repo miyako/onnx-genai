@@ -1929,11 +1929,25 @@ static std::string run_embeddings(
         // Quantize seq_len to fixed buckets to bound ORT's execution plan cache.
         // Without this, every unique seq_len gets its own cached plan and buffers,
         // causing unbounded memory growth across requests.
-        static const std::array<int, 10> buckets = {64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768};
+        static const std::array<int, 9> buckets = {
+            64, 128, 256, 512, 1024, 2048, 3072, 4096, 8192
+        };
         for (int bucket : buckets) {
             if (max_seq_len <= bucket) {
                 max_seq_len = bucket;
                 break;
+            }
+        }
+        if (max_seq_len > ABSOLUTE_max_tokens) {
+            std::cerr << "[Embedding] Input truncated from " << max_seq_len
+                      << " to " << ABSOLUTE_max_tokens << " tokens.\n";
+            max_seq_len = ABSOLUTE_max_tokens;
+            // Truncate all tokenized inputs to fit
+            for (auto& ids : tokenized_inputs) {
+                if ((int)ids.size() > ABSOLUTE_max_tokens) {
+                    ids.resize(ABSOLUTE_max_tokens - 1);
+                    ids.push_back(sep_id);
+                }
             }
         }
 
@@ -2769,6 +2783,7 @@ int main(int argc, OPTARG_T argv[]) {
                     session_options.AddConfigEntry("session.intra_op.allow_spinning", "0");
 //                    session_options.DisableMemPattern();
                     session_options.DisableCpuMemArena();
+                    session_options.AddConfigEntry("session.max_seq_len", std::to_string(ABSOLUTE_max_tokens).c_str());
                     
                     Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
 #ifdef WIN32

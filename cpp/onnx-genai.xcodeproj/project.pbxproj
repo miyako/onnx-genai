@@ -338,15 +338,14 @@
 					"$(PROJECT_DIR)/macOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
-				OTHER_CFLAGS = (
+				OTHER_CFLAGS = "";
+				OTHER_CPLUSPLUSFLAGS = (
 					"-DEIGEN_USE_BLAS",
 					"-flto",
 					"-Xpreprocessor",
 					"-fopenmp",
-					"-mavx2",
-					"-mfma",
+					"-march=native",
 				);
-				OTHER_CPLUSPLUSFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					include,
@@ -371,12 +370,20 @@
 					"$(PROJECT_DIR)/macOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
-				OTHER_CPLUSPLUSFLAGS = (
+				OTHER_CFLAGS = (
 					"-DEIGEN_USE_BLAS",
 					"-flto",
 					"-Xpreprocessor",
 					"-fopenmp",
 					"-march=native",
+				);
+				OTHER_CPLUSPLUSFLAGS = (
+					"-DEIGEN_USE_BLAS",
+					"-flto",
+					"-Xpreprocessor",
+					"-fopenmp",
+					"-mavx2",
+					"-mfma",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (

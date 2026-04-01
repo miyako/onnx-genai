@@ -31,7 +31,7 @@
       shouldAutocreateTestPlan = "YES">
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Release"
+      buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
@@ -62,11 +62,15 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-e"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "/Users/miyako/.ONNX/harrier-oss-v1-0.6b/model_quantized.onnx"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/miyako/.ONNX/ModernBERT/model_quantized.onnx"
-            isEnabled = "NO">
+            argument = "/Users/miyako/.ONNX/harrier-oss-v1-270m/model_quantized.onnx"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.ONNX/ModernGBERT/model_quantized.onnx"
@@ -86,11 +90,11 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-T"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.ONNX/Kokoro-82M/model.onnx"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/miyako/.ONNX/ModernCamemBERT/model_quantized.onnx"
@@ -129,6 +133,10 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
+            argument = "-l"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
             argument = "-s"
             isEnabled = "YES">
          </CommandLineArgument>
@@ -141,7 +149,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "8080"
+            argument = "8081"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

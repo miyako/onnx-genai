@@ -52,6 +52,8 @@ extern "C" {
 #define BUFLEN 4096
 #define TOKEN_BACKSTOP 0
 
+#define ABSOLUTE_max_tokens 8192
+
 #define DEFAULT_max_tokens 2048
 #define DEFAULT_top_k 64
 #define DEFAULT_top_p 0.95
