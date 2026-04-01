@@ -63,6 +63,7 @@ extern "C" {
 #if defined(__APPLE__)
 #include <sys/types.h>
 #include <sys/sysctl.h>
+#include <malloc/malloc.h>
 #endif
 
 #ifdef __GNUC__
