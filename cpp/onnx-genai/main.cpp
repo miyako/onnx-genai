@@ -1586,14 +1586,15 @@ static std::vector<std::vector<float>> last_token_pooling_batch(
     int batch_size, int max_seq_len)
 {
     std::vector<std::vector<float>> batch_embeddings;
-    if (outputs.empty()) return batch_embeddings;
 
     auto shape = outputs[0].GetTensorTypeAndShapeInfo().GetShape();
-    if (shape.size() <= 2) return batch_embeddings;
+    const float* floatarr = outputs[0].GetTensorMutableData<float>();
+
+    // Note: 2D output [batch, hidden] is handled upstream in run_embeddings
+    // before reaching this function. This path only executes for 3D output.
+    if (shape.size() < 3) return batch_embeddings;
 
     int64_t hidden_size = shape[2];
-    float* floatarr = outputs[0].GetTensorMutableData<float>();
-
     for (int b = 0; b < batch_size; ++b) {
         Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
             raw_matrix(floatarr + (b * max_seq_len * hidden_size), max_seq_len, hidden_size);
@@ -1601,18 +1602,20 @@ static std::vector<std::vector<float>> last_token_pooling_batch(
         int last_token_index = -1;
         for (int i = 0; i < max_seq_len; ++i) {
             if (attention_mask[b * max_seq_len + i] == 1) {
-                last_token_index = i;   // keep updating — never break early
+                last_token_index = i;
             }
         }
 
         if (last_token_index == -1) {
-            // Entire mask is zero — degenerate input, emit a zero vector
             batch_embeddings.push_back(std::vector<float>(hidden_size, 0.0f));
             continue;
         }
 
-        Eigen::VectorXf final_embedding = raw_matrix.row(last_token_index).normalized();
-        batch_embeddings.push_back(std::vector<float>(final_embedding.data(), final_embedding.data() + final_embedding.size()));
+        Eigen::VectorXf final_embedding = raw_matrix.row(last_token_index);
+
+        batch_embeddings.push_back(
+            std::vector<float>(final_embedding.data(),
+                               final_embedding.data() + final_embedding.size()));
     }
     return batch_embeddings;
 }
@@ -1627,48 +1630,46 @@ static std::string colbert_pooling_batch_json(
     result.reserve(64 + batch_size * max_seq_len * 64); // heuristic per token-vector
     result += "{\"object\":\"list\",\"data\":[";
 
-    if (!outputs.empty()) {
-        auto shape = outputs[0].GetTensorTypeAndShapeInfo().GetShape();
-        if (shape.size() > 2) {
-            const int64_t hidden_size = shape[2];
-            const float* floatarr = outputs[0].GetTensorMutableData<float>();
-            char num_buf[32];
-            bool first_batch = true;
-
-            for (int b = 0; b < batch_size; ++b) {
-                Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-                    raw_matrix(floatarr + (b * max_seq_len * hidden_size), max_seq_len, hidden_size);
-
-                Eigen::MatrixXf normalized_matrix = raw_matrix.rowwise().normalized();
-
-                if (!first_batch) result += ',';
-                first_batch = false;
-
-                result += "{\"object\":\"embedding\",\"index\":";
-                result += std::to_string(b);
-                result += ",\"embedding\":[";
-
-                bool first_token = true;
-                for (int i = 0; i < max_seq_len; ++i) {
-                    if (attention_mask[b * max_seq_len + i] == 0) continue; // skip padding
-
-                    if (!first_token) result += ',';
-                    first_token = false;
-
-                    result += '[';
-                    for (int j = 0; j < (int)hidden_size; ++j) {
-                        if (j > 0) result += ',';
-                        snprintf(num_buf, sizeof(num_buf), "%.9g", normalized_matrix(i, j));
-                        result += num_buf;
-                    }
-                    result += ']';
+    auto shape = outputs[0].GetTensorTypeAndShapeInfo().GetShape();
+    if (shape.size() > 2) {
+        const int64_t hidden_size = shape[2];
+        const float* floatarr = outputs[0].GetTensorMutableData<float>();
+        char num_buf[32];
+        bool first_batch = true;
+        
+        for (int b = 0; b < batch_size; ++b) {
+            Eigen::Map<const Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+            raw_matrix(floatarr + (b * max_seq_len * hidden_size), max_seq_len, hidden_size);
+            
+            Eigen::MatrixXf normalized_matrix = raw_matrix.rowwise().normalized();
+            
+            if (!first_batch) result += ',';
+            first_batch = false;
+            
+            result += "{\"object\":\"embedding\",\"index\":";
+            result += std::to_string(b);
+            result += ",\"embedding\":[";
+            
+            bool first_token = true;
+            for (int i = 0; i < max_seq_len; ++i) {
+                if (attention_mask[b * max_seq_len + i] == 0) continue; // skip padding
+                
+                if (!first_token) result += ',';
+                first_token = false;
+                
+                result += '[';
+                for (int j = 0; j < (int)hidden_size; ++j) {
+                    if (j > 0) result += ',';
+                    snprintf(num_buf, sizeof(num_buf), "%.9g", normalized_matrix(i, j));
+                    result += num_buf;
                 }
-
-                result += "]}";
+                result += ']';
             }
+            
+            result += "]}";
         }
     }
-
+    
     result += "]}";
     return result;
 }
@@ -1679,7 +1680,6 @@ static std::vector<std::vector<float>> cls_pooling_batch(
     int batch_size, int max_seq_len)
 {
     std::vector<std::vector<float>> batch_embeddings;
-    if (outputs.empty()) return batch_embeddings;
 
     auto shape = outputs[0].GetTensorTypeAndShapeInfo().GetShape();
     if (shape.size() <= 2) return batch_embeddings;
@@ -1692,7 +1692,7 @@ static std::vector<std::vector<float>> cls_pooling_batch(
             raw_matrix(floatarr + (b * max_seq_len * hidden_size), max_seq_len, hidden_size);
 
         Eigen::VectorXf cls_vec = raw_matrix.row(0);
-        Eigen::VectorXf final_embedding = l2_normalize(cls_vec);
+        Eigen::VectorXf final_embedding = cls_vec;
         batch_embeddings.push_back(std::vector<float>(final_embedding.data(), final_embedding.data() + final_embedding.size()));
     }
     return batch_embeddings;
@@ -1704,7 +1704,6 @@ static std::vector<std::vector<float>> mean_pooling_batch(
     int batch_size, int max_seq_len)
 {
     std::vector<std::vector<float>> batch_embeddings;
-    if (outputs.empty()) return batch_embeddings;
 
     auto shape = outputs[0].GetTensorTypeAndShapeInfo().GetShape();
     if (shape.size() <= 2) return batch_embeddings;
@@ -1717,7 +1716,7 @@ static std::vector<std::vector<float>> mean_pooling_batch(
         floatarr, attention_mask, batch_size, max_seq_len, (int)hidden_dim);
 
     for (int b = 0; b < batch_size; ++b) {
-        Eigen::VectorXf final_embedding = l2_normalize(pooled.row(b));
+        Eigen::VectorXf final_embedding = pooled.row(b);
         batch_embeddings.push_back(
             std::vector<float>(final_embedding.data(),
                 final_embedding.data() + final_embedding.size()));
@@ -1854,6 +1853,32 @@ static std::string run_reranking(
     return Json::writeString(writer, rootNode);
 }
 
+static std::string build_embeddings_json(const std::vector<std::vector<float>>& batch_embeddings)
+{
+    int batch_size = (int)batch_embeddings.size();
+    const size_t embedding_dim = batch_embeddings.empty() ? 0 : batch_embeddings[0].size();
+    std::string result;
+    result.reserve(64 + batch_size * (32 + embedding_dim * 11));
+    result += "{\"object\":\"list\",\"data\":[";
+
+    char num_buf[32];
+    for (int b = 0; b < batch_size; ++b) {
+        if (b > 0) result += ',';
+        result += "{\"object\":\"embedding\",\"index\":";
+        result += std::to_string(b);
+        result += ",\"embedding\":[";
+        const auto& emb = batch_embeddings[b];
+        for (size_t i = 0; i < emb.size(); ++i) {
+            if (i > 0) result += ',';
+            snprintf(num_buf, sizeof(num_buf), "%.9g", emb[i]);
+            result += num_buf;
+        }
+        result += "]}";
+    }
+    result += "]}";
+    return result;
+}
+
 static std::string run_embeddings(
     Ort::Session* session,
     std::vector<std::string>& inputs,
@@ -1944,12 +1969,50 @@ static std::string run_embeddings(
             output_names_c_array.data(),
             num_output_nodes
         );
-
+        
+        if (outputs.empty()) {
+            throw std::runtime_error("ORT session->Run produced no outputs.");
+        }
+                    
+        auto shape = outputs[0].GetTensorTypeAndShapeInfo().GetShape();
+        const float* data = outputs[0].GetTensorMutableData<float>();
+        int64_t hidden_size = shape.back();
+        size_t output_rank = shape.size();
+        
+        // Detect if model already normalized output
+        // Only sample first vector to avoid cost on large tensors
+        Eigen::Map<const Eigen::VectorXf> first_vec(data, hidden_size);
+        bool already_normalized = std::abs(first_vec.norm() - 1.0f) < 1e-3f;
+        
+        // Detect if model already pooled output
+        bool already_pooled = (output_rank == 2); // [batch, hidden] means pooling done internally
+        
+        // If model already did both, just copy directly — no pooling math needed
+        if (already_pooled) {
+            std::vector<std::vector<float>> batch_embeddings;
+            batch_embeddings.reserve(batch_size);
+            for (int b = 0; b < batch_size; ++b) {
+                const float* row = data + b * hidden_size;
+                if (already_normalized) {
+                    // Trust the model — straight copy
+                    batch_embeddings.push_back(std::vector<float>(row, row + hidden_size));
+                } else {
+                    // Pool done, normalization not done
+                    Eigen::Map<const Eigen::VectorXf> vec(row, hidden_size);
+                    Eigen::VectorXf norm_vec = vec.normalized();
+                    batch_embeddings.push_back(
+                                               std::vector<float>(norm_vec.data(), norm_vec.data() + hidden_size));
+                }
+            }
+            // Skip pooling switch entirely, jump to JSON serialization
+            return build_embeddings_json(batch_embeddings);
+        }
+        
         // 6. Pooling & Build JSON
         if (pooling_mode == POOLING_COLBERT) {
             return colbert_pooling_batch_json(outputs, flat_attention_mask, batch_size, max_seq_len);
         }
-
+        
         std::vector<std::vector<float>> batch_embeddings;
         switch (pooling_mode) {
         case POOLING_CLS:
@@ -1964,35 +2027,13 @@ static std::string run_embeddings(
             break;
         }
 
-        // Pre-size the result string to avoid repeated reallocations.
-        // Heuristic: each float ~10 chars + punctuation overhead.
-        std::string result;
-        const size_t embedding_dim = batch_embeddings.empty() ? 0 : batch_embeddings[0].size();
-        result.reserve(64 + batch_size * (32 + embedding_dim * 11));
-
-        result += "{\"object\":\"list\",\"data\":[";
-
-        char num_buf[32];
-        for (int b = 0; b < batch_size; ++b) {
-            if (b > 0) result += ',';
-            result += "{\"object\":\"embedding\",\"index\":";
-            result += std::to_string(b);
-            result += ",\"embedding\":[";
-
-            const auto& emb = batch_embeddings[b];
-            for (size_t i = 0; i < emb.size(); ++i) {
-                if (i > 0) result += ',';
-                // snprintf is locale-independent and always uses '.' as decimal separator
-                snprintf(num_buf, sizeof(num_buf), "%.9g", emb[i]);
-                result += num_buf;
+        if (!already_normalized) {
+            for (auto& emb : batch_embeddings) {
+                Eigen::Map<Eigen::VectorXf> vec(emb.data(), (Eigen::Index)emb.size());
+                vec.normalize();
             }
-
-            result += "]}";
         }
-
-        result += "]}";
-        return result;
-
+        return build_embeddings_json(batch_embeddings);
     }
     catch (const std::exception& e) {
         throw; // Controller handles the JSON error formatting

@@ -63,3 +63,4 @@ cpp/onnx-genai.xcodeproj/project.xcworkspace/*
 cpp/onnx-genai/ARM64/*
 cpp/ARM64/Release/onnx-genai.lib
 cpp/ARM64/Release/onnx-genai.exp
+cpp/macOS/onnx-genai.dSYM/Contents/Resources/Relocations/aarch64/onnx-genai.yml
