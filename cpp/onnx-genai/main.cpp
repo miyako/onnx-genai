@@ -42,7 +42,7 @@ LoadKokoroVocab(const std::string& model_dir) {
 
     fs::path config_path = fs::path(model_dir) / "config.json";
     if (!fs::exists(config_path)) {
-        std::cerr << "[TTS] config.json not found in " << model_dir << std::endl;
+        std::cerr << "[TTS] config.json not found in " << model_dir << "\n";
         return vocab;
     }
 
@@ -52,13 +52,13 @@ LoadKokoroVocab(const std::string& model_dir) {
     std::string errors;
     std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
     if (!reader->parse(json.c_str(), json.c_str() + json.size(), &root, &errors)) {
-        std::cerr << "[TTS] Failed to parse config.json: " << errors << std::endl;
+        std::cerr << "[TTS] Failed to parse config.json: " << errors << "\n";
         return vocab;
     }
 
     // vocab lives under root["vocab"]
     if (!root.isMember("vocab") || !root["vocab"].isObject()) {
-        std::cerr << "[TTS] config.json has no 'vocab' object." << std::endl;
+        std::cerr << "[TTS] config.json has no 'vocab' object." << "\n";
         return vocab;
     }
 
@@ -66,7 +66,7 @@ LoadKokoroVocab(const std::string& model_dir) {
     for (const auto& key : v.getMemberNames()) {
         vocab[key] = v[key].asInt64();
     }
-    std::cout << "[TTS] Loaded vocab: " << vocab.size() << " entries." << std::endl;
+    std::cout << "[TTS] Loaded vocab: " << vocab.size() << " entries.\n";
     return vocab;
 }
 
@@ -98,14 +98,14 @@ static bool InitEspeak(const std::string& model_dir) {
 
     int result = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS, 0, path, 0);
     if (result < 0) {
-        std::cerr << "[TTS] espeak_Initialize failed: " << result << std::endl;
+        std::cerr << "[TTS] espeak_Initialize failed: " << result << "\n";
         return false;
     }
     espeak_SetVoiceByName("en-us");
     espeak_SetParameter(espeakRATE, 175, 0);
     espeak_SetParameter(espeakPITCH, 50, 0);
     espeak_SetParameter(espeakVOLUME, 100, 0);
-    std::cout << "[TTS] espeak-ng initialized." << std::endl;
+    std::cout << "[TTS] espeak-ng initialized.\n";
     return true;
 }
 
@@ -178,7 +178,7 @@ LoadVocab(const std::string& model_dir) {
     for (const auto& key : root.getMemberNames()) {
         vocab[key] = root[key].asInt64();
     }
-    std::cout << "[TTS] Loaded vocab: " << vocab.size() << " entries." << std::endl;
+    std::cout << "[TTS] Loaded vocab: " << vocab.size() << " entries.\n";
     return vocab;
 }
 
@@ -191,7 +191,7 @@ LoadKokoroVoices(const std::string& model_dir) {
 
     fs::path voices_dir = fs::path(model_dir) / "voices";
     if (!fs::exists(voices_dir) || !fs::is_directory(voices_dir)) {
-        std::cerr << "[TTS] voices/ directory not found in " << model_dir << std::endl;
+        std::cerr << "[TTS] voices/ directory not found in " << model_dir << "\n";
         return voices;
     }
 
@@ -204,7 +204,7 @@ LoadKokoroVoices(const std::string& model_dir) {
 
         if (raw.size() % sizeof(float) != 0) {
             std::cerr << "[TTS] Voice file " << voice_name
-                << " has unexpected size " << raw.size() << std::endl;
+                << " has unexpected size " << raw.size() << "\n";
             continue;
         }
 
@@ -216,15 +216,15 @@ LoadKokoroVoices(const std::string& model_dir) {
         voice.steps = count / 256; // each step is 256 floats
 
         if (voice.steps == 0) {
-            std::cerr << "[TTS] Voice " << voice_name << " has no steps." << std::endl;
+            std::cerr << "[TTS] Voice " << voice_name << " has no steps.\n";
             continue;
         }
 
         voices[voice_name] = std::move(voice);
         std::cout << "[TTS] Loaded voice '" << voice_name
-            << "' steps=" << voices[voice_name].steps << std::endl;
+            << "' steps=" << voices[voice_name].steps << "\n";
     }
-    std::cout << "[TTS] Loaded " << voices.size() << " voices." << std::endl;
+    std::cout << "[TTS] Loaded " << voices.size() << " voices.\n";
     return voices;
 }
 
@@ -289,15 +289,15 @@ static std::vector<uint8_t> run_tts(
     std::string phonemes = TextToPhonemes(text);
     if (phonemes.empty()) {
         std::cerr << "[TTS] Phonemization produced empty output for: "
-            << text << std::endl;
+            << text << "\n";
         return {};
     }
-    std::cout << "[TTS] Phonemes: " << phonemes << std::endl;
+    std::cout << "[TTS] Phonemes: " << phonemes << "\n";
 
     // 2. Phonemes → token IDs (with BOS/EOS pads)
     std::vector<int64_t> tokens = PhonemesToTokens(phonemes, vocab);
     if (tokens.size() <= 2) {
-        std::cerr << "[TTS] No tokens after vocab mapping." << std::endl;
+        std::cerr << "[TTS] No tokens after vocab mapping.\n";
         return {};
     }
 
@@ -344,7 +344,7 @@ static std::vector<uint8_t> run_tts(
             output_names.data(), num_outputs);
     }
     catch (const Ort::Exception& e) {
-        std::cerr << "[TTS] session->Run failed: " << e.what() << std::endl;
+        std::cerr << "[TTS] session->Run failed: " << e.what() << "\n";
         return {};
     }
 
@@ -406,11 +406,11 @@ static void LoadModelConfig(const std::string& model_path,
         auto it = kModelTypeMap.find(model_type);
         if (it != kModelTypeMap.end()) {
             ranking_mode = it->second;
-            std::cout << "[Config] model_type: " << model_type << std::endl;
+            std::cout << "[Config] model_type: " << model_type << "\n";
         }
         else {
             std::cout << "[Config] model_type: '" << model_type
-                << "' unrecognized, defaulting to roberta" << std::endl;
+                << "' unrecognized, defaulting to roberta\n";
         }
     }
 
@@ -455,7 +455,7 @@ static void LoadModelConfig(const std::string& model_path,
         << " cls=" << cls_id
         << " sep=" << sep_id
         << " max_pos=" << positionEmbeddings
-        << std::endl;
+        << "\n";
 }
 
 static int GetOptimalIntraOpThreads() {
@@ -958,34 +958,33 @@ static void parse_request_embeddings(const std::string& json,
     Json::CharReaderBuilder builder;
     std::string errors;
 
-    std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
-    bool parse = reader->parse(json.c_str(),
-        json.c_str() + json.size(),
-        &root,
-        &errors);
-
-    if (parse)
     {
-        if (root.isObject())
+        // Scope the reader tightly so it releases internal buffers immediately
+        std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+        reader->parse(json.c_str(), json.c_str() + json.size(), &root, &errors);
+    }
+    
+    if (root.isObject())
+    {
+        Json::Value input_node = root["input"];
+        if (input_node.isString())
         {
-            Json::Value input_node = root["input"];
-            if (input_node.isString())
+            inputs.push_back(std::move(input_node).asString());  // move, not copy
+            //                inputs.push_back(input_node.asString());
+        }
+        if (input_node.isArray())
+        {
+            for (Json::ValueIterator i = input_node.begin(); i != input_node.end(); ++i)
             {
-                inputs.push_back(input_node.asString());
-            }
-            if (input_node.isArray())
-            {
-                for (Json::ValueIterator i = input_node.begin(); i != input_node.end(); ++i)
+                const auto& node = *i;
+                if (node.isString())
                 {
-                    const auto& node = *i;
-                    if (node.isString())
-                    {
-                        inputs.push_back(node.asString());
-                    }
+                    inputs.push_back(node.asString());
                 }
             }
         }
     }
+    // root goes out of scope here and jsoncpp frees its DOM
 }
 
 static void parse_request(
@@ -1191,7 +1190,7 @@ static std::unordered_set<int32_t> BuildStopTokenSet(OgaTokenizer* tokenizer) {
         int32_t id = tokenizer->ToTokenId(token_str);
         if (id != UNKNOWN_SENTINEL) {
             stop_tokens.insert(id);
-            std::cout << "[StopTokens] '" << token_str << "' -> " << id << std::endl;
+            std::cout << "[StopTokens] '" << token_str << "' -> " << id << "\n";
         }
     }
     return stop_tokens;
@@ -1935,7 +1934,7 @@ static std::string run_embeddings(
             input_tensors.push_back(Ort::Value::CreateTensor<int64_t>(
                 memory_info, flat_token_type_ids.data(), flat_token_type_ids.size(), input_dims.data(), input_dims.size()));
         }
-
+        
         // 5. Run Batched Inference (1 Call to session->Run!)
         auto outputs = session->Run(
             Ort::RunOptions{ nullptr },
@@ -2069,7 +2068,7 @@ static std::string run_embeddings_e2e(
     
     if (status != nullptr) {
         std::cerr << "[E2E] CreateTensorAsOrtValue failed: "
-            << api.GetErrorMessage(status) << std::endl;
+            << api.GetErrorMessage(status) << "\n";
         api.ReleaseStatus(status);
         return "{\"object\":\"list\",\"data\":[]}";
     }
@@ -2078,7 +2077,7 @@ static std::string run_embeddings_e2e(
     status = api.FillStringTensor(raw_tensor_ptr, input_cstrs.data(), batch_size);
     if (status != nullptr) {
         std::cerr << "[E2E] FillStringTensor failed: "
-            << api.GetErrorMessage(status) << std::endl;
+            << api.GetErrorMessage(status) << "\n";
         api.ReleaseStatus(status);
         api.ReleaseValue(raw_tensor_ptr);
         return "{\"object\":\"list\",\"data\":[]}";
@@ -2098,7 +2097,7 @@ static std::string run_embeddings_e2e(
         );
     }
     catch (const Ort::Exception& e) {
-        std::cerr << "[E2E] session->Run failed: " << e.what() << std::endl;
+        std::cerr << "[E2E] session->Run failed: " << e.what() << "\n";
         return "{\"object\":\"list\",\"data\":[]}";
     }
 
@@ -2110,7 +2109,7 @@ static std::string run_embeddings_e2e(
     // Output shape is [batch_size, embedding_dim]
     auto shape = outputs[0].GetTensorTypeAndShapeInfo().GetShape();
     if (shape.size() < 2) {
-        std::cerr << "[E2E] Unexpected output rank: " << shape.size() << std::endl;
+        std::cerr << "[E2E] Unexpected output rank: " << shape.size() << "\n";
         return "{\"object\":\"list\",\"data\":[]}";
     }
 
@@ -2492,7 +2491,7 @@ int main(int argc, OPTARG_T argv[]) {
     }
 
     int intra_op_threads = GetOptimalIntraOpThreads();
-    std::cout << "Detected " << intra_op_threads << " Intra-Op threads." << std::endl;
+    std::cout << "Detected " << intra_op_threads << " Intra-Op threads.\n";
 
     std::string fingerprint;
     long long model_created = 0;
@@ -2517,7 +2516,7 @@ int main(int argc, OPTARG_T argv[]) {
                 model_path = fs::path(model_path).lexically_normal().string();
 
                 // 1.a Initialize Model and Tokenizer (Load once)
-                std::cerr << "[Chat] Loading from " << model_path << std::endl;
+                std::cerr << "[Chat] Loading from " << model_path << "\n";
                 modelName = get_model_name(model_path);
 
                 // We determine the provider dynamically now, so we track it for the fingerprint
@@ -2534,7 +2533,7 @@ int main(int argc, OPTARG_T argv[]) {
 //                        config->AppendProvider("DML");
 //                        active_provider = "DML";
 //                    } catch (const std::exception& e) {
-//                        std::cerr << "Failed append provider: " << e.what() << std::endl;
+//                        std::cerr << "Failed append provider: " << e.what() << "\n";
 //                    }
 //https://onnxruntime.ai/docs/execution-providers/DirectML-ExecutionProvider.html#configuration-options
 #elif defined(__APPLE__)
@@ -2542,7 +2541,7 @@ int main(int argc, OPTARG_T argv[]) {
 //                        config->AppendProvider("CoreML");
 //                        active_provider = "CoreML";
 //                    } catch (const std::exception& e) {
-//                        std::cerr << "Failed to load model: " << e.what() << std::endl;
+//                        std::cerr << "Failed to load model: " << e.what() << "\n";
 //                    }
 #endif
                     // 3. Update Fingerprint with actual provider used
@@ -2553,8 +2552,8 @@ int main(int argc, OPTARG_T argv[]) {
 //                    try{
 //                        model = OgaModel::Create(*config);
 //                    } catch (const std::exception& e) {
-//                        std::cerr << e.what() << std::endl;
-//                        std::cerr << "This is probably a bug in the CoreML Execution Provider." << std::endl;
+//                        std::cerr << e.what() << "\n";
+//                        std::cerr << "This is probably a bug in the CoreML Execution Provider.\n";
 //                    }
 //#endif
 //                    if(model == nullptr) {
@@ -2575,7 +2574,7 @@ int main(int argc, OPTARG_T argv[]) {
                     model_created = get_created_timestamp();
                 }
                 catch (const std::exception& e) {
-                    std::cerr << "Failed to load model: " << e.what() << std::endl;
+                    std::cerr << "Failed to load model: " << e.what() << "\n";
                 }
             }
         }
@@ -2606,7 +2605,7 @@ int main(int argc, OPTARG_T argv[]) {
         if (fs::exists(embedding_model_path)) {
             if (fs::is_regular_file(embedding_model_path)) {
                 // 1.b Initialize Embedding and Session (Load once)
-                std::cerr << "[Embedding] Loading from " << embedding_model_path << std::endl;
+                std::cerr << "[Embedding] Loading from " << embedding_model_path << "\n";
                 embedding_fingerprint = get_system_fingerprint(embedding_model_path, "directml");
                 try {
                     embeddings_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "Embeddings");
@@ -2617,7 +2616,7 @@ int main(int argc, OPTARG_T argv[]) {
 #endif
                     Ort::SessionOptions session_options;
                     session_options.SetIntraOpNumThreads(intra_op_threads);
-#if defined(__APPLE__)
+#if defined(__APPLE__) && USE_COREML_FOR_EMBEDDINGS
                     // ── 1. Throwaway session — CPU only, just to read dim names ──────────────
                     std::vector<std::string> sym_dim_names;
                     {
@@ -2652,7 +2651,7 @@ int main(int argc, OPTARG_T argv[]) {
                                     if (sym[d] && sym[d][0] != '\0') {
                                         std::string name(sym[d]);  // copy before release
                                         std::cerr << "[Embedding] input[" << i << "] dim[" << d
-                                            << "] = '" << name << "'" << std::endl;
+                                            << "] = '" << name << "'\n";
                                         sym_dim_names.push_back(name);
                                     }
                                 }
@@ -2661,7 +2660,7 @@ int main(int argc, OPTARG_T argv[]) {
                             ort_api->ReleaseTypeInfo(type_info_ptr);
                         }
                     }
-#if USE_COREML_FOR_EMBEDDINGS
+
                     auto override_dim = [&](const char* name, int64_t value) {
                         OrtStatus* s = ort_api->AddFreeDimensionOverrideByName(
                             session_options,  // implicit OrtSessionOptions* conversion
@@ -2670,7 +2669,7 @@ int main(int argc, OPTARG_T argv[]) {
                         );
                         if (s) {
                             std::cerr << "[CoreML] dim override failed for '" << name << "': "
-                                << ort_api->GetErrorMessage(s) << std::endl;
+                                << ort_api->GetErrorMessage(s) << "\n";
                             ort_api->ReleaseStatus(s);
                         }
                         };
@@ -2688,7 +2687,7 @@ int main(int argc, OPTARG_T argv[]) {
                     for (const auto& [name, value] : dim_overrides) {
                         override_dim(name.c_str(), value);
                         std::cerr << "[Embedding] override '" << name
-                            << "' = " << value << std::endl;
+                            << "' = " << value << "\n";
                     }
                     embedding_coreml = true;
                     // CoreML: runs on ANE (Apple Neural Engine) + GPU on Apple Silicon.
@@ -2702,24 +2701,23 @@ int main(int argc, OPTARG_T argv[]) {
                     try {
                         session_options.AppendExecutionProvider("CoreML", coreml_opts);
                         embedding_fingerprint = get_system_fingerprint(embedding_model_path, "CoreML");
-                        std::cerr << "[Embedding] CoreML EP loaded." << std::endl;
+                        std::cerr << "[Embedding] CoreML EP loaded.\n";
                     }
                     catch (const std::exception& e) {
                         std::cerr << "[Embedding] CoreML EP unavailable, using CPU: "
-                            << e.what() << std::endl;
+                            << e.what() << "\n";
                         embedding_fingerprint = get_system_fingerprint(embedding_model_path, "CPU");
                     }
 #else
                     embedding_fingerprint = get_system_fingerprint(embedding_model_path, "CPU");
 #endif
 
-#endif
-
                     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
 
                     session_options.AddConfigEntry("session.intra_op.allow_spinning", "0");
                     session_options.DisableMemPattern();
-
+                    session_options.DisableCpuMemArena();
+                    
                     Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
 #ifdef WIN32
                     embeddings_session = std::make_unique<Ort::Session>(*embeddings_env, embedding_model_path_u16.c_str(), session_options);
@@ -2728,6 +2726,7 @@ int main(int argc, OPTARG_T argv[]) {
 #endif
                     num_input_nodes = embeddings_session->GetInputCount();
                     num_output_nodes = embeddings_session->GetOutputCount();
+                                        
                     for (size_t i = 0; i < num_input_nodes; i++) {
                         auto input_name_ptr = embeddings_session->GetInputNameAllocated(i, allocator);
                         input_node_names.push_back(input_name_ptr.get());
@@ -2760,7 +2759,7 @@ int main(int argc, OPTARG_T argv[]) {
                     embedding_model_created = get_created_timestamp();
                 }
                 catch (const std::exception& e) {
-                    std::cerr << "Failed to load model: " << e.what() << std::endl;
+                    std::cerr << "Failed to load model: " << e.what() << "\n";
                     return 1;
                 }
             }
@@ -2790,7 +2789,7 @@ int main(int argc, OPTARG_T argv[]) {
         if (fs::exists(reranker_model_path)) {
             if (fs::is_regular_file(reranker_model_path)) {
                 // 1.b Initialize Reranking and Session (Load once)
-                std::cerr << "[Rerank] Loading from " << reranker_model_path << std::endl;
+                std::cerr << "[Rerank] Loading from " << reranker_model_path << "\n";
                 reranking_fingerprint = get_system_fingerprint(reranker_model_path, "directml");
                 try {
                     rerank_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "Rerank");
@@ -2815,7 +2814,8 @@ int main(int argc, OPTARG_T argv[]) {
 
                     session_options.AddConfigEntry("session.intra_op.allow_spinning", "0");
                     session_options.DisableMemPattern();
-
+                    session_options.DisableCpuMemArena();
+                    
                     Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
 #ifdef WIN32
                     rerank_session = std::make_unique<Ort::Session>(*rerank_env, reranker_model_path_u16.c_str(), session_options);
@@ -2856,7 +2856,7 @@ int main(int argc, OPTARG_T argv[]) {
                     reranking_model_created = get_created_timestamp();
                 }
                 catch (const std::exception& e) {
-                    std::cerr << "Failed to load model: " << e.what() << std::endl;
+                    std::cerr << "Failed to load model: " << e.what() << "\n";
                     return 1;
                 }
             }
@@ -2879,7 +2879,7 @@ int main(int argc, OPTARG_T argv[]) {
 
     if (tts_model_path.length() != 0) {
         if (fs::exists(tts_model_path) && fs::is_regular_file(tts_model_path)) {
-            std::cerr << "[TTS] Loading from " << tts_model_path << std::endl;
+            std::cerr << "[TTS] Loading from " << tts_model_path << "\n";
             try {
                 tts_env = std::make_unique<Ort::Env>(
                     ORT_LOGGING_LEVEL_WARNING, "TTS");
@@ -2922,7 +2922,7 @@ int main(int argc, OPTARG_T argv[]) {
                 std::cout << "[TTS] Model inputs (" << num_tts_input_nodes << "):";
                 for (const auto& n : tts_input_node_names)
                     std::cout << " '" << n << "'";
-                std::cout << std::endl;
+                std::cout << "\n";
 
                 tts_vocab = LoadKokoroVocab(tts_dir);
                 tts_voices = LoadKokoroVoices(tts_dir);
@@ -2931,7 +2931,7 @@ int main(int argc, OPTARG_T argv[]) {
 
             }
             catch (const std::exception& e) {
-                std::cerr << "[TTS] Failed to load: " << e.what() << std::endl;
+                std::cerr << "[TTS] Failed to load: " << e.what() << "\n";
                 return 1;
             }
         }
@@ -2950,7 +2950,7 @@ int main(int argc, OPTARG_T argv[]) {
         // Route: /v1/chat/completions
         svr.Post("/v1/chat/completions", [&](const httplib::Request& req, httplib::Response& res) {
             std::lock_guard<std::mutex> lock(inference_mutex);
-            std::cout << "[Server] /v1/chat/completions request received." << std::endl;
+            std::cout << "[Server] /v1/chat/completions request received.\n";
 
             try {
 
@@ -3146,13 +3146,16 @@ int main(int argc, OPTARG_T argv[]) {
                 std::string error_str = MakeErrorJson(e.what(), "invalid_request_error");
                 res.set_content(error_str, "application/json");
                 res.status = 400; // Bad Request as per requirement
-                std::cerr << "[Server] Error: " << e.what() << std::endl;
+                std::cerr << "[Server] Error: " << e.what() << "\n";
             }
-            });
+#if defined(__APPLE__)
+malloc_zone_pressure_relief(nullptr, 0);
+#endif
+        });
 
         // Route: /v1/models
         svr.Get("/v1/models", [&](const httplib::Request& req, httplib::Response& res) {
-            std::cout << "[Server] /v1/models request received." << std::endl;
+            std::cout << "[Server] /v1/models request received.\n";
             /*
              The model object
              https://platform.openai.com/docs/api-reference/models/object
@@ -3206,7 +3209,7 @@ int main(int argc, OPTARG_T argv[]) {
         // Route: /v1/rerank
         svr.Post("/v1/rerank", [&](const httplib::Request& req, httplib::Response& res) {
 
-            std::cout << "[Server] /v1/rerank request received." << std::endl;
+            std::cout << "[Server] /v1/rerank request received.\n";
 
             try {
 
@@ -3319,14 +3322,17 @@ int main(int argc, OPTARG_T argv[]) {
                 std::string error_str = MakeErrorJson(e.what(), "invalid_request_error");
                 res.set_content(error_str, "application/json");
                 res.status = 400; // Bad Request as per requirement
-                std::cerr << "[Server] Error: " << e.what() << std::endl;
+                std::cerr << "[Server] Error: " << e.what() << "\n";
             }
-            });
+#if defined(__APPLE__)
+malloc_zone_pressure_relief(nullptr, 0);
+#endif
+        });
 
         // Route: /v1/embeddings
         svr.Post("/v1/embeddings", [&](const httplib::Request& req, httplib::Response& res) {
 
-            std::cout << "[Server] /v1/embeddings request received." << std::endl;
+            std::cout << "[Server] /v1/embeddings request received.\n";
 
             try {
 
@@ -3373,14 +3379,17 @@ int main(int argc, OPTARG_T argv[]) {
                 std::string error_str = MakeErrorJson(e.what(), "invalid_request_error");
                 res.set_content(error_str, "application/json");
                 res.status = 400; // Bad Request as per requirement
-                std::cerr << "[Server] Error: " << e.what() << std::endl;
+                std::cerr << "[Server] Error: " << e.what() << "\n";
             }
-            });
+#if defined(__APPLE__)
+malloc_zone_pressure_relief(nullptr, 0);
+#endif
+        });
 
         // Route: /v1/contextualizedembeddings
         auto contextualized_embeddings_handler = [&](const httplib::Request& req, httplib::Response& res) {
 
-            std::cout << "[Server] /v1/contextualizedembeddings request received." << std::endl;
+            std::cout << "[Server] /v1/contextualizedembeddings request received.\n";
 
             try {
 
@@ -3426,9 +3435,12 @@ int main(int argc, OPTARG_T argv[]) {
                 std::string error_str = MakeErrorJson(e.what(), "invalid_request_error");
                 res.set_content(error_str, "application/json");
                 res.status = 400; // Bad Request as per requirement
-                std::cerr << "[Server] Error: " << e.what() << std::endl;
+                std::cerr << "[Server] Error: " << e.what() << "\n";
             }
-            };
+#if defined(__APPLE__)
+malloc_zone_pressure_relief(nullptr, 0);
+#endif
+        };
 
         svr.Post("/v1/contextualizedembeddings", contextualized_embeddings_handler);
         svr.Post("/v1/contextualized/embeddings", contextualized_embeddings_handler);
@@ -3436,7 +3448,7 @@ int main(int argc, OPTARG_T argv[]) {
         svr.Post("/v1/audio/speech", [&](const httplib::Request& req, httplib::Response& res) {
             std::lock_guard<std::mutex> lock(tts_mutex);
 
-            std::cout << "[Server] /v1/audio/speech request received." << std::endl;
+            std::cout << "[Server] /v1/audio/speech request received.\n";
 
             try {
                 if (tts_model_created == 0)
@@ -3475,7 +3487,7 @@ int main(int argc, OPTARG_T argv[]) {
                     voice_it = tts_voices.begin();
                     std::cerr << "[TTS] Voice '" << voice
                         << "' not found, using '" << voice_it->first
-                        << "'." << std::endl;
+                        << "'.\n";
                 }
 
                 std::vector<uint8_t> audio = run_tts(
@@ -3509,16 +3521,24 @@ int main(int argc, OPTARG_T argv[]) {
             catch (const std::exception& e) {
                 res.set_content(MakeErrorJson(e.what()), "application/json");
                 res.status = 400;
-                std::cerr << "[TTS] Error: " << e.what() << std::endl;
+                std::cerr << "[TTS] Error: " << e.what() << "\n";
             }
-            });
+#if defined(__APPLE__)
+malloc_zone_pressure_relief(nullptr, 0);
+#endif
+        });
 
-        std::cout << "[Server] Listening on " << host << ":" << port << std::endl;
+        std::cout << "[Server] Listening on " << host << ":" << port << "\n";
 
         svr.new_task_queue = [] { return new httplib::ThreadPool(2); };
+        svr.set_read_timeout(30, 0);        // 30s read timeout
+        svr.set_write_timeout(30, 0);       // 30s write timeout
+        svr.set_idle_interval(5, 0);        // recycle idle connections after 5s
+        svr.set_keep_alive_max_count(5);    // recycle connection every 5 requests
+        svr.set_keep_alive_timeout(2);      // 2s keep-alive timeout
         // Listen (Blocking call)
         if (!svr.listen(host.c_str(), port)) {
-            std::cerr << "Error: Could not start server on " << host << ":" << port << std::endl;
+            std::cerr << "Error: Could not start server on " << host << ":" << port << "\n";
             return 1;
         }
     }
@@ -3604,7 +3624,7 @@ int main(int argc, OPTARG_T argv[]) {
 
         // Output logic
         if (!output_path) {
-            std::cout << response << std::endl;
+            std::cout << response << "\n";
         }
         else {
             FILE* f = _fopen(output_path, _wb);
