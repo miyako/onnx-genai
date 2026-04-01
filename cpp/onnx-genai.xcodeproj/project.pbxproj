@@ -327,7 +327,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D164789E2E61216B00FC9914 /* onnx-genai.xcconfig */;
 			buildSettings = {
-				ARCHS = x86_64;
+				ARCHS = "$(ARCHS_STANDARD)";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Y69CWUC25B;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -338,14 +338,15 @@
 					"$(PROJECT_DIR)/macOS",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.5;
-				OTHER_CFLAGS = "";
-				OTHER_CPLUSPLUSFLAGS = (
+				OTHER_CFLAGS = (
 					"-DEIGEN_USE_BLAS",
 					"-flto",
 					"-Xpreprocessor",
 					"-fopenmp",
-					"-march=native",
+					"-mavx2",
+					"-mfma",
 				);
+				OTHER_CPLUSPLUSFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					include,
@@ -358,7 +359,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D164789E2E61216B00FC9914 /* onnx-genai.xcconfig */;
 			buildSettings = {
-				ARCHS = x86_64;
+				ARCHS = "$(ARCHS_STANDARD)";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Y69CWUC25B;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -375,8 +376,7 @@
 					"-flto",
 					"-Xpreprocessor",
 					"-fopenmp",
-					"-mavx2",
-					"-mfma",
+					"-march=native",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
