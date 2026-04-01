@@ -1920,7 +1920,7 @@ static std::string run_embeddings(
         }
 
         // 4. Create Tensors
-        Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+        Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
         std::vector<int64_t> input_dims = { batch_size, max_seq_len };
         std::vector<Ort::Value> input_tensors;
 
@@ -2689,6 +2689,7 @@ int main(int argc, OPTARG_T argv[]) {
                     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
 
                     session_options.AddConfigEntry("session.intra_op.allow_spinning", "0");
+                    session_options.DisableMemPattern();
 
                     Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
 #ifdef WIN32
