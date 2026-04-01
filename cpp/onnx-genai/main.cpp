@@ -2596,6 +2596,8 @@ int main(int argc, OPTARG_T argv[]) {
                     {
                         Ort::SessionOptions probe_opts;
                         probe_opts.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
+                        probe_opts.DisableMemPattern();
+                        probe_opts.DisableCpuMemArena();  
                         Ort::Session probe(*embeddings_env, embedding_model_path.c_str(), probe_opts);
 
                         const OrtApi* ort_api = OrtGetApiBase()->GetApi(ORT_API_VERSION);
