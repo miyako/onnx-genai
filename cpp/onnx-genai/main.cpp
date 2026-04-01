@@ -2014,13 +2014,39 @@ static std::string run_embeddings_e2e(
 
     const OrtApi& api = Ort::GetApi();
 
+    // ── Custom malloc-backed allocator — avoids the global arena entirely ────
+        // OrtAllocator is a plain C struct with function pointers; we fill it here
+        // on the stack so it has zero lifetime beyond this call.
+        struct MallocAllocator {
+            static void* ORT_API_CALL Alloc(struct OrtAllocator*, size_t size) {
+                return malloc(size);
+            }
+            static void ORT_API_CALL Free(struct OrtAllocator*, void* p) {
+                free(p);
+            }
+            static const struct OrtMemoryInfo* ORT_API_CALL Info(const struct OrtAllocator*) {
+                // Return a stable pointer to a static CPU MemoryInfo.
+                // ORT only reads this for device/type checks — it is never freed via this allocator.
+                static Ort::MemoryInfo cpu = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
+                return static_cast<const OrtMemoryInfo*>(cpu);
+            }
+        };
+    
+    OrtAllocator malloc_alloc;
+    malloc_alloc.version = ORT_API_VERSION;
+    malloc_alloc.Alloc   = MallocAllocator::Alloc;
+    malloc_alloc.Free    = MallocAllocator::Free;
+    malloc_alloc.Info    = MallocAllocator::Info;
+
+    OrtStatus* status;
+    
     // --- 1. Build a single [N] string tensor holding all inputs ---
-    OrtAllocator* allocator = nullptr;
-    OrtStatus* status = api.GetAllocatorWithDefaultOptions(&allocator);
-    if (status != nullptr) {
-        api.ReleaseStatus(status);
-        return "{\"object\":\"list\",\"data\":[]}";
-    }
+//    OrtAllocator* allocator = nullptr;
+//    status = api.GetAllocatorWithDefaultOptions(&allocator);
+//    if (status != nullptr) {
+//        api.ReleaseStatus(status);
+//        return "{\"object\":\"list\",\"data\":[]}";
+//    }
 
     const int64_t batch_size = static_cast<int64_t>(inputs.size());
     int64_t input_shape[] = { batch_size };
@@ -2034,12 +2060,13 @@ static std::string run_embeddings_e2e(
 
     OrtValue* raw_tensor_ptr = nullptr;
     status = api.CreateTensorAsOrtValue(
-        allocator,
-        input_shape,
-        1,                                       // rank = 1 (flat batch)
-        ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING,
-        &raw_tensor_ptr
-    );
+                                        &malloc_alloc,
+                                        input_shape,
+                                        1,                                       // rank = 1 (flat batch)
+                                        ONNX_TENSOR_ELEMENT_DATA_TYPE_STRING,
+                                        &raw_tensor_ptr
+                                        );
+    
     if (status != nullptr) {
         std::cerr << "[E2E] CreateTensorAsOrtValue failed: "
             << api.GetErrorMessage(status) << std::endl;
@@ -2597,7 +2624,7 @@ int main(int argc, OPTARG_T argv[]) {
                         Ort::SessionOptions probe_opts;
                         probe_opts.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
                         probe_opts.DisableMemPattern();
-                        probe_opts.DisableCpuMemArena();  
+                        probe_opts.DisableCpuMemArena();
                         Ort::Session probe(*embeddings_env, embedding_model_path.c_str(), probe_opts);
 
                         const OrtApi* ort_api = OrtGetApiBase()->GetApi(ORT_API_VERSION);
