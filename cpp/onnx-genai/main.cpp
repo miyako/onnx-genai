@@ -1925,6 +1925,17 @@ static std::string run_embeddings(
         if (using_coreml) {
             max_seq_len = max_position_embeddings;  // force exact shape
         }
+        
+        // Quantize seq_len to fixed buckets to bound ORT's execution plan cache.
+        // Without this, every unique seq_len gets its own cached plan and buffers,
+        // causing unbounded memory growth across requests.
+        static const std::array<int, 10> buckets = {64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768};
+        for (int bucket : buckets) {
+            if (max_seq_len <= bucket) {
+                max_seq_len = bucket;
+                break;
+            }
+        }
 
         // 2. Allocate flat memory for tensors (Zero initialized for padding)
         size_t total_elements = (size_t)batch_size * max_seq_len;
@@ -2663,7 +2674,7 @@ int main(int argc, OPTARG_T argv[]) {
                     {
                         Ort::SessionOptions probe_opts;
                         probe_opts.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
-//                        probe_opts.DisableMemPattern();
+                        probe_opts.DisableMemPattern();
                         probe_opts.DisableCpuMemArena();
                         Ort::Session probe(*embeddings_env, embedding_model_path.c_str(), probe_opts);
 
@@ -2854,7 +2865,7 @@ int main(int argc, OPTARG_T argv[]) {
                     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
 
                     session_options.AddConfigEntry("session.intra_op.allow_spinning", "0");
-//                    session_options.DisableMemPattern();
+                    session_options.DisableMemPattern();
                     session_options.DisableCpuMemArena();
                     
                     Ort::ThrowOnError(RegisterCustomOps((OrtSessionOptions*)session_options, OrtGetApiBase()));
@@ -2934,7 +2945,7 @@ int main(int argc, OPTARG_T argv[]) {
                 sopts.SetGraphOptimizationLevel(
                     GraphOptimizationLevel::ORT_ENABLE_ALL);
                 sopts.AddConfigEntry("session.intra_op.allow_spinning", "0");
-//                sopts.DisableMemPattern();
+                sopts.DisableMemPattern();
                 sopts.DisableCpuMemArena();
 #ifdef WIN32
                 tts_session = std::make_unique<Ort::Session>(*tts_env, tts_model_path_u16.c_str(), sopts);
