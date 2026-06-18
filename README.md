@@ -185,8 +185,8 @@ The API is compatibile with the following [Open AI](https://platform.openai.com/
 
 In addition, the following endpoints are available:
 
-|API|Alias|Trigger
-|-|-|:-:|
+|API|Alias|
+|-|-|
 |`/v1/audio/speech`|
 |`/v1/rerank`||
 |`/v1/contextualizedembeddings`|`/v1/contextualized/embeddings`
