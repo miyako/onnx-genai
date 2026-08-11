@@ -20,9 +20,11 @@ brew unlink abseil
   --osx_arch arm64 \
   --build_dir build/arm64 \
   --skip_tests
+brew link abseil
 ```
 
 ```
+brew unlink abseil
 ./build.sh \
   --config Release \
   --build_shared_lib \
@@ -30,6 +32,7 @@ brew unlink abseil
   --osx_arch x86_64 \
   --build_dir build/x64 \
   --skip_tests
+brew link abseil
 ```
 
 ```
