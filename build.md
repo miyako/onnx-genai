@@ -78,14 +78,14 @@ cmake --build . --config Release --parallel
 ```
 
 ```
-cmake ..\.. -G "Visual Studio 17 2022" -A ARM64 ^
+cmake -S . -B build -G "Visual Studio 17 2022" -A ARM64 ^
   -DCMAKE_BUILD_TYPE=Release ^
   -DOCOS_BUILD_SHARED_LIB=ON
 cmake --build . --config Release --parallel
 ```
 
 ```
-cmake ..\.. -G "Visual Studio 17 2022" -A x64 ^
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64 ^
   -DCMAKE_BUILD_TYPE=Release ^
   -DOCOS_BUILD_SHARED_LIB=ON
 cmake --build . --config Release --parallel
