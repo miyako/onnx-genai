@@ -32,11 +32,21 @@ cd onnxruntime
 ```
 
 ```
-.\build.bat --config Release --build_shared_lib --parallel --skip_tests --cmake_generator "Visual Studio 17 2022"
+.\build.bat ^
+  --config Release ^
+  --build_shared_lib ^
+  --parallel ^
+  --skip_tests ^
+  --cmake_generator "Visual Studio 17 2022"
 ```
 
 ```
-.\build.bat --config Release --build_shared_lib --parallel --skip_tests --cmake_generator "Visual Studio 17 2022" --x64
+.\build.bat ^
+  --config Release ^
+  --build_shared_lib ^
+  --parallel ^
+  --skip_tests ^
+  --cmake_generator "Visual Studio 17 2022" --x64
 ```
 
 ### `onnxruntime-extensions`
