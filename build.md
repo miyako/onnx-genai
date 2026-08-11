@@ -12,6 +12,7 @@ cd onnxruntime
 ```
 
 ```
+brew unlink protobuf
 brew unlink abseil
 ./build.sh \
   --config Release \
@@ -21,9 +22,11 @@ brew unlink abseil
   --build_dir build/arm64 \
   --skip_tests
 brew link abseil
+brew link protobuf
 ```
 
 ```
+brew unlink protobuf
 brew unlink abseil
 ./build.sh \
   --config Release \
@@ -33,6 +36,7 @@ brew unlink abseil
   --build_dir build/x64 \
   --skip_tests
 brew link abseil
+brew link protobuf
 ```
 
 ```
