@@ -129,12 +129,12 @@ cmake -S . -B build -G "Ninja" ^
   -Dprotobuf_BUILD_SHARED_LIBS=OFF ^
   -Ddlib_NO_GUI_SUPPORT=ON ^
   -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
-    -DCMAKE_C_COMPILER=clang-cl ^
-    -DCMAKE_CXX_COMPILER=clang-cl ^
-    -DCMAKE_C_COMPILER_TARGET=arm64-pc-windows-msvc ^
-    -DCMAKE_SYSTEM_NAME=Windows ^
-    -DCMAKE_CXX_COMPILER_TARGET=arm64-pc-windows-msvc ^
-    -DOCOS_ENABLE_CTEST=OFF -DBUILD_TESTING=OFF
+  -DCMAKE_C_COMPILER=clang-cl ^
+  -DCMAKE_CXX_COMPILER=clang-cl ^
+  -DCMAKE_C_COMPILER_TARGET=arm64-pc-windows-msvc ^
+  -DCMAKE_SYSTEM_NAME=Windows ^
+  -DCMAKE_CXX_COMPILER_TARGET=arm64-pc-windows-msvc ^
+  -DOCOS_ENABLE_CTEST=OFF -DBUILD_TESTING=OFF
 ```
 
 ```
@@ -149,11 +149,11 @@ cmake -S . -B build -G "Visual Studio 17 2022" -A ARM64 -DOCOS_ENABLE_CTEST=OFF 
   -Dprotobuf_BUILD_SHARED_LIBS=OFF ^
   -Ddlib_USE_CUDA=OFF ^
   -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
-    -DCMAKE_C_COMPILER=clang-cl ^
-    -DCMAKE_CXX_COMPILER=clang-cl ^
-    -DCMAKE_C_COMPILER_TARGET=arm64-pc-windows-msvc ^
-    -DCMAKE_SYSTEM_NAME=Windows ^
-    -DCMAKE_CXX_COMPILER_TARGET=arm64-pc-windows-msvc ^
-    -DOCOS_ENABLE_CTEST=OFF -DBUILD_TESTING=OFF
+  -DCMAKE_C_COMPILER=clang-cl ^
+  -DCMAKE_CXX_COMPILER=clang-cl ^
+  -DCMAKE_C_COMPILER_TARGET=arm64-pc-windows-msvc ^
+  -DCMAKE_SYSTEM_NAME=Windows ^
+  -DCMAKE_CXX_COMPILER_TARGET=arm64-pc-windows-msvc ^
+  -DOCOS_ENABLE_CTEST=OFF -DBUILD_TESTING=OFF
 ```
 
