@@ -4,6 +4,33 @@ layout: default
 
 # Memo: Build Instructions
 
+### `onnxruntime`
+
+```
+git clone --recursive https://github.com/microsoft/onnxruntime.git
+cd onnxruntime
+```
+
+```
+./build.sh \
+  --config Release \
+  --build_shared_lib \
+  --parallel \
+  --osx_arch arm64 \
+  --build_dir build/arm64 \
+  --skip_tests
+```
+
+```
+./build.sh \
+  --config Release \
+  --build_shared_lib \
+  --parallel \
+  --osx_arch x86_64 \
+  --build_dir build/x64 \
+  --skip_tests
+```
+
 ### `onnxruntime-extensions`
 
 ## macOS
