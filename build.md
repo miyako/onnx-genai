@@ -33,8 +33,6 @@ cd onnxruntime
 
 ### `onnxruntime-extensions`
 
-## macOS
-
 ```
 git clone --recursive https://github.com/microsoft/onnxruntime-extensions.git
 cd onnxruntime-extensions
@@ -55,8 +53,6 @@ cmake --build . --config Release --parallel
 
 ### `onnxruntime-genai`
 
-## macOS (ARM)
-
 ```
 git clone --recursive https://github.com/microsoft/onnxruntime-genai.git
 cd onnxruntime-genai
@@ -75,8 +71,6 @@ python3 build.py \
   --skip_tests
 ```
 
-## macOS (Intel)
-
 ```
 python3 build.py \
   --build_dir build_x64 \
@@ -84,7 +78,9 @@ python3 build.py \
   --skip_tests
 ```
 
-There is no osx-x64 prebuilt runtime in `~/Desktop/onnxruntime-genai/build/Release/_deps/ortlib-src/runtimes/osx-x64/native` so you need to supply that manually.
+> There is no osx-x64 prebuilt runtime in `~/Desktop/onnxruntime-genai/build/Release/_deps/ortlib-src/runtimes/osx-x64/native`.
+> Place a copy of `onnxruntime` manually.
+
 
 
 Force `protobuf` rebuild by hiding it.
