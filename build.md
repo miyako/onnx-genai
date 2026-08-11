@@ -4,9 +4,60 @@ layout: default
 
 # Memo: Build Instructions
 
-### `onnxruntime-extensions`
+### `onnxruntime`
 
-## macOS
+```
+git clone --recursive https://github.com/microsoft/onnxruntime.git
+cd onnxruntime
+```
+
+```
+brew unlink protobuf
+brew unlink abseil
+./build.sh \
+  --config Release \
+  --build_shared_lib \
+  --parallel \
+  --osx_arch arm64 \
+  --build_dir build/arm64 \
+  --skip_tests
+brew link abseil
+brew link protobuf
+```
+
+```
+brew unlink protobuf
+brew unlink abseil
+./build.sh \
+  --config Release \
+  --build_shared_lib \
+  --parallel \
+  --osx_arch x86_64 \
+  --build_dir build/x64 \
+  --skip_tests
+brew link abseil
+brew link protobuf
+```
+
+```
+.\build.bat ^
+  --config Release ^
+  --build_shared_lib ^
+  --parallel ^
+  --skip_tests ^
+  --cmake_generator "Visual Studio 17 2022"
+```
+
+```
+.\build.bat ^
+  --config Release ^
+  --build_shared_lib ^
+  --parallel ^
+  --skip_tests ^
+  --cmake_generator "Visual Studio 17 2022" --x64
+```
+
+### `onnxruntime-extensions`
 
 ```
 git clone --recursive https://github.com/microsoft/onnxruntime-extensions.git
@@ -20,15 +71,24 @@ cmake .. \
     -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
     -DCMAKE_BUILD_TYPE=Release \
     -DOCOS_ENABLE_OPENCV_CODECS=OFF
+cmake --build . --config Release --parallel
 ```
 
 ```
+cmake ..\.. -G "Visual Studio 17 2022" -A ARM64 ^
+  -DCMAKE_BUILD_TYPE=Release ^
+  -DOCOS_BUILD_SHARED_LIB=ON
+cmake --build . --config Release --parallel
+```
+
+```
+cmake ..\.. -G "Visual Studio 17 2022" -A x64 ^
+  -DCMAKE_BUILD_TYPE=Release ^
+  -DOCOS_BUILD_SHARED_LIB=ON
 cmake --build . --config Release --parallel
 ```
 
 ### `onnxruntime-genai`
-
-## macOS (ARM)
 
 ```
 git clone --recursive https://github.com/microsoft/onnxruntime-genai.git
@@ -43,44 +103,20 @@ pip3 install requests numpy
 
 ```
 python3 build.py \
-    --build_dir build \
-    --config Release \
-    --osx_arch arm64 # --osx_arch x86_64
+  --build_dir build_arm64 \
+  --cmake_extra_defines CMAKE_OSX_ARCHITECTURES=arm64 \
+  --skip_tests
 ```
-
-## macOS (Intel)
 
 ```
 python3 build.py \
-    --build_dir build \
-    --config Release \
-    --osx_arch x86_64
+  --build_dir build_x64 \
+  --cmake_extra_defines CMAKE_OSX_ARCHITECTURES=x86_64 \
+  --skip_tests
 ```
 
-There is no osx-x64 prebuilt runtime in `~/Desktop/onnxruntime-genai/build/Release/_deps/ortlib-src/runtimes/osx-x64/native` so you need to supply that manually.
-
-
-Force `protobuf` rebuild by hiding it.
-
-```
-brew unlink protobuf
-deactivate
-```
-
-```
-export CMAKE_POLICY_VERSION_MINIMUM=3.5
-```
-
-```
-./build.sh \
-    --config Release \
-    --osx_arch x86_64 \
-    --build_shared_lib \
-    --parallel \
-    --skip_tests \
-    --compile_no_warning_as_error \
-    --skip_submodule_sync
-```
+> There is no osx-x64 prebuilt runtime in `onnxruntime-genai/build/Release/_deps/ortlib-src/runtimes/osx-x64/native`.
+> Place a copy of `onnxruntime` manually.
 
 ## ONNX Runtime Extensions
 
@@ -101,12 +137,12 @@ cmake -S . -B build -G "Ninja" ^
   -Dprotobuf_BUILD_SHARED_LIBS=OFF ^
   -Ddlib_NO_GUI_SUPPORT=ON ^
   -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
-    -DCMAKE_C_COMPILER=clang-cl ^
-    -DCMAKE_CXX_COMPILER=clang-cl ^
-    -DCMAKE_C_COMPILER_TARGET=arm64-pc-windows-msvc ^
-    -DCMAKE_SYSTEM_NAME=Windows ^
-    -DCMAKE_CXX_COMPILER_TARGET=arm64-pc-windows-msvc ^
-    -DOCOS_ENABLE_CTEST=OFF -DBUILD_TESTING=OFF
+  -DCMAKE_C_COMPILER=clang-cl ^
+  -DCMAKE_CXX_COMPILER=clang-cl ^
+  -DCMAKE_C_COMPILER_TARGET=arm64-pc-windows-msvc ^
+  -DCMAKE_SYSTEM_NAME=Windows ^
+  -DCMAKE_CXX_COMPILER_TARGET=arm64-pc-windows-msvc ^
+  -DOCOS_ENABLE_CTEST=OFF -DBUILD_TESTING=OFF
 ```
 
 ```
@@ -121,11 +157,11 @@ cmake -S . -B build -G "Visual Studio 17 2022" -A ARM64 -DOCOS_ENABLE_CTEST=OFF 
   -Dprotobuf_BUILD_SHARED_LIBS=OFF ^
   -Ddlib_USE_CUDA=OFF ^
   -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded ^
-    -DCMAKE_C_COMPILER=clang-cl ^
-    -DCMAKE_CXX_COMPILER=clang-cl ^
-    -DCMAKE_C_COMPILER_TARGET=arm64-pc-windows-msvc ^
-    -DCMAKE_SYSTEM_NAME=Windows ^
-    -DCMAKE_CXX_COMPILER_TARGET=arm64-pc-windows-msvc ^
-    -DOCOS_ENABLE_CTEST=OFF -DBUILD_TESTING=OFF
+  -DCMAKE_C_COMPILER=clang-cl ^
+  -DCMAKE_CXX_COMPILER=clang-cl ^
+  -DCMAKE_C_COMPILER_TARGET=arm64-pc-windows-msvc ^
+  -DCMAKE_SYSTEM_NAME=Windows ^
+  -DCMAKE_CXX_COMPILER_TARGET=arm64-pc-windows-msvc ^
+  -DOCOS_ENABLE_CTEST=OFF -DBUILD_TESTING=OFF
 ```
 
