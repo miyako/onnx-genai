@@ -31,6 +31,14 @@ cd onnxruntime
   --skip_tests
 ```
 
+```
+.\build.bat --config Release --build_shared_lib --parallel --skip_tests --cmake_generator "Visual Studio 17 2022"
+```
+
+```
+.\build.bat --config Release --build_shared_lib --parallel --skip_tests --cmake_generator "Visual Studio 17 2022" --x64
+```
+
 ### `onnxruntime-extensions`
 
 ```
@@ -78,32 +86,8 @@ python3 build.py \
   --skip_tests
 ```
 
-> There is no osx-x64 prebuilt runtime in `~/Desktop/onnxruntime-genai/build/Release/_deps/ortlib-src/runtimes/osx-x64/native`.
+> There is no osx-x64 prebuilt runtime in `onnxruntime-genai/build/Release/_deps/ortlib-src/runtimes/osx-x64/native`.
 > Place a copy of `onnxruntime` manually.
-
-
-
-Force `protobuf` rebuild by hiding it.
-
-```
-brew unlink protobuf
-deactivate
-```
-
-```
-export CMAKE_POLICY_VERSION_MINIMUM=3.5
-```
-
-```
-./build.sh \
-    --config Release \
-    --osx_arch x86_64 \
-    --build_shared_lib \
-    --parallel \
-    --skip_tests \
-    --compile_no_warning_as_error \
-    --skip_submodule_sync
-```
 
 ## ONNX Runtime Extensions
 
