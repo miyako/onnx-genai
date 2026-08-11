@@ -57,6 +57,9 @@ brew link protobuf
   --cmake_generator "Visual Studio 17 2022" --x64
 ```
 
+> [!TIP]
+> Just download the prebuilt `onnxruntime` and `onnxruntime-genai` libraries.
+
 ### `onnxruntime-extensions`
 
 ```
@@ -117,6 +120,15 @@ python3 build.py \
 
 > There is no osx-x64 prebuilt runtime in `onnxruntime-genai/build/Release/_deps/ortlib-src/runtimes/osx-x64/native`.
 > Place a copy of `onnxruntime` manually.
+
+
+
+
+
+
+
+
+
 
 ## ONNX Runtime Extensions
 
