@@ -338,6 +338,11 @@ An "End-to-End" (E2E) model that takes raw string as input and returns vectors a
 
 #### AI Kit compatibility
 
+The text-only TypeSafe-compatible `/v1/systemone` endpoint supports Kev and d1
+decision models via the dedicated `-D` option. See
+[CLI documentation](CLI.md#typesafe-compatible-endpoint) for model setup, examples,
+limits and d1's newer ONNX Runtime requirement.
+
 The API is compatible with [Open AI](https://platform.openai.com/docs/api-reference/embeddings). 
 
 |Class|API|Availability|

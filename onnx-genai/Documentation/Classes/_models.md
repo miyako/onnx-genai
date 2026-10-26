@@ -31,7 +31,10 @@ In offline mode the following domain-to-option mappings are applied directly:
 | `"chat.completion"` | `chat_completion_model` | — |
 | `"embedding"` | `embeddings_model` | `embeddings_model_name` |
 | `"rerank"` | `rerank_model` | `rerank_model_name` |
+| `"systemone"` | `decision_model` | `decision_model_name` |
 | `"tts"` | `tts_model` | `tts_model_name` |
+
+For `systemone`, use a `4D.Folder` pointing to the local repository root and a selected ONNX `name` relative to it (for example `onnx/model_q4.onnx` for Kev or `onnx/decoder_model_merged_quantized.onnx` for d1). The folder-based recursive download preserves the entire repository layout, including root `config.json` and `tokenizer.json`, sibling ONNX graphs, and external data beside the selected graph. A single-file descriptor is insufficient for these models. Offline mapping uses the same root and name without requiring metadata downloads.
 
 ### Properties
 

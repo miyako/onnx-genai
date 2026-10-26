@@ -33,6 +33,7 @@ The command always begins with `ONNX-genai -s` (server mode). Named model paths 
 | `chat_completion_model` | `-m` | Folder path |
 | `embeddings_model` | `-e` | `embeddings_model/embeddings_model_name` |
 | `rerank_model` | `-r` | `rerank_model/rerank_model_name` |
+| `decision_model` | `-D` | Selected ONNX file at `decision_model/decision_model_name` |
 | `tts_model` | `-T` | `tts_model/tts_model_name` |
 | `port` | `-p` | Integer |
 | `host` | `-h` | Text |
@@ -43,7 +44,9 @@ The command always begins with `ONNX-genai -s` (server mode). Named model paths 
 | `pooling: "e2e"` | `-d` | Universal Sentence Encoder |
 | `pooling: "mean"` | _(no flag)_ | Default |
 
-After the named options, remaining keys in `option` are emitted as flags. Single-character keys use `-x value`; multi-character keys use `--key value`. Underscores in key names are replaced with hyphens. The following keys are reserved and excluded from the general loop: `i`, `o`, `s`, `j`, `c`, `l`, `b`, `d`, `_`, `h`, `host`, `p`, `port`, `t`, `chat_template`, `pooling`, `T`, `tts_model`, `tts_model_name`, `r`, `rerank_model`, `rerank_model_name`, `e`, `embeddings_model`, `embeddings_model_name`, `m`, `chat_completion_model`, `HF_TOKEN`.
+For the planned `/v1/systemone` endpoint, `decision_model` is a `4D.Folder` and `decision_model_name` selects the ONNX file, not a directory. A relative path such as `onnx/model_q4.onnx` is resolved directly; a bare filename is checked first in the folder, then in its `onnx` child. This lookup is identical for downloaded and offline models. `-D` is independent of embedding pooling's lowercase `-d`. The executable infers the `kev` or `d1` backend from the repository-root `config.json`; no backend flag is emitted. Keep `config.json` and `tokenizer.json` at the repository root, and sibling graphs/external data beside the selected ONNX.
+
+After the named options, remaining keys in `option` are emitted as flags. Single-character keys use `-x value`; multi-character keys use `--key value`. Underscores in key names are replaced with hyphens. The following keys are reserved and excluded from the general loop: `i`, `o`, `s`, `j`, `c`, `l`, `b`, `d`, `_`, `h`, `host`, `p`, `port`, `t`, `chat_template`, `pooling`, `D`, `decision_model`, `decision_model_name`, `T`, `tts_model`, `tts_model_name`, `r`, `rerank_model`, `rerank_model_name`, `e`, `embeddings_model`, `embeddings_model_name`, `m`, `chat_completion_model`, `HF_TOKEN`.
 
 If `option.chat_template` is set, it is posted to stdin rather than appended to the command string.
 

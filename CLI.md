@@ -9,6 +9,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
  -e path     : embedding model (pooling=mean)
  -r path     : rerank model
  -T path     : text to speach model
+ -D path     : System One decision ONNX model (Kev or d1, text only)
  -t path     : chat template
  -j          : chat template from stdin
  -d          : pooling=e2e 
@@ -53,8 +54,124 @@ The CLI is built for `4` platforms:
 - `/v1/contextualized/embeddings` (alias)
 
 > [!TIP]
-> The `input_type` property has no special effect. You must specifically add the prefixes "Represent the query for retrieving supporting documents: " and "Represent the document for retrieval: " if required by the model.  
+> The `input_type` property has no special effect. You must specifically add the prefixes "Represent the query for retrieving supporting documents: " and "Represent the document for retrieval: " if required by the model.
 > [https://www.mongodb.com/docs/](https://www.mongodb.com/docs/api/doc/atlas-embedding-and-reranking-api/operation/operation-createcontextualizedembedding)
+
+## TypeSafe Compatible Endpoint
+
+- `POST /v1/systemone`
+
+Load one decision model independently of chat, embeddings, reranking and speech:
+
+```sh
+onnx-genai -s -D /models/kev-0.6b-ONNX/onnx/model_q4.onnx
+# Same adapter for kev-4b-ONNX:
+onnx-genai -s -D /models/kev-4b-ONNX/onnx/model_q4.onnx
+# d1 q8, using ONNX Runtime 1.29.0 (see below):
+onnx-genai -s -D /models/d1-3B-ONNX/onnx/decoder_model_merged_quantized.onnx
+```
+
+Supported exports:
+[Kev-0.6B](https://huggingface.co/onnx-community/kev-0.6b-ONNX),
+[Kev-4B](https://huggingface.co/onnx-community/kev-4b-ONNX), and
+[d1-3B](https://huggingface.co/onnx-community/d1-3B-ONNX).
+These are decision models, not chat or embedding models; do not load them with
+`-m`, `-e` or `-r`.
+
+Keep `config.json` and `tokenizer.json` in the model directory, with the selected
+graph and **all its external data files** in `onnx/`. They may alternatively all
+be placed in one directory. The backend is identified by the `kev` or `d1`
+metadata in `config.json`, not the directory name or `model_type`.
+Kev uses the selected graph directly. d1 additionally loads the matching
+`embed_tokens_quantized.onnx` or `embed_tokens_q4.onnx` beside its selected decoder.
+The text-only adapter does not load the vision encoder.
+
+**Runtime requirement:** the published d1 export uses ONNX IR 13, which the
+currently bundled ONNX Runtime 1.23.2 cannot load. Use an IR-13-capable runtime;
+the repository's `onnxruntime/1.29.0` binaries work with this adapter. For a local
+macOS source build, select that runtime without replacing the existing libraries:
+
+```sh
+DYLD_LIBRARY_PATH="$PWD/onnxruntime/1.29.0:$PWD/cpp/macOS" \
+  /path/to/rebuilt/onnx-genai -s \
+  -D /models/d1-3B-ONNX/onnx/decoder_model_merged_quantized.onnx
+```
+
+For deployment, place a compatible runtime alongside the rebuilt executable
+(on Windows, deploy its corresponding provider DLLs too). The checked-in
+executables and runtime libraries are not rebuilt by a source change.
+Kev `q4` works with the existing 1.23.2 runtime as well. Prefer Kev `q4` and d1
+`q8` for initial CPU evaluation; other export precisions depend on runtime/kernel
+support. Probabilities may differ across quantizations and runtime versions.
+Quantized Kev probabilities can also vary slightly between a packed request and
+the same questions evaluated separately, despite the graph's branch isolation.
+
+```sh
+curl http://127.0.0.1:8080/v1/systemone \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "kev-latest",
+    "state": {"message": "I was charged twice. Please refund the extra charge."},
+    "questions": {
+      "refund": {"type": "noul", "instructions": "Is a refund requested?"},
+      "team": {
+        "type": "choice",
+        "instructions": "Which team should handle this?",
+        "criteria": {"billing": "Payments and refunds", "technical": "Software faults"}
+      },
+      "urgency": {
+        "type": "score",
+        "instructions": "How urgent is this?",
+        "criteria": ["Routine", "Urgent", "Emergency"]
+      }
+    }
+  }'
+```
+
+Use `d1-latest` for a d1 model, or the model ID returned by `GET /v1/models`
+(the model directory's basename). Family aliases only resolve to the loaded
+backend; an unknown model is rejected. The response contains `model`, `answers`
+keyed by question name, and `usage` with `input_tokens` and `output_tokens: 0`.
+Noul returns `noul` (probability of true); Choice returns `choice`,
+`probabilities` and `confidence`; Score returns a zero-based expected `score`,
+`legend`, `probabilities` and `confidence`.
+
+Confidence follows TypeSafe's [documented formulas](https://docs.typesafe.ai/confidence):
+Choice measures the largest probability above a uniform distribution, and Score
+measures probability-weighted distance from the modal level. A single option/level
+has confidence 1. These are distribution statistics, not guarantees of accuracy
+or Jev-equivalent calibration.
+
+The initial implementation accepts string/object/array state and structured
+instructions/descriptions. It rejects images, assets, `box`, unsupported fields,
+duplicate JSON keys and inputs exceeding limits:
+
+| Limit | Value |
+|---|---|
+| JSON body | 2 MiB |
+| Named questions | 1–64 |
+| Choice options | 1–255 |
+| Score levels | 1–10 |
+| Kev state and each state-plus-question row | Model metadata, capped at 8,192 tokens |
+| Kev complete packed request | 8,192 tokens |
+| d1 each complete question prompt | Model context, capped at 8,192 tokens |
+| d1 sum of question prompt tokens | 32,768 tokens |
+
+Over-limit inputs are rejected, **not truncated**. Kev shares the state within a
+packed graph run. d1 evaluates each question independently, with fresh caches;
+its input usage counts repeated state tokens. The exported models' long-context
+behavior is not necessarily validated up to these serving limits.
+
+Invalid requests return HTTP `422` with a `detail` array, an unloaded decision
+model returns `503`, and inference failures return `500`. Errors are logged.
+Decision inference has its own mutex and does not repurpose the other model slots.
+Without `-s`, `-D` selects decision evaluation from `-i`/stdin, with `-o` for a
+JSON response file; failures return a nonzero exit status. If both `-m` and `-D`
+are supplied in CLI mode, decision evaluation takes precedence.
+
+Kev is Apache-2.0 licensed. d1 uses the
+[LFM Open License v1.0](https://huggingface.co/onnx-community/d1-3B-ONNX/blob/main/LICENSE),
+including commercial-use restrictions; review it before deploying.
 
 ## Converted ONNX Models
 

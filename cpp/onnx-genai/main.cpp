@@ -6,6 +6,7 @@
 //
 
 #include "onnx-genai.h"
+#include "systemone_onnx.h"
 
 namespace fs = std::filesystem;
 using namespace tokenizers;
@@ -720,6 +721,7 @@ static void usage(void)
     fprintf(stderr, " -%c path     : %s\n", 'e', "embedding model");
     fprintf(stderr, " -%c path     : %s\n", 'r', "reranker model");
     fprintf(stderr, " -%c path     : %s\n", 'T', "text to speach model");
+    fprintf(stderr, " -%c path     : %s\n", 'D', "System One decision ONNX model (Kev or d1, text only)");
     fprintf(stderr, " -%c path     : %s\n", 't', "chat template");
     fprintf(stderr, " -%c          : %s\n", 'j', "chat template from stdin");
     fprintf(stderr, " %c           : %s\n", 'd', "pooling=e2e");
@@ -786,11 +788,11 @@ int getopt(int argc, OPTARG_T* argv, OPTARG_T opts) {
     }
     return(c);
 }
-#define ARGS (OPTARG_T)L"m:e:r:i:o:T:sp:jt:bcld-h"
+#define ARGS (OPTARG_T)L"m:e:r:i:o:T:D:sp:jt:bcld-h"
 #define _atoi _wtoi
 #define _atof _wtof
 #else
-#define ARGS "m:e:r:i:o:T:sp:jt:bcld-h"
+#define ARGS "m:e:r:i:o:T:D:sp:jt:bcld-h"
 #define _atoi atoi
 #define _atof atof
 #endif
@@ -2438,6 +2440,7 @@ int main(int argc, OPTARG_T argv[]) {
     std::string reranker_model_path;  // -r
     std::string chat_template;        // -j
     std::string tts_model_path;       // -T
+    fs::path decision_model_path;     // -D
     OPTARG_T input_path = NULL;      // -i
     OPTARG_T output_path = NULL;      // -o
     OPTARG_T chat_template_path = NULL;
@@ -2486,6 +2489,9 @@ int main(int argc, OPTARG_T argv[]) {
 #else
             tts_model_path = optarg;
 #endif
+            break;
+        case 'D':
+            decision_model_path = fs::path(optarg);
             break;
         case 'i':
             input_path = optarg;
@@ -3004,7 +3010,21 @@ int main(int argc, OPTARG_T argv[]) {
         }
     }
 
-    //    const std::string instruction = "Given a web search query, retrieve relevant passages that answer the query";
+    std::unique_ptr<systemone::Model> decision_model;
+    long long decision_model_created = 0;
+    if (!decision_model_path.empty()) {
+        try {
+            std::cerr << "[SystemOne] Loading from " << systemone::path_utf8(decision_model_path) << "\n";
+            decision_model = std::make_unique<systemone::Model>(decision_model_path, intra_op_threads);
+            decision_model_created = get_created_timestamp();
+            std::cout << "[SystemOne] Loaded " << decision_model->id()
+                      << " (backend=" << decision_model->backend() << ", CPU, text only).\n";
+        } catch (const std::exception& e) {
+            std::cerr << "[SystemOne] Failed to load (ONNX Runtime "
+                      << OrtGetApiBase()->GetVersionString() << "): " << e.what() << "\n";
+            return 1;
+        }
+    }
 
         // ---------------------------------------------------------
         // SERVER MODE
@@ -3012,7 +3032,32 @@ int main(int argc, OPTARG_T argv[]) {
     if (server_mode) {
         std::mutex inference_mutex;
         std::mutex tts_mutex;
+        std::mutex decision_mutex;
         httplib::Server svr;
+
+        svr.Post("/v1/systemone", [&](const httplib::Request& req, httplib::Response& res) {
+            try {
+                const auto request = systemone::parse_request(req.body);
+                if (!decision_model) {
+                    res.status = 503;
+                    res.set_content(MakeErrorJson("Decision model not loaded. Start with -D path.",
+                                                  "service_unavailable"), "application/json");
+                    std::cerr << "[SystemOne] Request rejected: decision model not loaded.\n";
+                    return;
+                }
+                std::lock_guard<std::mutex> lock(decision_mutex);
+                res.set_content(systemone::json_string(decision_model->evaluate(request)), "application/json");
+                res.status = 200;
+            } catch (const systemone::ValidationError& e) {
+                res.status = 422;
+                res.set_content(e.json(), "application/json");
+                std::cerr << "[SystemOne] Invalid request: " << e.what() << "\n";
+            } catch (const std::exception& e) {
+                res.status = 500;
+                res.set_content(MakeErrorJson(e.what(), "inference_error"), "application/json");
+                std::cerr << "[SystemOne] Inference failed: " << e.what() << "\n";
+            }
+        });
 
         // Route: /v1/chat/completions
         svr.Post("/v1/chat/completions", [&](const httplib::Request& req, httplib::Response& res) {
@@ -3262,6 +3307,16 @@ malloc_zone_pressure_relief(nullptr, 0);
                 modelCard["object"] = "model";
                 modelCard["created"] = tts_model_created;
                 modelCard["owned_by"] = "system";
+                root["data"].append(modelCard);
+            }
+            if (decision_model_created != 0) {
+                Json::Value modelCard(Json::objectValue);
+                modelCard["id"] = decision_model->id();
+                modelCard["object"] = "model";
+                modelCard["created"] = decision_model_created;
+                modelCard["owned_by"] = "system";
+                modelCard["capabilities"].append("systemone");
+                modelCard["backend"] = decision_model->backend();
                 root["data"].append(modelCard);
             }
             // Serialize
@@ -3616,7 +3671,10 @@ malloc_zone_pressure_relief(nullptr, 0);
         // Handle input file reading if not piped via stdin ('-')
         if ((!cli_request_json.size()) && (input_path != NULL)) {
             FILE* f = _fopen(input_path, _rb);
-            if (f) {
+            if (!f) {
+                std::cerr << "Could not open CLI input file.\n";
+                return 1;
+            } else {
                 fseek(f, 0, SEEK_END);
                 size_t len = (size_t)ftell(f);
                 fseek(f, 0, SEEK_SET);
@@ -3633,60 +3691,73 @@ malloc_zone_pressure_relief(nullptr, 0);
 
         std::string request_str((const char*)cli_request_json.data(), cli_request_json.size());
         std::string response;
+        int exit_code = 0;
 
         try {
+            if (decision_model) {
+                response = systemone::json_string(decision_model->evaluate(systemone::parse_request(request_str)));
+            } else {
+                if (!model || !tokenizer) throw std::invalid_argument("Chat model not loaded. Use -m or -D.");
 
-            std::string prompt;
-            unsigned int max_tokens = 2048;
-            unsigned int top_k = 50;
-            double top_p = 0.9;
-            double temperature = 0.7;
-            double repetition_penalty = 1.2;
-            unsigned int n = 1;
-            bool is_stream = false;
-            bool has_tools = false;
-            std::string tools_str = "";
-            std::string guidance_string_type;
-            std::string guidance_string;
+                std::string prompt;
+                unsigned int max_tokens = 2048;
+                unsigned int top_k = 50;
+                double top_p = 0.9;
+                double temperature = 0.7;
+                double repetition_penalty = 1.2;
+                unsigned int n = 1;
+                bool is_stream = false;
+                bool has_tools = false;
+                std::string tools_str = "";
+                std::string guidance_string_type;
+                std::string guidance_string;
 
-            before_run_inference(request_str,
-                prompt,
-                max_tokens,
-                top_k,
-                top_p,
-                temperature,
-                repetition_penalty,
-                n,
-                is_stream,
-                has_tools,
-                tools_str,
-                *tokenizer.get(),
-                chat_template,
-                guidance_string_type,
-                guidance_string);
+                before_run_inference(request_str,
+                    prompt,
+                    max_tokens,
+                    top_k,
+                    top_p,
+                    temperature,
+                    repetition_penalty,
+                    n,
+                    is_stream,
+                    has_tools,
+                    tools_str,
+                    *tokenizer.get(),
+                    chat_template,
+                    guidance_string_type,
+                    guidance_string);
 
-            response = run_inference(
-                model.get(),
-                tokenizer.get(),
-                modelName,
-                fingerprint,
-                model_created,
-                max_tokens,
-                top_k,
-                top_p,
-                temperature,
-                repetition_penalty,
-                n,
-                prompt,
-                guidance_string_type,
-                guidance_string,
-                has_tools,
-                stop_tokens
-            );
+                response = run_inference(
+                    model.get(),
+                    tokenizer.get(),
+                    modelName,
+                    fingerprint,
+                    model_created,
+                    max_tokens,
+                    top_k,
+                    top_p,
+                    temperature,
+                    repetition_penalty,
+                    n,
+                    prompt,
+                    guidance_string_type,
+                    guidance_string,
+                    has_tools,
+                    stop_tokens
+                );
+            }
 
+        }
+        catch (const systemone::ValidationError& e) {
+            response = e.json();
+            exit_code = 1;
+            std::cerr << "[SystemOne] Invalid request: " << e.what() << "\n";
         }
         catch (const std::exception& e) {
             response = MakeErrorJson(e.what(), "invalid_request_error");
+            exit_code = 1;
+            std::cerr << "Inference failed: " << e.what() << "\n";
         }
 
         // Output logic
@@ -3695,11 +3766,18 @@ malloc_zone_pressure_relief(nullptr, 0);
         }
         else {
             FILE* f = _fopen(output_path, _wb);
-            if (f) {
-                fwrite(response.c_str(), 1, response.length(), f);
-                fclose(f);
+            if (!f) {
+                std::cerr << "Could not open CLI output file.\n";
+                return 1;
+            }
+            const size_t written = fwrite(response.c_str(), 1, response.length(), f);
+            const int closed = fclose(f);
+            if (written != response.length() || closed != 0) {
+                std::cerr << "Could not write CLI output file.\n";
+                return 1;
             }
         }
+        if (exit_code != 0) return exit_code;
     }
 
     OgaShutdown();

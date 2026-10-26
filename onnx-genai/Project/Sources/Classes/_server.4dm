@@ -37,6 +37,23 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		$command+=" "
 	End if 
 	
+	If (Value type:C1509($option.decision_model)=Is object:K8:27)\
+		 && (OB Instance of:C1731($option.decision_model; 4D:C1709.Folder))\
+		 && ($option.decision_model.exists)\
+		 && (Value type:C1509($option.decision_model_name)=Is text:K8:3)\
+		 && ($option.decision_model_name#"")
+		var $decisionFolder : 4D:C1709.Folder
+		var $decisionFile : 4D:C1709.File
+		$decisionFolder:=This:C1470.expand($option.decision_model)
+		$decisionFile:=$decisionFolder.file($option.decision_model_name)
+		If (Not:C34($decisionFile.exists)) && (Position:C15("/"; $option.decision_model_name)=0)
+			$decisionFile:=$decisionFolder.folder("onnx").file($option.decision_model_name)
+		End if
+		$command+=" -D "
+		$command+=This:C1470.escape($decisionFile.path)
+		$command+=" "
+	End if
+
 	If (Value type:C1509($option.tts_model)=Is object:K8:27)\
 		 && (OB Instance of:C1731($option.tts_model; 4D:C1709.Folder))\
 		 && ($option.tts_model.exists)
@@ -89,6 +106,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 				"p"; "port"; \
 				"t"; "chat_template"; \
 				"pooling"; \
+				"D"; "decision_model"; "decision_model_name"; \
 				"T"; "tts_model"; "tts_model_name"; \
 				"r"; "rerank_model"; "rerank_model_name"; \
 				"e"; "embeddings_model"; "embeddings_model_name"; \
