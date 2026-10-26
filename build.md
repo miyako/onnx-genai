@@ -6,6 +6,21 @@ layout: default
 
 ## Automated ONNX Runtime libraries
 
+The C++ link dependencies and deployed ONNX Runtime libraries currently use
+**1.29.0** on macOS universal, Windows x64 and Windows ARM64. The workflow below
+produces replacement artifacts; adopting a later run remains an explicit step.
+The macOS Xcode target matches the runtime's 13.3 deployment floor. Other
+dependencies may impose higher requirements.
+
+The initial bundled upgrade comes from
+[workflow run 40365235948](https://github.com/miyako/onnx-genai/actions/runs/40365235948),
+which completed both native macOS source builds, universal loading checks on
+both architectures, and native Windows x64/ARM64 loading checks. All packages
+use upstream source revision `2e2543fbe9fae542f921d47a72d21d5a4ef0b710`.
+The deployed folders include the runtime's license, third-party notices and
+`onnxruntime-BUILD_INFO.json`. Application headers remain at C API 23, which the
+new runtime exposes for backward compatibility.
+
 Once the workflow is on the repository's default branch, run
 **Actions > ONNX Runtime libraries > Run workflow** and enter an official
 stable version without the `v` prefix. The default is **1.29.0**, which has been

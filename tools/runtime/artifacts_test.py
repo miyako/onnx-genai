@@ -94,6 +94,8 @@ class ArtifactTests(unittest.TestCase):
         info = json.loads((self.args.output / "BUILD_INFO.json").read_text())
         self.assertEqual(info["origin"], "official-release")
         self.assertEqual(info["source_revision"], self.args.revision)
+        self.assertNotIn(b"\r", (self.args.output / "BUILD_INFO.json").read_bytes())
+        self.assertNotIn(b"\r", (self.args.output / "SHA256SUMS").read_bytes())
         for line in (self.args.output / "SHA256SUMS").read_text().splitlines():
             digest, name = line.split("  ", 1)
             self.assertEqual(digest, hashlib.sha256((self.args.output / name).read_bytes()).hexdigest())

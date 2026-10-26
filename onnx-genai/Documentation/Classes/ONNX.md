@@ -157,7 +157,7 @@ $ONNX:=cs.ONNX.ONNX.new(8080; $huggingfaces; $homeFolder; {}; $event)
 
 Replace `owner/decision-model` or `owner/d1-model` with the actual repository. Both examples use the same root handling and pass the selected ONNX file to `-D`. The executable automatically infers `kev` versus `d1` from root `config.json`; no additional 4D backend option is needed. Both models require root `tokenizer.json`; sibling graphs and external data must remain beside the selected ONNX. Recursive downloading preserves this layout.
 
-**d1 runtime requirement:** d1 q8 CPU inference has been confirmed on this Mac with the repository's **ONNX Runtime 1.29.0**. The existing **1.23.2 cannot load the d1 graph's IR version 13**. Selecting a d1 model in 4D does not switch the executable's runtime: source builds can select the compatible runtime through `DYLD_LIBRARY_PATH`, and deployed executables must ship with a compatible runtime. See the root `CLI.md` for runtime selection and deployment instructions.
+**d1 runtime requirement:** the bundled runtime is now **ONNX Runtime 1.29.0**, which can load the d1 graph's IR version 13. Both the C++ build dependencies and the macOS/Windows deployment libraries have been updated; no `DYLD_LIBRARY_PATH` override is needed. Older installations using 1.23.2 must update their runtime libraries. System One also requires an executable rebuilt from the updated source; a runtime-only update does not add the endpoint to an older executable. See the root `CLI.md` for deployment instructions.
 
 d1 support is text-only. Each question starts with a fresh conversation and KV cache; usage counts include the full repeated-state prompts, not just the new question text.
 

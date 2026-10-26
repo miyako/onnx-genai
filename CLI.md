@@ -35,7 +35,11 @@ The CLI is built for `4` platforms:
 
 - `onnxruntime-genai-0.12.0`
 - `onnxruntime-extensions-0.14.0`
-- `onnxruntime-1.23.2` (`1.25.0` broken)
+- `onnxruntime-1.29.0` (CPU; macOS universal, Windows x64 and ARM64)
+
+The bundled ONNX Runtime macOS library targets macOS 13.3 or later. Other
+dependencies may impose higher deployment requirements. GenAI and Extensions
+are separate libraries and retain the versions listed above.
 
 ## OpenAI Compatible Endpoints
 
@@ -67,7 +71,7 @@ Load one decision model independently of chat, embeddings, reranking and speech:
 onnx-genai -s -D /models/kev-0.6b-ONNX/onnx/model_q4.onnx
 # Same adapter for kev-4b-ONNX:
 onnx-genai -s -D /models/kev-4b-ONNX/onnx/model_q4.onnx
-# d1 q8, using ONNX Runtime 1.29.0 (see below):
+# d1 q8:
 onnx-genai -s -D /models/d1-3B-ONNX/onnx/decoder_model_merged_quantized.onnx
 ```
 
@@ -86,21 +90,16 @@ Kev uses the selected graph directly. d1 additionally loads the matching
 `embed_tokens_quantized.onnx` or `embed_tokens_q4.onnx` beside its selected decoder.
 The text-only adapter does not load the vision encoder.
 
-**Runtime requirement:** the published d1 export uses ONNX IR 13, which the
-currently bundled ONNX Runtime 1.23.2 cannot load. Use an IR-13-capable runtime;
-the repository's `onnxruntime/1.29.0` binaries work with this adapter. For a local
-macOS source build, select that runtime without replacing the existing libraries:
+**Runtime requirement:** the published d1 export uses ONNX IR 13. The bundled
+ONNX Runtime has been upgraded to **1.29.0** in both the C++ build dependencies
+and the macOS/Windows deployment directories, so a runtime override is no longer
+needed. Older installations using 1.23.2 cannot load this graph.
 
-```sh
-DYLD_LIBRARY_PATH="$PWD/onnxruntime/1.29.0:$PWD/cpp/macOS" \
-  /path/to/rebuilt/onnx-genai -s \
-  -D /models/d1-3B-ONNX/onnx/decoder_model_merged_quantized.onnx
-```
-
-For deployment, place a compatible runtime alongside the rebuilt executable
-(on Windows, deploy its corresponding provider DLLs too). The checked-in
-executables and runtime libraries are not rebuilt by a source change.
-Kev `q4` works with the existing 1.23.2 runtime as well. Prefer Kev `q4` and d1
+For deployment, keep the 1.29.0 runtime alongside the rebuilt executable
+(on Windows, deploy its corresponding provider DLLs too). System One still
+requires an executable rebuilt from the updated source; replacing a runtime
+library alone does not add the endpoint to an older executable.
+Prefer Kev `q4` and d1
 `q8` for initial CPU evaluation; other export precisions depend on runtime/kernel
 support. Probabilities may differ across quantizations and runtime versions.
 Quantized Kev probabilities can also vary slightly between a packed request and

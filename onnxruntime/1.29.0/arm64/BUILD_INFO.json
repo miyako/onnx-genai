@@ -1,0 +1,7 @@
+{
+  "version": "1.29.0",
+  "source_revision": "2e2543fbe9fae542f921d47a72d21d5a4ef0b710",
+  "platform": "windows-arm64",
+  "origin": "official-release",
+  "upstream_sha256": "a094a49c3ced0f9fca554647cc7566ae99d93a63a8ce6bf47975561c2de7608e"
+}

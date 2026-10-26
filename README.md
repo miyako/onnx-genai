@@ -9,6 +9,11 @@ Local inference engine
 
 > The inference engine used in this component is configured to primarily run on CPU cores, for maximum compatibility. 
 
+ONNX Runtime **1.29.0** is bundled for macOS universal and Windows x64/ARM64.
+The runtime's macOS deployment target is 13.3; other dependencies may require a
+newer macOS version. See [build instructions](build.md) for runtime provenance
+and replacement workflows.
+
 #### Quantisation
 
 The `fp32` format is accurate but consumes `4` bytes per weight and pretty slow on a CPU. It is generally not suitable for production. You should only use it as a reference.

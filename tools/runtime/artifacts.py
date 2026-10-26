@@ -128,10 +128,12 @@ def seal(args):
         "origin": "official-release" if args.upstream_sha256 else "source-build",
         "upstream_sha256": args.upstream_sha256,
     }
-    (args.output / "BUILD_INFO.json").write_text(json.dumps(info, indent=2) + "\n", encoding="utf-8")
+    (args.output / "BUILD_INFO.json").write_text(
+        json.dumps(info, indent=2) + "\n", encoding="utf-8", newline="\n"
+    )
     files = sorted(path for path in args.output.rglob("*") if path.is_file() and path.name != "SHA256SUMS")
     checksums = "".join(f"{sha256(path)}  {path.relative_to(args.output).as_posix()}\n" for path in files)
-    (args.output / "SHA256SUMS").write_text(checksums, encoding="utf-8")
+    (args.output / "SHA256SUMS").write_text(checksums, encoding="utf-8", newline="\n")
 
 
 def main():

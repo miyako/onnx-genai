@@ -19,22 +19,22 @@ usage, singleton/255-option, wrong-model and overlong-state checks. Use the same
 layout described in [CLI.md](../../CLI.md#typesafe-compatible-endpoint). For example:
 
 ```sh
-DYLD_LIBRARY_PATH="$PWD/onnxruntime/1.29.0:$PWD/cpp/macOS" \
-  /tmp/systemone-test /models/d1/onnx/decoder_model_merged_quantized.onnx
+/tmp/systemone-test /models/d1/onnx/decoder_model_merged_quantized.onnx
 ```
 
 HTTP/CLI regression checks use only Python's standard library, start their own
 servers on available local ports and terminate them on exit:
 
 ```sh
-DYLD_LIBRARY_PATH="$PWD/onnxruntime/1.29.0:$PWD/cpp/macOS" \
-  python3 cpp/tests/systemone_http_test.py /path/to/rebuilt/onnx-genai \
+python3 cpp/tests/systemone_http_test.py /path/to/rebuilt/onnx-genai \
   --kev /models/kev/onnx/model_q4.onnx \
   --d1 /models/d1/onnx/decoder_model_merged_quantized.onnx
 ```
 
 Without model arguments this checks unloaded-model and invalid-request handling,
 the model catalogue, and existing endpoints' unloaded-model behavior.
+The checked-in build and deployment libraries use ONNX Runtime 1.29.0, including
+the IR-13 support needed by d1; a runtime environment override is not required.
 
 For independent numeric parity, install `numpy`, `tokenizers` and `onnxruntime`
 in a test environment and start a server with the desired model. The Python and
@@ -55,3 +55,23 @@ difference was approximately `0.00065`, while independent same-shape ONNX parity
 was below `1e-4`.
 Kev-4B uses the same tests and adapter as Kev-0.6B but requires its own graph and
 external weights; testing one checkpoint does not establish the other's quality.
+
+## GenAI runtime compatibility
+
+The runtime upgrade also needs to preserve the separate GenAI library's
+generation path. Download the files from the upstream
+[`tiny-random-gpt2-fp32` fixture](https://github.com/microsoft/onnxruntime-genai/tree/f3a57ba8a904477f6c4ae786af9055bdeb65a621/test/test_models/hf-internal-testing/tiny-random-gpt2-fp32)
+into a local directory, then compile and run:
+
+```sh
+clang++ -std=c++17 -O2 \
+  -Icpp/include -Icpp/include/onnxruntime/core/session \
+  cpp/tests/runtime_genai_test.cpp \
+  -Lcpp/macOS -lonnxruntime-genai -lonnxruntime \
+  -Wl,-rpath,"$PWD/cpp/macOS" -o /tmp/runtime-genai-test
+/tmp/runtime-genai-test /models/tiny-random-gpt2-fp32
+```
+
+This loads the real decoder and generates three tokens from one input token,
+checking the final sequence length and printing the loaded runtime version.
+It is a compatibility smoke check, not a model-quality test.

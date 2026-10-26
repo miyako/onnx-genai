@@ -337,7 +337,7 @@
 					"$(PROJECT_DIR)/a",
 					"$(PROJECT_DIR)/macOS",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 11.5;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				OTHER_CFLAGS = (
 					"-DEIGEN_USE_BLAS",
 					"-flto",
@@ -370,7 +370,7 @@
 					"$(PROJECT_DIR)/a",
 					"$(PROJECT_DIR)/macOS",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 11.5;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				OTHER_CFLAGS = (
 					"-DEIGEN_USE_BLAS",
 					"-flto",
