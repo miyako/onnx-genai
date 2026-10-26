@@ -1,0 +1,259 @@
+name: ONNX Runtime libraries
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Official ONNX Runtime release version (without v)
+        required: true
+        default: '1.29.0'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: onnxruntime-${{ github.ref }}-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      revision: ${{ steps.release.outputs.revision }}
+      x64_digest: ${{ steps.release.outputs.x64_digest }}
+      arm64_digest: ${{ steps.release.outputs.arm64_digest }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check artifact helpers
+        run: python -m unittest discover -s tools/runtime -p '*_test.py'
+      - name: Resolve release and Windows checksums
+        id: release
+        env:
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "::error::Use an official stable version such as 1.29.0"
+            exit 1
+          }
+          revision=$(gh api "repos/microsoft/onnxruntime/commits/v$VERSION" --jq .sha)
+          [[ "$revision" =~ ^[0-9a-f]{40}$ ]]
+          gh api "repos/microsoft/onnxruntime/releases/tags/v$VERSION" > release.json
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+          for arch in x64 arm64; do
+            name="onnxruntime-win-$arch-$VERSION.zip"
+            digest=$(jq -r --arg name "$name" '.assets[] | select(.name == $name) | .digest' release.json)
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+              echo "::error::Missing asset or published SHA-256 digest: $name"
+              exit 1
+            }
+            echo "${arch}_digest=${digest#sha256:}" >> "$GITHUB_OUTPUT"
+          done
+
+  macos:
+    needs: release
+    name: macOS ${{ matrix.arch }} source build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+          - arch: x86_64
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    env:
+      VERSION: ${{ needs.release.outputs.version }}
+      REVISION: ${{ needs.release.outputs.revision }}
+      ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: microsoft/onnxruntime
+          ref: ${{ needs.release.outputs.revision }}
+          path: runtime-source
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install build prerequisites
+        run: python -m pip install -r tools/runtime/requirements-build.txt -r runtime-source/requirements.txt
+      - name: Build CPU shared library
+        shell: bash
+        run: |
+          set -euo pipefail
+          python runtime-source/tools/ci_build/build.py \
+            --build_dir "$RUNNER_TEMP/ort-build" \
+            --config Release --update --build \
+            --build_shared_lib --parallel 3 --skip_tests \
+            --skip_submodule_sync --compile_no_warning_as_error \
+            --osx_arch "$ARCH" \
+            --cmake_extra_defines \
+              CMAKE_OSX_DEPLOYMENT_TARGET=13.3 \
+              'CMAKE_IGNORE_PREFIX_PATH=/opt/homebrew;/usr/local' \
+              CMAKE_FIND_USE_PACKAGE_REGISTRY=OFF \
+              CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF \
+              onnxruntime_BUILD_UNIT_TESTS=OFF \
+              onnxruntime_BUILD_FOR_NATIVE_MACHINE=OFF
+      - name: Stage and check native slice
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p package/lib
+          cp -L "$RUNNER_TEMP/ort-build/Release/libonnxruntime.dylib" package/lib/
+          cp -R runtime-source/include/onnxruntime/core/session package/include
+          cp runtime-source/LICENSE runtime-source/ThirdPartyNotices.txt \
+            runtime-source/VERSION_NUMBER package/
+          printf '%s\n' "$REVISION" > package/GIT_COMMIT_ID
+          install_name_tool -id @rpath/libonnxruntime.dylib package/lib/libonnxruntime.dylib
+          codesign --force --sign - package/lib/libonnxruntime.dylib
+          python tools/runtime/artifacts.py verify package/lib/libonnxruntime.dylib \
+            --version "$VERSION" --arch "$ARCH"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ort-macos-${{ matrix.arch }}-${{ github.run_id }}
+          path: package/
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 1
+
+  universal:
+    needs: [release, macos]
+    runs-on: macos-15
+    timeout-minutes: 15
+    env:
+      VERSION: ${{ needs.release.outputs.version }}
+      REVISION: ${{ needs.release.outputs.revision }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ort-macos-arm64-${{ github.run_id }}
+          path: slices/arm64
+      - uses: actions/download-artifact@v4
+        with:
+          name: ort-macos-x86_64-${{ github.run_id }}
+          path: slices/x86_64
+      - name: Combine, sign and check universal library
+        shell: bash
+        run: |
+          set -euo pipefail
+          diff -r slices/arm64/include slices/x86_64/include
+          for name in LICENSE ThirdPartyNotices.txt VERSION_NUMBER GIT_COMMIT_ID; do
+            cmp "slices/arm64/$name" "slices/x86_64/$name"
+          done
+          cp -R slices/arm64 package
+          lipo -create slices/arm64/lib/libonnxruntime.dylib \
+            slices/x86_64/lib/libonnxruntime.dylib \
+            -output package/lib/libonnxruntime.dylib
+          codesign --force --sign - package/lib/libonnxruntime.dylib
+          codesign --verify --strict package/lib/libonnxruntime.dylib
+          python tools/runtime/artifacts.py verify package/lib/libonnxruntime.dylib \
+            --version "$VERSION" --arch universal
+          python tools/runtime/artifacts.py seal package --version "$VERSION" \
+            --revision "$REVISION" --platform macos-universal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: onnxruntime-${{ needs.release.outputs.version }}-macos-universal
+          path: package/
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30
+
+  universal-intel:
+    needs: [release, universal]
+    runs-on: macos-15-intel
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: onnxruntime-${{ needs.release.outputs.version }}-macos-universal
+          path: package
+      - name: Check final universal artifact on Intel
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          cd package
+          shasum -a 256 -c SHA256SUMS
+          cd ..
+          python tools/runtime/artifacts.py verify package/lib/libonnxruntime.dylib \
+            --version "$VERSION" --arch universal
+
+  windows:
+    needs: release
+    name: Windows ${{ matrix.arch }} official libraries
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: windows-2022
+            python-arch: x64
+          - arch: arm64
+            runner: windows-11-arm
+            python-arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    env:
+      VERSION: ${{ needs.release.outputs.version }}
+      REVISION: ${{ needs.release.outputs.revision }}
+      ARCH: ${{ matrix.arch }}
+      DIGEST: ${{ matrix.arch == 'x64' && needs.release.outputs.x64_digest || needs.release.outputs.arm64_digest }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: ${{ matrix.python-arch }}
+      - name: Download and verify release package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $name = "onnxruntime-win-$env:ARCH-$env:VERSION.zip"
+          $url = "https://github.com/microsoft/onnxruntime/releases/download/v$env:VERSION/$name"
+          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP/$name"
+          python tools/runtime/artifacts.py windows "$env:RUNNER_TEMP/$name" package `
+            --sha256 "$env:DIGEST" --version "$env:VERSION" --revision "$env:REVISION" --arch "$env:ARCH"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/runtime/artifacts.py verify package/lib/onnxruntime.dll `
+            --version "$env:VERSION" --arch "$env:ARCH"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/runtime/artifacts.py seal package --version "$env:VERSION" `
+            --revision "$env:REVISION" --platform "windows-$env:ARCH" --upstream-sha256 "$env:DIGEST"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: onnxruntime-${{ needs.release.outputs.version }}-windows-${{ matrix.arch }}
+          path: package/
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 30

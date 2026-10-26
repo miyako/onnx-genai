@@ -30,7 +30,10 @@ Overrides the virtual base. When a file completes downloading, resolves the pare
 | `"chat.completion"` | `chat_completion_model` | — |
 | `"embedding"` | `embeddings_model` | `embeddings_model_name` |
 | `"rerank"` | `rerank_model` | `rerank_model_name` |
+| `"systemone"` | `decision_model` | `decision_model_name` |
 | `"tts"` | `tts_model` | `tts_model_name` |
+
+For `systemone`, the folder is the descriptor's repository-root `4D.Folder`, not the parent of whichever file finishes first. The selected filename is preserved, including a relative `onnx/` prefix, so metadata or sibling-graph download order cannot change the model path.
 
 Then calls `Super.onDownload($oid)` to remove the entry from `files` and trigger `start()` when the queue empties.
 
@@ -53,11 +56,13 @@ In addition to properties inherited from `_models`:
 | embeddings_model_name | Text | ONNX filename inside `embeddings_model` |
 | rerank_model | 4D.Folder | Set after the first `rerank`-domain download completes |
 | rerank_model_name | Text | ONNX filename inside `rerank_model` |
+| decision_model | 4D.Folder | Repository root from the first `systemone`-domain download |
+| decision_model_name | Text | Selected ONNX path relative to `decision_model` |
 | tts_model | 4D.Folder | Set after the first `tts`-domain download completes |
 | tts_model_name | Text | ONNX filename inside `tts_model` |
 
 ## See also
 
 - [`_models`](_models.md) — parent class
-- [`_server`](_server.md) — launched by `start()`; uses `*_model_name` to construct file paths for `-e`, `-r`, and `-T` flags
+- [`_server`](_server.md) — launched by `start()`; uses `*_model_name` to construct file paths for `-e`, `-r`, `-D`, and `-T` flags
 - [`ONNX`](ONNX.md) — public entry point

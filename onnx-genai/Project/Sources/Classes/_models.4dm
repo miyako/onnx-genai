@@ -60,6 +60,9 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 				: ($huggingface.domain="rerank") && (This:C1470.options.rerank_model=Null:C1517)
 					This:C1470.options.rerank_model:=$huggingface.folder
 					This:C1470.options.rerank_model_name:=$huggingface.name
+				: ($huggingface.domain="systemone") && (This:C1470.options.decision_model=Null:C1517)
+					This:C1470.options.decision_model:=$huggingface.folder
+					This:C1470.options.decision_model_name:=$huggingface.name
 				: ($huggingface.domain="tts") && (This:C1470.options.tts_model=Null:C1517)
 					This:C1470.options.tts_model:=$huggingface.folder
 					This:C1470.options.tts_model_name:=$huggingface.name

@@ -3,6 +3,8 @@ property embeddings_model : 4D:C1709.Folder
 property embeddings_model_name : Text
 property rerank_model : 4D:C1709.Folder
 property rerank_model_name : Text
+property decision_model : 4D:C1709.Folder
+property decision_model_name : Text
 property tts_model : 4D:C1709.Folder
 property tts_model_name : Text
 
@@ -47,6 +49,9 @@ Function onDownload($oid : Text)
 			: ($downloaded.domain="rerank") && (This:C1470.options.rerank_model=Null:C1517)
 				This:C1470.options.rerank_model:=$model
 				This:C1470.options.rerank_model_name:=$downloaded.name
+			: ($downloaded.domain="systemone") && (This:C1470.options.decision_model=Null:C1517)
+				This:C1470.options.decision_model:=$downloaded.folder
+				This:C1470.options.decision_model_name:=$downloaded.name
 			: ($downloaded.domain="tts") && This:C1470.options.tts_model=Null:C1517
 				This:C1470.options.tts_model:=$model
 				This:C1470.options.tts_model_name:=$downloaded.name

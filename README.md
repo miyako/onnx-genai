@@ -190,3 +190,12 @@ In addition, the following endpoints are available:
 |`/v1/audio/speech`|
 |`/v1/rerank`||
 |`/v1/contextualizedembeddings`|`/v1/contextualized/embeddings`
+|`/v1/systemone`|Text-only TypeSafe decision API (Kev or d1)|
+
+Load a decision model independently with `-D path/to/model.onnx`. Kev-0.6B,
+Kev-4B and d1-3B ONNX exports support `noul`, `choice` and `score` questions.
+See [CLI: TypeSafe Compatible Endpoint](CLI.md#typesafe-compatible-endpoint) for
+model layouts, request examples, limits and runtime requirements. In particular,
+d1 requires a newer runtime than the bundled 1.23.2; 1.29.0 is available in this
+repository. For 4D downloading/loading, use the `systemone` domain and a relative
+graph name as shown in [the ONNX class documentation](onnx-genai/Documentation/Classes/ONNX.md).

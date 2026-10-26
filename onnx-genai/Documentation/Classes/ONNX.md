@@ -32,6 +32,8 @@ Parameter defaults applied by the constructor:
 | embeddings_model_name | Text | _(file within `-e`)_ | ONNX model filename inside `embeddings_model` (e.g. `"model.onnx"`) |
 | rerank_model | 4D.Folder | `-r` | Path to an ONNX reranking model directory |
 | rerank_model_name | Text | _(file within `-r`)_ | ONNX model filename inside `rerank_model` |
+| decision_model | 4D.Folder | `-D` | Decision model repository root (or its `onnx` folder) |
+| decision_model_name | Text | _(file within `-D`)_ | Selected ONNX relative path; bare filenames also search the `onnx` child |
 | tts_model | 4D.Folder | `-T` | Path to an ONNX text-to-speech model directory |
 | tts_model_name | Text | _(file within `-T`)_ | ONNX model filename inside `tts_model` |
 | port | Integer | `-p` | Port to listen on |
@@ -62,6 +64,7 @@ Each `cs.event.huggingface` descriptor has a `domain` property that determines w
 | `"chat.completion"` | `chat_completion_model` | — |
 | `"embedding"` | `embeddings_model` | `embeddings_model_name` |
 | `"rerank"` | `rerank_model` | `rerank_model_name` |
+| `"systemone"` | `decision_model` | `decision_model_name` |
 | `"tts"` | `tts_model` | `tts_model_name` |
 
 ### API compatibility
@@ -72,6 +75,7 @@ Each `cs.event.huggingface` descriptor has a `domain` property that determines w
 | `/v1/embeddings` | ✅ |
 | `/v1/rerank` | ✅ |
 | `/v1/audio/speech` | ✅ (TTS) |
+| `/v1/systemone` | Planned; dedicated decision model via `-D` |
 
 ## Examples
 
@@ -110,6 +114,56 @@ $huggingfaces:=cs.event.huggingfaces.new([$chat; $embeddings])
 var $ONNX : cs.ONNX.ONNX
 $ONNX:=cs.ONNX.ONNX.new(8080; $huggingfaces; $homeFolder; {}; $event)
 ```
+
+### Configure a decision model for the planned SystemOne endpoint
+
+Use a repository-root folder descriptor so all required files are downloaded, not just the selected ONNX file:
+
+#### Kev (q4)
+
+```4d
+var $decision : cs.event.huggingface
+$decision:=cs.event.huggingface.new(\
+    $homeFolder.folder("decision-model"); \
+    "owner/decision-model"; \
+    ""; \
+    "systemone"; \
+    "onnx/model_q4.onnx")
+
+var $huggingfaces : cs.event.huggingfaces
+$huggingfaces:=cs.event.huggingfaces.new([$decision])
+var $ONNX : cs.ONNX.ONNX
+$ONNX:=cs.ONNX.ONNX.new(8080; $huggingfaces; $homeFolder; {}; $event)
+```
+
+#### d1 (q8)
+
+As an alternative to the Kev example, select the quantized merged decoder while keeping the folder at the repository root:
+
+```4d
+var $decision : cs.event.huggingface
+$decision:=cs.event.huggingface.new(\
+    $homeFolder.folder("d1-model"); \
+    "owner/d1-model"; \
+    ""; \
+    "systemone"; \
+    "onnx/decoder_model_merged_quantized.onnx")
+
+var $huggingfaces : cs.event.huggingfaces
+$huggingfaces:=cs.event.huggingfaces.new([$decision])
+var $ONNX : cs.ONNX.ONNX
+$ONNX:=cs.ONNX.ONNX.new(8080; $huggingfaces; $homeFolder; {}; $event)
+```
+
+Replace `owner/decision-model` or `owner/d1-model` with the actual repository. Both examples use the same root handling and pass the selected ONNX file to `-D`. The executable automatically infers `kev` versus `d1` from root `config.json`; no additional 4D backend option is needed. Both models require root `tokenizer.json`; sibling graphs and external data must remain beside the selected ONNX. Recursive downloading preserves this layout.
+
+**d1 runtime requirement:** d1 q8 CPU inference has been confirmed on this Mac with the repository's **ONNX Runtime 1.29.0**. The existing **1.23.2 cannot load the d1 graph's IR version 13**. Selecting a d1 model in 4D does not switch the executable's runtime: source builds can select the compatible runtime through `DYLD_LIBRARY_PATH`, and deployed executables must ship with a compatible runtime. See the root `CLI.md` for runtime selection and deployment instructions.
+
+d1 support is text-only. Each question starts with a fresh conversation and KV cache; usage counts include the full repeated-state prompts, not just the new question text.
+
+For existing local files, the equivalent options are `{decision_model: $homeFolder.folder("decision-model"); decision_model_name: "onnx/model_q4.onnx"}`. Explicit options take precedence over domain mapping. If the model metadata request is offline, the descriptor's root folder and selected name are mapped directly and existing files are used. Bare names such as `model_q4.onnx` resolve at the root first, then under `onnx/`; explicit relative paths avoid ambiguity.
+
+For local/offline d1, use `{decision_model: $homeFolder.folder("d1-model"); decision_model_name: "onnx/decoder_model_merged_quantized.onnx"}` with the same complete repository layout and compatible runtime requirement.
 
 ### Test the chat completion endpoint
 
