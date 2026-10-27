@@ -10,6 +10,8 @@ import platform
 import shutil
 import struct
 import subprocess
+import sys
+import time
 import zipfile
 
 
@@ -136,6 +138,26 @@ def seal(args):
     (args.output / "SHA256SUMS").write_text(checksums, encoding="utf-8", newline="\n")
 
 
+def staple(args):
+    image = args.image.resolve(strict=True)
+    for attempt in range(5):
+        try:
+            subprocess.run(["xcrun", "stapler", "staple", str(image)], check=True)
+            break
+        except subprocess.CalledProcessError as error:
+            # stapler uses EX_NOHOST when Apple's ticket service cannot be reached.
+            if error.returncode != 68 or attempt == 4:
+                raise
+            delay = 15 * 2 ** attempt
+            print(
+                f"Apple ticket service unavailable (exit 68); "
+                f"retrying stapling in {delay}s (attempt {attempt + 2}/5)",
+                file=sys.stderr, flush=True,
+            )
+            time.sleep(delay)
+    subprocess.run(["xcrun", "stapler", "validate", str(image)], check=True)
+
+
 def adopt(args):
     """Validate all packages before replacing any checked-in dependency."""
     packages = {}
@@ -230,6 +252,9 @@ def main():
     adoption.add_argument("--root", type=Path, default=Path("."))
     adoption.add_argument("--revision", required=True)
     adoption.set_defaults(run=adopt)
+    stapling = commands.add_parser("staple")
+    stapling.add_argument("image", type=Path)
+    stapling.set_defaults(run=staple)
     for command in (windows, check, manifest, adoption):
         command.add_argument("--version", required=True)
     args = parser.parse_args()

@@ -2,10 +2,11 @@ import hashlib
 import json
 from pathlib import Path
 import struct
+import subprocess
 import tempfile
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 import zipfile
 
 import artifacts
@@ -226,6 +227,72 @@ class ArtifactTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "checksum path"):
             artifacts.adopt(args)
         self.assertFalse(args.root.exists())
+
+
+class StaplingTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.image = Path(self.temporary.name) / "runtime.dmg"
+        self.image.write_bytes(b"disk image")
+        self.image = self.image.resolve()
+        self.args = SimpleNamespace(image=self.image)
+
+    @patch("artifacts.time.sleep")
+    @patch("artifacts.subprocess.run")
+    def test_success_staples_and_validates_once(self, run, sleep):
+        artifacts.staple(self.args)
+        self.assertEqual(run.call_args_list, [
+            call(["xcrun", "stapler", "staple", str(self.image)], check=True),
+            call(["xcrun", "stapler", "validate", str(self.image)], check=True),
+        ])
+        sleep.assert_not_called()
+
+    @patch("artifacts.time.sleep")
+    @patch("artifacts.subprocess.run")
+    def test_ticket_service_failure_retries_then_validates(self, run, sleep):
+        run.side_effect = [
+            subprocess.CalledProcessError(68, "stapler"),
+            subprocess.CalledProcessError(68, "stapler"),
+            None, None,
+        ]
+        artifacts.staple(self.args)
+        self.assertEqual(sleep.call_args_list, [
+            call(15), call(30),
+        ])
+        self.assertEqual([call.args[0][2] for call in run.call_args_list],
+                         ["staple", "staple", "staple", "validate"])
+
+    @patch("artifacts.time.sleep")
+    @patch("artifacts.subprocess.run")
+    def test_ticket_service_failure_stops_after_five_attempts(self, run, sleep):
+        run.side_effect = subprocess.CalledProcessError(68, "stapler")
+        with self.assertRaises(subprocess.CalledProcessError) as error:
+            artifacts.staple(self.args)
+        self.assertEqual(error.exception.returncode, 68)
+        self.assertEqual(run.call_count, 5)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [15, 30, 60, 120])
+        self.assertTrue(all(call.args[0][2] == "staple" for call in run.call_args_list))
+
+    @patch("artifacts.time.sleep")
+    @patch("artifacts.subprocess.run")
+    def test_permanent_failure_is_not_retried_or_validated(self, run, sleep):
+        run.side_effect = subprocess.CalledProcessError(65, "stapler")
+        with self.assertRaises(subprocess.CalledProcessError) as error:
+            artifacts.staple(self.args)
+        self.assertEqual(error.exception.returncode, 65)
+        run.assert_called_once()
+        sleep.assert_not_called()
+
+    @patch("artifacts.time.sleep")
+    @patch("artifacts.subprocess.run")
+    def test_validation_failure_remains_fatal_without_restapling(self, run, sleep):
+        run.side_effect = [None, subprocess.CalledProcessError(65, "validate")]
+        with self.assertRaises(subprocess.CalledProcessError):
+            artifacts.staple(self.args)
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_args.args[0][2], "validate")
+        sleep.assert_not_called()
 
 
 if __name__ == "__main__":

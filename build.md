@@ -68,6 +68,10 @@ then submits a signed `libonnxruntime.dylib.dmg` to Apple. It requires an
 `Accepted` result, staples and validates the DMG's ticket, and checks Gatekeeper
 assessment before sealing the package. Credentials are removed even on failure;
 there is no ad-hoc fallback if signing or notarization fails.
+If Apple's ticket service is unreachable (`stapler` exit 68), stapling is retried
+up to five times with 15, 30, 60, and 120 second delays. Permanent errors fail
+immediately; exhausted retries, ticket validation, and Gatekeeper failures still
+block adoption. Retrying stapling does not resubmit the accepted notarization.
 
 A bare dylib cannot carry a stapled ticket. The signed library is notarized
 inside the DMG; the DMG provides the stapled ticket for offline distribution.

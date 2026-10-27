@@ -213,8 +213,7 @@ jobs:
             echo "::error::Apple did not accept the runtime notarization"
             exit 1
           fi
-          xcrun stapler staple "$dmg"
-          xcrun stapler validate "$dmg"
+          python tools/runtime/artifacts.py staple "$dmg"
           spctl --assess --type open --context context:primary-signature --verbose=2 "$dmg"
       - name: Seal signed and notarized package
         shell: bash
