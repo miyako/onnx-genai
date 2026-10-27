@@ -136,7 +136,7 @@ jobs:
   universal:
     needs: [release, macos]
     runs-on: macos-15
-    timeout-minutes: 15
+    timeout-minutes: 60
     env:
       VERSION: ${{ needs.release.outputs.version }}
       REVISION: ${{ needs.release.outputs.revision }}
@@ -155,7 +155,7 @@ jobs:
         with:
           name: ort-macos-x86_64-${{ github.run_id }}
           path: slices/x86_64
-      - name: Combine, sign and check universal library
+      - name: Combine universal library
         shell: bash
         run: |
           set -euo pipefail
@@ -167,10 +167,59 @@ jobs:
           lipo -create slices/arm64/lib/libonnxruntime.dylib \
             slices/x86_64/lib/libonnxruntime.dylib \
             -output package/lib/libonnxruntime.dylib
-          codesign --force --sign - package/lib/libonnxruntime.dylib
+      - name: Set up signing keychain
+        id: keychain
+        uses: miyako/4D/.github/actions/deployment-setup-keychain@v1
+        with:
+          APPLE_DEVELOPER_ID_CERTIFICATE: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE }}
+          APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      - name: Developer ID sign and notarize universal library
+        env:
+          SIGNING_IDENTITY: ${{ secrets.CODESIGN_APPLE_ID }}
+          KEYCHAIN_PATH: ${{ steps.keychain.outputs.KEYCHAIN_PATH }}
+          APPLE_ID: ${{ secrets.NOTARYTOOL_APPLE_ID }}
+          TEAM_ID: ${{ secrets.NOTARYTOOL_TEAM_ID }}
+          APPLE_PASSWORD: ${{ secrets.NOTARYTOOL_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${SIGNING_IDENTITY:?Missing CODESIGN_APPLE_ID}"
+          : "${KEYCHAIN_PATH:?Missing signing keychain}"
+          : "${APPLE_ID:?Missing NOTARYTOOL_APPLE_ID}"
+          : "${TEAM_ID:?Missing NOTARYTOOL_TEAM_ID}"
+          : "${APPLE_PASSWORD:?Missing NOTARYTOOL_PASSWORD}"
+          codesign --force --options runtime --timestamp --sign "$SIGNING_IDENTITY" \
+            --keychain "$KEYCHAIN_PATH" package/lib/libonnxruntime.dylib
           codesign --verify --strict package/lib/libonnxruntime.dylib
           python tools/runtime/artifacts.py verify package/lib/libonnxruntime.dylib \
             --version "$VERSION" --arch universal
+          dmg=package/libonnxruntime.dylib.dmg
+          hdiutil create -format UDZO -volname "ONNX Runtime" -srcfolder package/lib "$dmg"
+          codesign --force --timestamp --sign "$SIGNING_IDENTITY" --keychain "$KEYCHAIN_PATH" "$dmg"
+          codesign --verify --strict "$dmg"
+          if ! xcrun notarytool submit "$dmg" --apple-id "$APPLE_ID" \
+            --team-id "$TEAM_ID" --password "$APPLE_PASSWORD" \
+            --wait --timeout 30m --output-format json > package/NOTARIZATION.json; then
+            cat package/NOTARIZATION.json >&2
+            echo "::error::Apple notarization submission failed"
+            exit 1
+          fi
+          if ! jq -e '.status == "Accepted"' package/NOTARIZATION.json; then
+            cat package/NOTARIZATION.json >&2
+            submission=$(jq -er '.id' package/NOTARIZATION.json)
+            xcrun notarytool log "$submission" --apple-id "$APPLE_ID" \
+              --team-id "$TEAM_ID" --password "$APPLE_PASSWORD"
+            echo "::error::Apple did not accept the runtime notarization"
+            exit 1
+          fi
+          xcrun stapler staple "$dmg"
+          xcrun stapler validate "$dmg"
+          spctl --assess --type open --context context:primary-signature --verbose=2 "$dmg"
+      - name: Seal signed and notarized package
+        shell: bash
+        run: |
+          set -euo pipefail
           python tools/runtime/artifacts.py seal package --version "$VERSION" \
             --revision "$REVISION" --platform macos-universal
       - uses: actions/upload-artifact@v4
@@ -180,6 +229,15 @@ jobs:
           if-no-files-found: error
           overwrite: true
           retention-days: 30
+      - name: Remove signing credentials
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f "$RUNNER_TEMP/temp.keychain-db" ]]; then
+            security delete-keychain "$RUNNER_TEMP/temp.keychain-db"
+          fi
+          rm -f "$RUNNER_TEMP/Developer ID Application.p12"
 
   update:
     needs: [release, universal-intel, windows]

@@ -168,6 +168,11 @@ def adopt(args):
         )
         required = {"BUILD_INFO.json", "LICENSE", "ThirdPartyNotices.txt"}
         required.update(f"lib/{name}" for name in libraries)
+        if platform_name == "macos-universal":
+            required.update(("libonnxruntime.dylib.dmg", "NOTARIZATION.json"))
+            notarization = json.loads((package / "NOTARIZATION.json").read_text(encoding="utf-8"))
+            if notarization["status"] != "Accepted":
+                raise ValueError(f"{package}: notarization was not Accepted")
         if not required <= checked:
             raise ValueError(f"{package}: missing required checksums: {required - checked}")
         packages[platform_name] = (package, libraries)
@@ -195,6 +200,9 @@ def adopt(args):
         for name in ("BUILD_INFO.json", "LICENSE", "ThirdPartyNotices.txt"):
             shutil.copy2(package / name, archived / name)
             shutil.copy2(package / name, deployed / f"onnxruntime-{name}")
+        if platform_name == "macos-universal":
+            for name in ("libonnxruntime.dylib.dmg", "NOTARIZATION.json"):
+                shutil.copy2(package / name, archived / name)
 
 
 def main():

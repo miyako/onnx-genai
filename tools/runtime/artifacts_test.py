@@ -117,6 +117,11 @@ class ArtifactTests(unittest.TestCase):
                 (output / "lib" / name).write_text(platform_name + name)
             (output / "LICENSE").write_text("license")
             (output / "ThirdPartyNotices.txt").write_text("notices")
+            if platform_name == "macos-universal":
+                (output / "libonnxruntime.dylib.dmg").write_text("stapled disk image")
+                (output / "NOTARIZATION.json").write_text(json.dumps({
+                    "id": "test-submission", "status": "Accepted",
+                }))
             artifacts.seal(SimpleNamespace(
                 output=output, version=self.args.version, revision=self.args.revision,
                 platform=platform_name, upstream_sha256=None,
@@ -150,6 +155,41 @@ class ArtifactTests(unittest.TestCase):
             for name in ("BUILD_INFO.json", "LICENSE", "ThirdPartyNotices.txt"):
                 self.assertEqual((package / name).read_bytes(), (deployed / f"onnxruntime-{name}").read_bytes())
                 self.assertEqual((package / name).read_bytes(), (archived / name).read_bytes())
+            if not arch:
+                for name in ("libonnxruntime.dylib.dmg", "NOTARIZATION.json"):
+                    self.assertEqual((package / name).read_bytes(), (archived / name).read_bytes())
+
+    def test_adoption_rejects_unaccepted_notarization(self):
+        args = self.adoption_packages()
+        package = args.packages / f"onnxruntime-{args.version}-macos-universal"
+        (package / "NOTARIZATION.json").write_text(json.dumps({"status": "Invalid"}))
+        artifacts.seal(SimpleNamespace(
+            output=package, version=args.version, revision=args.revision,
+            platform="macos-universal", upstream_sha256=None,
+        ))
+        with self.assertRaisesRegex(ValueError, "notarization was not Accepted"):
+            artifacts.adopt(args)
+        self.assertFalse(args.root.exists())
+
+    def test_adoption_rejects_corrupted_notarized_disk_image(self):
+        args = self.adoption_packages()
+        package = args.packages / f"onnxruntime-{args.version}-macos-universal"
+        (package / "libonnxruntime.dylib.dmg").write_text("corrupted")
+        with self.assertRaisesRegex(ValueError, "SHA-256 mismatch"):
+            artifacts.adopt(args)
+        self.assertFalse(args.root.exists())
+
+    def test_adoption_requires_notarized_disk_image_checksum(self):
+        args = self.adoption_packages()
+        package = args.packages / f"onnxruntime-{args.version}-macos-universal"
+        checksums = package / "SHA256SUMS"
+        checksums.write_text("".join(
+            line for line in checksums.read_text().splitlines(keepends=True)
+            if "libonnxruntime.dylib.dmg" not in line
+        ))
+        with self.assertRaisesRegex(ValueError, "missing required checksums"):
+            artifacts.adopt(args)
+        self.assertFalse(args.root.exists())
 
     def test_adoption_validates_every_platform_before_copying(self):
         args = self.adoption_packages()

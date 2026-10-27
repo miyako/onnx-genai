@@ -33,7 +33,7 @@ The workflow `.github/workflows/onnxruntime.yml` produces:
 
 | Artifact | Origin | Contents |
 | --- | --- | --- |
-| `onnxruntime-<version>-macos-universal` | Source build, pinned to the release commit | Universal arm64 + x86_64 `lib/libonnxruntime.dylib`, C/C++ headers, licenses |
+| `onnxruntime-<version>-macos-universal` | Source build, pinned to the release commit | Developer ID signed universal `lib/libonnxruntime.dylib`, notarized/stapled DMG, notarization result, C/C++ headers, licenses |
 | `onnxruntime-<version>-windows-x64` | Official CPU release archive | x64 DLLs/import libraries in `lib/`, headers, licenses |
 | `onnxruntime-<version>-windows-arm64` | Official CPU release archive | ARM64 DLLs/import libraries in `lib/`, headers, licenses |
 
@@ -57,6 +57,23 @@ ARM64 runners (`windows-2022` and `windows-11-arm`). The checks verify the runti
 version and availability of C API 23, used by this application's headers;
 they are library-loading checks, not full model or GenAI compatibility tests.
 Each final artifact includes `BUILD_INFO.json` and `SHA256SUMS`.
+
+The final universal dylib is **Developer ID signed** with hardened runtime and
+a secure timestamp on a hosted runner, using the same secrets as `Publish`:
+`APPLE_DEVELOPER_ID_CERTIFICATE`, `APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD`,
+`KEYCHAIN_PASSWORD`, `CODESIGN_APPLE_ID`, `NOTARYTOOL_APPLE_ID`,
+`NOTARYTOOL_TEAM_ID`, and `NOTARYTOOL_PASSWORD`.
+The workflow imports the certificate into a temporary keychain, signs the dylib,
+then submits a signed `libonnxruntime.dylib.dmg` to Apple. It requires an
+`Accepted` result, staples and validates the DMG's ticket, and checks Gatekeeper
+assessment before sealing the package. Credentials are removed even on failure;
+there is no ad-hoc fallback if signing or notarization fails.
+
+A bare dylib cannot carry a stapled ticket. The signed library is notarized
+inside the DMG; the DMG provides the stapled ticket for offline distribution.
+The workflow preserves that DMG and `NOTARIZATION.json` in both the artifact and
+`onnxruntime/<version>/`, while deploying the exact signed dylib to the server's
+build/runtime directories. The native intermediate slices remain ad-hoc signed.
 
 The artifact helpers use only Python's standard library (Python 3.11+).
 Run their focused checks with:
@@ -117,7 +134,9 @@ These workflows do not rebuild ONNX Runtime GenAI, Extensions, or the other
 static dependencies; their existing versions are intentionally left unchanged.
 The regression checks do not replace real-model compatibility testing: exercise
 the models you intend to use before publishing a 4D component.
-macOS binaries are **ad-hoc signed**, not Developer ID signed or notarized.
+Only the ONNX Runtime dylib is Developer ID signed and notarized by the runtime
+workflow. The server CLI executable remains ad-hoc signed, and the existing
+GenAI/Extensions libraries are not re-signed by these workflows.
 Native Windows ARM64 runner availability depends on the repository's GitHub
 Actions plan.
 
