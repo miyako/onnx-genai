@@ -1,0 +1,198 @@
+name: Server CLI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'cpp/**'
+      - 'tools/runtime/**'
+      - '.github/workflows/server-cli.yml'
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      source_sha:
+        description: Commit containing the newly adopted runtime
+        required: true
+        type: string
+      target_branch:
+        description: Branch to receive the rebuilt server binaries
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: server-cli-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  source:
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+      branch: ${{ steps.source.outputs.branch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_sha || github.sha }}
+          persist-credentials: false
+      - name: Record exact build source
+        id: source
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch || github.ref_name }}
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "branch=$TARGET_BRANCH" >> "$GITHUB_OUTPUT"
+
+  macos:
+    needs: source
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build universal Release CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -quiet -project cpp/onnx-genai.xcodeproj -scheme onnx-genai \
+            -configuration Release -derivedDataPath "$RUNNER_TEMP/cli-build" \
+            CONFIGURATION_BUILD_DIR="$RUNNER_TEMP/cli-products" \
+            ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO \
+            'OTHER_CFLAGS=-DEIGEN_USE_BLAS -flto -Xpreprocessor -fopenmp' \
+            'OTHER_CPLUSPLUSFLAGS=-DEIGEN_USE_BLAS -flto -Xpreprocessor -fopenmp' build
+          mkdir -p package
+          cp -R onnx-genai/Resources/bin/macOS/. package/
+          cp "$RUNNER_TEMP/cli-products/onnx-genai" package/onnx-genai
+          lipo package/onnx-genai -verify_arch arm64 x86_64
+          codesign --force --sign - package/onnx-genai
+          codesign --verify --strict package/onnx-genai
+          python cpp/tests/systemone_http_test.py package/onnx-genai
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-cli-macos-universal
+          path: package/
+          if-no-files-found: error
+          retention-days: 30
+
+  macos-intel:
+    needs: [source, macos]
+    runs-on: macos-26-intel
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: server-cli-macos-universal
+          path: package
+      - name: Exercise packaged Intel CLI
+        run: |
+          chmod +x package/onnx-genai
+          python cpp/tests/systemone_http_test.py package/onnx-genai
+
+  windows:
+    needs: source
+    name: Windows ${{ matrix.platform }} Release CLI
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: x64
+            runner: windows-2022
+            deployment: Windows
+            python-arch: x64
+          - platform: ARM64
+            runner: windows-11-arm
+            deployment: WindowsARM
+            python-arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: ${{ matrix.python-arch }}
+      - uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: ${{ matrix.python-arch }}
+      - name: Build and exercise packaged CLI
+        shell: pwsh
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          DEPLOYMENT: ${{ matrix.deployment }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          msbuild cpp/onnx-genai.vcxproj /m /verbosity:minimal `
+            /p:Configuration=Release "/p:Platform=$env:PLATFORM" `
+            "/p:OutDir=$env:RUNNER_TEMP\cli-products\" `
+            "/p:IntDir=$env:RUNNER_TEMP\cli-objects\"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Path package | Out-Null
+          Copy-Item "onnx-genai/Resources/bin/$env:DEPLOYMENT/*" package
+          Copy-Item "$env:RUNNER_TEMP/cli-products/onnx-genai.exe" package/onnx-genai.exe -Force
+          python cpp/tests/systemone_http_test.py package/onnx-genai.exe
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-cli-windows-${{ matrix.python-arch }}
+          path: package/
+          if-no-files-found: error
+          retention-days: 30
+
+  update:
+    needs: [source, macos-intel, windows]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: server-cli-macos-universal
+          path: packages/macOS
+      - uses: actions/download-artifact@v4
+        with:
+          name: server-cli-windows-x64
+          path: packages/Windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: server-cli-windows-arm64
+          path: packages/WindowsARM
+      - name: Commit rebuilt server binaries
+        env:
+          TARGET_BRANCH: ${{ needs.source.outputs.branch }}
+        run: |
+          set -euo pipefail
+          cp packages/macOS/onnx-genai onnx-genai/Resources/bin/macOS/onnx-genai
+          cp packages/Windows/onnx-genai.exe onnx-genai/Resources/bin/Windows/onnx-genai.exe
+          cp packages/WindowsARM/onnx-genai.exe onnx-genai/Resources/bin/WindowsARM/onnx-genai.exe
+          chmod +x onnx-genai/Resources/bin/macOS/onnx-genai
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add onnx-genai/Resources/bin/
+          if ! git diff --cached --quiet; then
+            git commit -m "Rebuild server CLI with bundled ONNX Runtime" \
+              -m "Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>"
+          fi
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"

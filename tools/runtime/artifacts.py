@@ -1,4 +1,4 @@
-"""Package and smoke-check ONNX Runtime libraries without a Python ORT wheel."""
+"""Package, smoke-check and adopt ONNX Runtime libraries without a Python ORT wheel."""
 
 import argparse
 import ctypes
@@ -136,6 +136,67 @@ def seal(args):
     (args.output / "SHA256SUMS").write_text(checksums, encoding="utf-8", newline="\n")
 
 
+def adopt(args):
+    """Validate all packages before replacing any checked-in dependency."""
+    packages = {}
+    for platform_name in ("macos-universal", "windows-x64", "windows-arm64"):
+        package = args.packages / f"onnxruntime-{args.version}-{platform_name}"
+        info = json.loads((package / "BUILD_INFO.json").read_text(encoding="utf-8"))
+        for key, expected in (
+            ("version", args.version),
+            ("source_revision", args.revision),
+            ("platform", platform_name),
+        ):
+            if info[key] != expected:
+                raise ValueError(f"{package}: unexpected {key}: {info[key]}")
+        checked = set()
+        for line in (package / "SHA256SUMS").read_text(encoding="utf-8").splitlines():
+            digest, name = line.split("  ", 1)
+            relative = PurePosixPath(name)
+            if relative.is_absolute() or ".." in relative.parts or "\\" in name:
+                raise ValueError(f"Unexpected checksum path: {name}")
+            if sha256(package / name) != digest:
+                raise ValueError(f"{package / name}: SHA-256 mismatch")
+            checked.add(name)
+        libraries = (
+            ("libonnxruntime.dylib",)
+            if platform_name == "macos-universal"
+            else (
+                "onnxruntime.dll", "onnxruntime.lib",
+                "onnxruntime_providers_shared.dll", "onnxruntime_providers_shared.lib",
+            )
+        )
+        required = {"BUILD_INFO.json", "LICENSE", "ThirdPartyNotices.txt"}
+        required.update(f"lib/{name}" for name in libraries)
+        if not required <= checked:
+            raise ValueError(f"{package}: missing required checksums: {required - checked}")
+        packages[platform_name] = (package, libraries)
+
+    for platform_name, (package, libraries) in packages.items():
+        if platform_name == "macos-universal":
+            deployment, link = "macOS", "macOS"
+            archived = args.root / "onnxruntime" / args.version
+        else:
+            arch = platform_name.removeprefix("windows-")
+            deployment, link = ("Windows", "lib/windows64") if arch == "x64" else ("WindowsARM", "lib/arm64")
+            archived = args.root / "onnxruntime" / args.version / arch
+        deployed = args.root / "onnx-genai/Resources/bin" / deployment
+        archived.mkdir(parents=True, exist_ok=True)
+        deployed.mkdir(parents=True, exist_ok=True)
+        for name in libraries:
+            source = package / "lib" / name
+            shutil.copy2(source, archived / name)
+            target = args.root / "cpp" / link / name
+            if source.suffix == ".lib" or platform_name == "macos-universal":
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, target)
+            if source.suffix != ".lib":
+                shutil.copy2(source, deployed / name)
+        for name in ("BUILD_INFO.json", "LICENSE", "ThirdPartyNotices.txt"):
+            shutil.copy2(package / name, archived / name)
+            shutil.copy2(package / name, deployed / f"onnxruntime-{name}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -156,7 +217,12 @@ def main():
     manifest.add_argument("--platform", required=True)
     manifest.add_argument("--upstream-sha256")
     manifest.set_defaults(run=seal)
-    for command in (windows, check, manifest):
+    adoption = commands.add_parser("adopt")
+    adoption.add_argument("packages", type=Path)
+    adoption.add_argument("--root", type=Path, default=Path("."))
+    adoption.add_argument("--revision", required=True)
+    adoption.set_defaults(run=adopt)
+    for command in (windows, check, manifest, adoption):
         command.add_argument("--version", required=True)
     args = parser.parse_args()
     args.run(args)

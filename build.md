@@ -8,7 +8,8 @@ layout: default
 
 The C++ link dependencies and deployed ONNX Runtime libraries currently use
 **1.29.0** on macOS universal, Windows x64 and Windows ARM64. The workflow below
-produces replacement artifacts; adopting a later run remains an explicit step.
+produces replacement artifacts, commits them to the selected branch, and then
+rebuilds the server CLI against those exact dependencies.
 The macOS Xcode target matches the runtime's 13.3 deployment floor. Other
 dependencies may impose higher requirements.
 
@@ -24,8 +25,9 @@ new runtime exposes for backward compatibility.
 Once the workflow is on the repository's default branch, run
 **Actions > ONNX Runtime libraries > Run workflow** and enter an official
 stable version without the `v` prefix. The default is **1.29.0**, which has been
-verified with the d1 adapter; this does not automatically upgrade the runtime
-bundled with the application.
+verified with the d1 adapter. A successful run now upgrades the runtime
+bundled with the application and starts the server CLI build automatically.
+Dispatch on a branch, not a tag, to enable the update/build jobs.
 
 The workflow `.github/workflows/onnxruntime.yml` produces:
 
@@ -61,27 +63,63 @@ Run their focused checks with:
 
 ```sh
 python3 -m unittest discover -s tools/runtime -p '*_test.py'
-actionlint .github/workflows/onnxruntime.yml
+actionlint .github/workflows/onnxruntime.yml .github/workflows/server-cli.yml
 ```
 
-This is a manual, read-only workflow: it uploads artifacts retained for 30 days,
-does not commit binaries, does not publish a release, and does not run the 4D
-component release workflow. macOS libraries are **ad-hoc signed**, not Developer
-ID signed or notarized. Native Windows ARM64 runner availability depends on the
-repository's GitHub Actions plan.
+After all native checks succeed, the workflow verifies the three packages'
+checksums, version, and source revision before replacing the deployed runtime
+libraries, `cpp/macOS/libonnxruntime.dylib`, Windows import libraries under
+`cpp/lib/`, and the corresponding `onnxruntime/<version>/` archive.
+Licenses and build metadata are updated together with the libraries.
+Application headers stay at C API 23; they are not replaced with upstream headers.
 
-To adopt an artifact, first exercise the models you intend to use. Copy its
-runtime library files from `lib/` to the appropriate application's runtime
-directory (and the Windows `.lib` files to the corresponding C++ link-library
-directory if rebuilding). Keep Windows DLLs from the same package together.
-For a macOS source build, copy `libonnxruntime.dylib` to `cpp/macOS/`; packaged
-applications use `onnx-genai/Resources/bin/macOS/`. Windows application runtime
-directories are `onnx-genai/Resources/bin/Windows/` and `WindowsARM/`.
+The runtime update is committed with `GITHUB_TOKEN`, then the workflow explicitly
+calls `.github/workflows/server-cli.yml` with that commit and branch. This does
+not rely on a bot push triggering another workflow (GitHub suppresses those
+push-triggered runs). Repository Actions must be allowed to write contents;
+branch protection must permit these bot updates. Pushes are fast-forward only:
+if another change lands during a build, the update fails rather than overwriting
+it. Dispatch a new run from the current branch head in that case.
 
-This workflow builds/packages **ONNX Runtime itself**, not `onnx-genai.exe`, the
-macOS CLI, ONNX Runtime GenAI, Extensions, or the other static dependencies.
-Their existing versions are intentionally left unchanged. A runtime update
-must not be taken as proof that all those consumers remain compatible.
+### Automated server CLI
+
+The **Server CLI** workflow also runs on `main` pushes affecting `cpp/`, the
+runtime helpers, or its workflow file, and supports manual dispatch using the
+currently bundled dependencies. It builds the existing Xcode and Visual Studio
+projects in Release mode: macOS universal (arm64 + x86_64), Windows x64, and
+Windows ARM64. CLI builds/checks use `macos-26` and `macos-26-intel` because the
+existing Extensions dylib and some static dependencies were built for macOS 26;
+the runtime-only jobs retain their macOS 15 runners. The CLI's 13.3 project
+deployment setting does not lower those dependencies' OS requirements.
+The macOS build overrides `-march=native` so both slices are
+portable and disables Developer ID signing; the packaged executable is ad-hoc
+signed instead. Windows uses the architecture-specific import libraries.
+
+Each build stages the rebuilt executable alongside the checked-in runtime and
+other dynamic dependencies, then runs the model-free HTTP/CLI regression checks.
+The universal macOS package is exercised on both Apple Silicon and Intel;
+Windows packages are exercised on native x64 and ARM64 runners. After all checks
+succeed, the workflow commits the rebuilt executables to
+`onnx-genai/Resources/bin/{macOS,Windows,WindowsARM}/` on the same branch.
+Complete server packages are also uploaded as `server-cli-macos-universal`,
+`server-cli-windows-x64`, and `server-cli-windows-arm64`, retained for 30 days.
+After downloading a macOS artifact, restore the executable bit with
+`chmod +x onnx-genai` (GitHub artifact downloads do not preserve permissions).
+
+The 4D component workflow remains unchanged: it runs on its existing 4D-source
+and project-resource paths or manual dispatch, not these binary updates.
+Neither native workflow publishes a release. A runtime update is committed
+before the CLI build; if compilation or regression checks fail, the old CLI
+remains checked in and the workflow fails visibly. Fix the failure and dispatch
+**Server CLI** on the updated branch before releasing a component.
+
+These workflows do not rebuild ONNX Runtime GenAI, Extensions, or the other
+static dependencies; their existing versions are intentionally left unchanged.
+The regression checks do not replace real-model compatibility testing: exercise
+the models you intend to use before publishing a 4D component.
+macOS binaries are **ad-hoc signed**, not Developer ID signed or notarized.
+Native Windows ARM64 runner availability depends on the repository's GitHub
+Actions plan.
 
 Sources: [upstream CPU build instructions](https://onnxruntime.ai/docs/build/inferencing.html),
 [official releases](https://github.com/microsoft/onnxruntime/releases), and

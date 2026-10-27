@@ -100,6 +100,93 @@ class ArtifactTests(unittest.TestCase):
             digest, name = line.split("  ", 1)
             self.assertEqual(digest, hashlib.sha256((self.args.output / name).read_bytes()).hexdigest())
 
+    def adoption_packages(self):
+        packages = self.root / "packages"
+        for platform_name in ("macos-universal", "windows-x64", "windows-arm64"):
+            output = packages / f"onnxruntime-{self.args.version}-{platform_name}"
+            (output / "lib").mkdir(parents=True)
+            names = (
+                ("libonnxruntime.dylib",)
+                if platform_name == "macos-universal"
+                else (
+                    "onnxruntime.dll", "onnxruntime.lib",
+                    "onnxruntime_providers_shared.dll", "onnxruntime_providers_shared.lib",
+                )
+            )
+            for name in names:
+                (output / "lib" / name).write_text(platform_name + name)
+            (output / "LICENSE").write_text("license")
+            (output / "ThirdPartyNotices.txt").write_text("notices")
+            artifacts.seal(SimpleNamespace(
+                output=output, version=self.args.version, revision=self.args.revision,
+                platform=platform_name, upstream_sha256=None,
+            ))
+        return SimpleNamespace(
+            packages=packages, root=self.root / "repo",
+            version=self.args.version, revision=self.args.revision,
+        )
+
+    def test_adoption_updates_link_and_deployment_files_and_notices(self):
+        args = self.adoption_packages()
+        header = args.root / "cpp/include/onnxruntime_c_api.h"
+        header.parent.mkdir(parents=True)
+        header.write_text("keep API 23")
+        artifacts.adopt(args)
+        self.assertEqual(header.read_text(), "keep API 23")
+        for platform_name, deployment, link, arch in (
+            ("macos-universal", "macOS", "macOS", ""),
+            ("windows-x64", "Windows", "lib/windows64", "x64"),
+            ("windows-arm64", "WindowsARM", "lib/arm64", "arm64"),
+        ):
+            package = args.packages / f"onnxruntime-{args.version}-{platform_name}"
+            archived = args.root / "onnxruntime" / args.version / arch
+            deployed = args.root / "onnx-genai/Resources/bin" / deployment
+            for source in (package / "lib").iterdir():
+                self.assertEqual(source.read_bytes(), (archived / source.name).read_bytes())
+                target = args.root / "cpp" / link if source.suffix == ".lib" or not arch else deployed
+                self.assertEqual(source.read_bytes(), (target / source.name).read_bytes())
+                if not arch:
+                    self.assertEqual(source.read_bytes(), (deployed / source.name).read_bytes())
+            for name in ("BUILD_INFO.json", "LICENSE", "ThirdPartyNotices.txt"):
+                self.assertEqual((package / name).read_bytes(), (deployed / f"onnxruntime-{name}").read_bytes())
+                self.assertEqual((package / name).read_bytes(), (archived / name).read_bytes())
+
+    def test_adoption_validates_every_platform_before_copying(self):
+        args = self.adoption_packages()
+        package = args.packages / f"onnxruntime-{args.version}-windows-arm64"
+        (package / "lib/onnxruntime.dll").write_text("corrupted")
+        with self.assertRaisesRegex(ValueError, "SHA-256 mismatch"):
+            artifacts.adopt(args)
+        self.assertFalse(args.root.exists())
+
+    def test_adoption_rejects_mixed_releases(self):
+        args = self.adoption_packages()
+        args.revision = "b" * 40
+        with self.assertRaisesRegex(ValueError, "source_revision"):
+            artifacts.adopt(args)
+        self.assertFalse(args.root.exists())
+
+    def test_adoption_requires_checksums_for_deployed_libraries(self):
+        args = self.adoption_packages()
+        package = args.packages / f"onnxruntime-{args.version}-windows-x64"
+        checksums = package / "SHA256SUMS"
+        checksums.write_text("".join(
+            line for line in checksums.read_text().splitlines(keepends=True)
+            if "lib/onnxruntime.dll" not in line
+        ))
+        with self.assertRaisesRegex(ValueError, "missing required checksums"):
+            artifacts.adopt(args)
+        self.assertFalse(args.root.exists())
+
+    def test_adoption_rejects_checksum_path_traversal(self):
+        args = self.adoption_packages()
+        package = args.packages / f"onnxruntime-{args.version}-macos-universal"
+        with (package / "SHA256SUMS").open("a") as stream:
+            stream.write(f"{'0' * 64}  ../outside\n")
+        with self.assertRaisesRegex(ValueError, "checksum path"):
+            artifacts.adopt(args)
+        self.assertFalse(args.root.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

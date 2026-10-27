@@ -6,8 +6,9 @@ import artifacts
 
 
 ROOT = Path(__file__).resolve().parents[2]
-VERSION = "1.29.0"
-REVISION = "2e2543fbe9fae542f921d47a72d21d5a4ef0b710"
+INFO = json.loads((ROOT / "onnx-genai/Resources/bin/macOS/onnxruntime-BUILD_INFO.json").read_text())
+VERSION = INFO["version"]
+REVISION = INFO["source_revision"]
 
 
 class BundledRuntimeTests(unittest.TestCase):
