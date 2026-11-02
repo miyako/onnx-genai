@@ -114,6 +114,9 @@ Tables: enclosing horizontal-scroll wrapper, 1px line border, radius `7px`;
 Never clip or hide columns to fit mobile.
 Code: `13px/1.85`, padding `24px`, radius `7px`, horizontal scroll, no wrapping
 inside pre; inline code `.86em`, surface background, `2px 4px` padding.
+Where syntax highlighting exists, comments use `#9fb3c1` and error/deletion
+foregrounds use `#ff9a9a` on the dark code background; retain other syntax colors
+that pass contrast. Error tokens with a red background retain pale foregrounds.
 Wrapped pre reserves `48px` top padding for the copy control; keep the same font,
 colors and size as unwrapped pre despite legacy copy.css cascades.
 Copy control min-height `32px`, `11px` type, top/right `8px`; preserve success
