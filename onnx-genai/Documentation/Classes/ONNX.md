@@ -75,7 +75,7 @@ Each `cs.event.huggingface` descriptor has a `domain` property that determines w
 | `/v1/embeddings` | ✅ |
 | `/v1/rerank` | ✅ |
 | `/v1/audio/speech` | ✅ (TTS) |
-| `/v1/systemone` | Planned; dedicated decision model via `-D` |
+| `/v1/systemone` | ✅ (text-only Kev, d1 or Laya decision model via `-D`) |
 
 ## Examples
 
@@ -115,7 +115,7 @@ var $ONNX : cs.ONNX.ONNX
 $ONNX:=cs.ONNX.ONNX.new(8080; $huggingfaces; $homeFolder; {}; $event)
 ```
 
-### Configure a decision model for the planned SystemOne endpoint
+### Configure a decision model for the SystemOne endpoint
 
 Use a repository-root folder descriptor so all required files are downloaded, not just the selected ONNX file:
 
@@ -155,7 +155,7 @@ var $ONNX : cs.ONNX.ONNX
 $ONNX:=cs.ONNX.ONNX.new(8080; $huggingfaces; $homeFolder; {}; $event)
 ```
 
-Replace `owner/decision-model` or `owner/d1-model` with the actual repository. Both examples use the same root handling and pass the selected ONNX file to `-D`. The executable automatically infers `kev` versus `d1` from root `config.json`; no additional 4D backend option is needed. Both models require root `tokenizer.json`; sibling graphs and external data must remain beside the selected ONNX. Recursive downloading preserves this layout.
+Replace `owner/decision-model` or `owner/d1-model` with the actual repository. Both examples use the same root handling and pass the selected ONNX file to `-D`. The executable automatically infers `Kev` versus `D1` from root `config.json`; no additional 4D backend option is needed. Both models require root `tokenizer.json`; sibling graphs and external data must remain beside the selected ONNX. Recursive downloading preserves this layout.
 
 **d1 runtime requirement:** the bundled runtime is now **ONNX Runtime 1.29.0**, which can load the d1 graph's IR version 13. Both the C++ build dependencies and the macOS/Windows deployment libraries have been updated; no `DYLD_LIBRARY_PATH` override is needed. Older installations using 1.23.2 must update their runtime libraries. System One also requires an executable rebuilt from the updated source; a runtime-only update does not add the endpoint to an older executable. See the root `CLI.md` for deployment instructions.
 
@@ -164,6 +164,77 @@ d1 support is text-only. Each question starts with a fresh conversation and KV c
 For existing local files, the equivalent options are `{decision_model: $homeFolder.folder("decision-model"); decision_model_name: "onnx/model_q4.onnx"}`. Explicit options take precedence over domain mapping. If the model metadata request is offline, the descriptor's root folder and selected name are mapped directly and existing files are used. Bare names such as `model_q4.onnx` resolve at the root first, then under `onnx/`; explicit relative paths avoid ambiguity.
 
 For local/offline d1, use `{decision_model: $homeFolder.folder("d1-model"); decision_model_name: "onnx/decoder_model_merged_quantized.onnx"}` with the same complete repository layout and compatible runtime requirement.
+
+#### Laya (English, CPU only)
+
+Use the **421M ModernBERT-large English-only** export
+[`receptron/laya-onnx`](https://huggingface.co/receptron/laya-onnx/tree/d42786bdff8a7550316339c5fbf8f46caa83ea1b),
+pinned to revision `d42786bdff8a7550316339c5fbf8f46caa83ea1b`. Its required
+layout is:
+
+```text
+laya-onnx/
+  laya.onnx
+  laya.onnx.data
+  laya_config.json
+  tokenizer/
+    tokenizer.json
+    tokenizer_config.json
+```
+
+A repository-root folder descriptor downloads all files recursively and retains
+their relative paths, including the nested `tokenizer/` directory:
+
+```4d
+var $decision : cs.event.huggingface
+$decision:=cs.event.huggingface.new(\
+    $homeFolder.folder("laya-onnx"); \
+    "receptron/laya-onnx"; \
+    ""; \
+    "systemone"; \
+    "laya.onnx")
+```
+
+Pass `[$decision]` to `cs.event.huggingfaces.new` as in the examples above.
+Do not use a single-file descriptor: the graph alone is insufficient.
+The generic downloader currently resolves file downloads from `main`, not a
+pinned revision. For reproducible deployment, obtain the complete snapshot at
+the pinned revision separately and use explicit local/offline options:
+
+```4d
+var $options : Object
+$options:={decision_model: $homeFolder.folder("laya-onnx"); decision_model_name: "laya.onnx"}
+```
+
+Keep a nonempty descriptor collection when using the constructor: an empty
+collection selects the default chat/embedding models and replaces the options.
+The offline metadata fallback uses existing local files; an online descriptor
+can update them from `main`. For strictly pinned, download-free startup, launch
+the executable directly with `-s -D /models/laya-onnx/laya.onnx`.
+
+`laya_config.json` beside the selected graph identifies `Laya` automatically.
+Both tokenizer files are required, and `laya.onnx.data` stays beside the graph.
+Ambiguous Kev/d1 `config.json` metadata mixed with Laya metadata is rejected.
+Use `laya-latest` or the directory basename (`laya-onnx`) in requests.
+The bundled CPU ONNX Runtime **1.29.0** is unchanged; rebuild the executable
+to obtain the native backend.
+
+Laya supports the existing `noul`, `choice` and `score` contract and TypeSafe
+confidence formulas, with no added `act` fields. Configured limits are 512
+tokens per complete row, a 192-token head and 48 tokens per option; the
+reference equal-budget/head-capacity rules reject anything requiring shrinking
+rather than truncating it. Rows are right-padded in a batch with a 32,768-token
+padded budget; usage sums unpadded rows, including repeated state.
+Question/option count limits are unchanged.
+See [CLI: TypeSafe Compatible Endpoint](../../../CLI.md#typesafe-compatible-endpoint)
+for the exact sequence, head budgeting and request schema.
+
+Published finite positive temperatures are consumed unchanged, including
+`choice:11+ = 0.945` from the community export, not the official checkpoint's
+calibration. A bounded mixed-question CPU comparison measured a maximum
+raw-logit difference of `2.58e-5` against the pinned official PyTorch checkpoint;
+this is not universal parity or multilingual validation. See the CLI
+documentation for checkpoint revisions and comparison scope.
 
 ### Test the chat completion endpoint
 

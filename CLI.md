@@ -9,7 +9,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
  -e path     : embedding model (pooling=mean)
  -r path     : rerank model
  -T path     : text to speach model
- -D path     : System One decision ONNX model (Kev or d1, text only)
+ -D path     : System One decision ONNX model (Kev, d1 or Laya, text only)
  -t path     : chat template
  -j          : chat template from stdin
  -d          : pooling=e2e 
@@ -73,16 +73,19 @@ onnx-genai -s -D /models/kev-0.6b-ONNX/onnx/model_q4.onnx
 onnx-genai -s -D /models/kev-4b-ONNX/onnx/model_q4.onnx
 # d1 q8:
 onnx-genai -s -D /models/d1-3B-ONNX/onnx/decoder_model_merged_quantized.onnx
+# Laya English encoder:
+onnx-genai -s -D /models/laya-onnx/laya.onnx
 ```
 
 Supported exports:
 [Kev-0.6B](https://huggingface.co/onnx-community/kev-0.6b-ONNX),
-[Kev-4B](https://huggingface.co/onnx-community/kev-4b-ONNX), and
-[d1-3B](https://huggingface.co/onnx-community/d1-3B-ONNX).
+[Kev-4B](https://huggingface.co/onnx-community/kev-4b-ONNX),
+[d1-3B](https://huggingface.co/onnx-community/d1-3B-ONNX), and
+[Laya English](https://huggingface.co/receptron/laya-onnx/tree/d42786bdff8a7550316339c5fbf8f46caa83ea1b).
 These are decision models, not chat or embedding models; do not load them with
 `-m`, `-e` or `-r`.
 
-Keep `config.json` and `tokenizer.json` in the model directory, with the selected
+For Kev/d1, keep `config.json` and `tokenizer.json` in the model directory, with the selected
 graph and **all its external data files** in `onnx/`. They may alternatively all
 be placed in one directory. The backend is identified by the `kev` or `d1`
 metadata in `config.json`, not the directory name or `model_type`.
@@ -90,10 +93,43 @@ Kev uses the selected graph directly. d1 additionally loads the matching
 `embed_tokens_quantized.onnx` or `embed_tokens_q4.onnx` beside its selected decoder.
 The text-only adapter does not load the vision encoder.
 
+The Laya adapter runs the 421M-parameter ModernBERT-large-based encoder plus
+decision head on CPU, **English only**.
+Use the community ONNX bundle `receptron/laya-onnx` pinned to revision
+`d42786bdff8a7550316339c5fbf8f46caa83ea1b`; preserve its layout:
+
+```text
+laya-onnx/
+  laya.onnx
+  laya.onnx.data
+  laya_config.json
+  tokenizer/
+    tokenizer.json
+    tokenizer_config.json
+```
+
+`laya_config.json` alongside the selected graph identifies the native Laya
+backend. Both tokenizer files are required; external `laya.onnx.data` must stay
+beside the graph. Backend selection distinguishes `Kev`, `D1` and `Laya`;
+ambiguous Kev/d1 `config.json` metadata mixed with Laya metadata is rejected,
+not resolved by preferring one backend. No backend flag is needed.
+This supports the shipped English ONNX export, not the multilingual checkpoint.
+An independent CPU comparison against official `convaiinnovations/laya` revision
+`7b928d828b7b0e022f929d9bd2e44165aa270148` measured a maximum raw-logit difference
+of `2.58e-5` in a four-row mixed-question batch using PyTorch 2.15.0 and
+ONNX Runtime 1.29.0. This is a bounded smoke comparison, not universal `1e-5`
+parity or model-quality validation. Published temperatures in `laya_config.json`
+are consumed as-is and must be finite and positive. In particular,
+`choice:11+ = 0.945` is the community export's calibration, not the official
+checkpoint's `0.10058280825614929`; probabilities for those questions deliberately
+follow the published ONNX bundle rather than the original checkpoint.
+
 **Runtime requirement:** the published d1 export uses ONNX IR 13. The bundled
 ONNX Runtime has been upgraded to **1.29.0** in both the C++ build dependencies
 and the macOS/Windows deployment directories, so a runtime override is no longer
 needed. Older installations using 1.23.2 cannot load this graph.
+Laya uses the same bundled CPU runtime **1.29.0**; it does not require a runtime
+version bump.
 
 For deployment, keep the 1.29.0 runtime alongside the rebuilt executable
 (on Windows, deploy its corresponding provider DLLs too). System One still
@@ -127,13 +163,14 @@ curl http://127.0.0.1:8080/v1/systemone \
   }'
 ```
 
-Use `d1-latest` for a d1 model, or the model ID returned by `GET /v1/models`
+Use `d1-latest` for d1, `laya-latest` for Laya, or the model ID returned by `GET /v1/models`
 (the model directory's basename). Family aliases only resolve to the loaded
 backend; an unknown model is rejected. The response contains `model`, `answers`
 keyed by question name, and `usage` with `input_tokens` and `output_tokens: 0`.
 Noul returns `noul` (probability of true); Choice returns `choice`,
 `probabilities` and `confidence`; Score returns a zero-based expected `score`,
 `legend`, `probabilities` and `confidence`.
+Laya uses this same response schema; no `act` fields are added.
 
 Confidence follows TypeSafe's [documented formulas](https://docs.typesafe.ai/confidence):
 Choice measures the largest probability above a uniform distribution, and Score
@@ -141,7 +178,7 @@ measures probability-weighted distance from the modal level. A single option/lev
 has confidence 1. These are distribution statistics, not guarantees of accuracy
 or Jev-equivalent calibration.
 
-The initial implementation accepts string/object/array state and structured
+The endpoint accepts string/object/array state and structured
 instructions/descriptions. It rejects images, assets, `box`, unsupported fields,
 duplicate JSON keys and inputs exceeding limits:
 
@@ -155,11 +192,35 @@ duplicate JSON keys and inputs exceeding limits:
 | Kev complete packed request | 8,192 tokens |
 | d1 each complete question prompt | Model context, capped at 8,192 tokens |
 | d1 sum of question prompt tokens | 32,768 tokens |
+| Laya complete question row (`max_len` in config) | 512 tokens |
+| Laya head (`head_max_len` in config) | 192 tokens |
+| Laya each option | 48 tokens |
+| Laya padded question batch | 32,768 tokens |
 
 Over-limit inputs are rejected, **not truncated**. Kev shares the state within a
 packed graph run. d1 evaluates each question independently, with fresh caches;
 its input usage counts repeated state tokens. The exported models' long-context
 behavior is not necessarily validated up to these serving limits.
+
+Laya constructs each row in the reference order
+`[CLS] type question: instructions [SEP] [MASK] options [SEP] state [SEP]`.
+Structured state uses insertion-ordered JSON with Python-style spacing;
+structured instructions additionally use ASCII JSON escapes, as in the Python
+reference. Structured option descriptions use ordered JSON as an API extension
+to the reference's text descriptions. Literal `[MASK]` in caller content is
+replaced with a space so it cannot inject option markers.
+It follows the reference equal-budget rule for options, but rejects the request
+if any option would need shrinking (including to meet the 48-token option cap).
+The remaining question/instruction head capacity is
+`max(8, head_max_len - sum(option tokens including markers))`; a head that would
+need truncation is rejected too. State plus the complete head and separators
+must fit `max_len = 512`. These are **reject-not-truncate** limits, not permission
+to silently shorten instructions, options or state.
+Question rows are batched with right padding; the marker-position tensor has
+width at least 2. The padded batch must fit 32,768 tokens, while
+`usage.input_tokens` sums the **unpadded** row lengths (including repeated state).
+The existing 1–64 question, 1–255 Choice option and 1–10 Score level limits
+remain unchanged for Laya.
 
 Invalid requests return HTTP `422` with a `detail` array, an unloaded decision
 model returns `503`, and inference failures return `500`. Errors are logged.
@@ -168,7 +229,7 @@ Without `-s`, `-D` selects decision evaluation from `-i`/stdin, with `-o` for a
 JSON response file; failures return a nonzero exit status. If both `-m` and `-D`
 are supplied in CLI mode, decision evaluation takes precedence.
 
-Kev is Apache-2.0 licensed. d1 uses the
+Kev and the Laya weights are Apache-2.0 licensed. d1 uses the
 [LFM Open License v1.0](https://huggingface.co/onnx-community/d1-3B-ONNX/blob/main/LICENSE),
 including commercial-use restrictions; review it before deploying.
 
