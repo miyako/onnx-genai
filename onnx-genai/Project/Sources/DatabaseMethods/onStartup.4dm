@@ -113,6 +113,18 @@ Function onTerminate($worker : 4D.SystemWorker; $params : Object)
 		
 	End if 
 	
+	If (False:C215)  //Strands Decider (native text-only System One)
+
+		$folder:=$homeFolder.folder("strands-decider-2B-qwen3.5-v1-2610-onnx")
+		$URL:="opticsWolf/strands-decider-2B-qwen3.5-v1-2610-onnx"
+		$options:={}
+		$huggingface:=cs:C1710.event.huggingface.new($folder; $URL; ""; "systemone"; "onnx/model_q8.onnx")
+		$huggingfaces:=cs:C1710.event.huggingfaces.new([$huggingface])
+
+		$ONNX:=cs:C1710.ONNX.new($port; $huggingfaces; $homeFolder; $options; $event)
+
+	End if
+
 	If (False:C215)  //rerank
 		
 		$homeFolder:=Folder:C1567(fk home folder:K87:24).folder(".ONNX")

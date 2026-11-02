@@ -29,7 +29,8 @@ servers on available local ports and terminate them on exit:
 python3 cpp/tests/systemone_http_test.py /path/to/rebuilt/onnx-genai \
   --kev /models/kev/onnx/model_q4.onnx \
   --d1 /models/d1/onnx/decoder_model_merged_quantized.onnx \
-  --laya /models/laya/model.onnx
+  --laya /models/laya/laya.onnx \
+  --strands /models/strands-v1/onnx/model_q8.onnx
 ```
 
 Without model arguments this checks unloaded-model and invalid-request handling,
@@ -39,7 +40,9 @@ the IR-13 support needed by d1; a runtime environment override is not required.
 
 For independent numeric parity, install `numpy`, `tokenizers` and `onnxruntime`
 in a test environment and start a server with the desired model. The Python and
-C++ runtime versions must match: quantized kernels can change across versions.
+C++ runtime versions and intra-op thread counts must match: quantized kernels
+can change across versions and threading configurations. Set `--threads` to the
+server's printed `Detected ... Intra-Op threads` value (the script defaults to 2).
 This check independently constructs the three text prompts/readouts, verifies
 input token counts, and requires probability differences below `1e-4`:
 
@@ -165,7 +168,7 @@ never runs unless `--pytorch-dir` is supplied.
 
 One measured comparison used:
 
-- ONNX: `receptron/laya`, revision
+- ONNX: `receptron/laya-onnx`, revision
   `d42786bdff8a7550316339c5fbf8f46caa83ea1b`.
 - Official checkpoint/source: `convaiinnovations/laya`, revision
   `7b928d828b7b0e022f929d9bd2e44165aa270148`.
@@ -182,6 +185,95 @@ calibrated twelve-choice probabilities need not match the official calibration
 despite close raw logits. Structured choice/score descriptions use the native
 API's JSON extension semantics; official Python `str`/`repr` rendering for such
 descriptions is outside this measured ordinary-string-option comparison.
+
+## Strands Decider v1
+
+The native backend is the **current Qwen3.5 v1 fused option-scoring export**,
+not the older hobson-v19/v21 checkpoint or a causal-LM letter readout.
+The model-free C++ checks cover backend detection, ambiguity, temperatures and
+fallback, metadata limits, exact prompt text, option order/spans, Unicode
+whitespace, Python-compatible structured JSON rendering, and legacy Kev/d1
+rendering/confidence/validation regressions.
+Run `./systemone-test` without arguments after compiling it as shown above;
+these checks require no model download.
+
+Synthetic ONNX fixtures require test-only `numpy`, `tokenizers`, and `onnx`
+packages. They exercise the real CLI/server without model downloads:
+
+```sh
+python3 cpp/tests/strands_fixture_test.py /path/to/rebuilt/onnx-genai
+```
+
+For real-model checks:
+
+```sh
+./systemone-test /models/strands-v1/onnx/model_q8.onnx
+python3 cpp/tests/systemone_http_test.py /path/to/rebuilt/onnx-genai \
+  --strands /models/strands-v1/onnx/model_q8.onnx
+python3 cpp/tests/systemone_parity_test.py strands-decider \
+  /models/strands-v1/onnx/model_q8.onnx http://127.0.0.1:8080 \
+  --threads 8 --preparer ./systemone-test
+python3 cpp/tests/systemone_parity_test.py strands-decider \
+  /models/strands-v1/onnx/model_q8.onnx http://127.0.0.1:8080 \
+  --threads 8 --timeout 600 --preparer ./systemone-test --request cpp/tests/strands_request.json
+```
+
+Replace `8` with the server's actual intra-op thread count. `--preparer` compares
+**every token ID, answer position and option position**, not just the resulting
+classifications, with the independent Python tokenizer's offset mapping. The
+structured fixture includes NFC composition, non-ASCII text, emoji, added special
+tokens, caller-supplied marker text, multiline option names, collapsed Unicode
+whitespace, JSON floats and mixed question types/option counts. Production
+inference uses separate state/question tokenization and one unpadded graph run
+per question, so no question inherits another question's cache or option count.
+
+### Provenance and coverage
+
+Local macOS arm64 CPU evaluation uses bundled ONNX Runtime **1.29.0**, with
+no runtime binary changes:
+
+| Source | Revision |
+|---|---|
+| `opticsWolf/strands-decider-2B-qwen3.5-v1-2610-onnx` | `12143c0d1a5b1d0bc33178dfbabbdfec042ed0be` |
+| Official `StrandsAgents/strands-decider-2B-qwen3.5-v1-2610` model card/config inspected | `216d1ccb46a9e9b036eb9187b248db98480f77d4` |
+| Official `strands-labs/strands-decider` prompt, schema and strict-window source inspected | `13faf5214f7cbea07d005278f1aeaf3973611eba` |
+
+Downloaded q8 SHA-256 hashes match the pinned export's manifest:
+
+```text
+model_q8.onnx       31fd51f3042a6bdc955b62cf30600fd1c9880c026e2eb554fa90914133795327
+model_q8.onnx_data  11d611809d1d4f9a07bb059160c28dd678fe927bf4716a76f60ba2dd834df2a6
+```
+
+The export records its upstream adapter `source_revision` as `main`, not an
+immutable commit; the exact adapter revision used by that conversion cannot be
+established from this metadata. The official revision above identifies the
+reference documentation inspected, not independently verified fused-weight
+provenance.
+
+Real q8 CPU checks cover all three primitives, mixed/isolated requests,
+singleton and 255-choice inference, usage, alias/model selection, overlong
+rejection, HTTP errors, concurrent requests, and CLI input/output/relative paths.
+Independent Python ORT comparison uses the same pinned graph and runtime, with
+a required maximum probability difference below `1e-4`; this establishes native
+adapter parity, not fidelity of the export to original torch weights.
+Both the basic three-question request and the five-question structured fixture
+passed with exact token IDs/readout positions. The largest displayed probability
+difference was `0.00000001` with matching eight-thread CPU configurations.
+
+The official model card's rounded CPU example was also checked: q8 returned
+`noul=0.848`, billing probability `0.764`, and score `1.033`, versus the documented
+`0.858`, `0.773`, and `1.03`. This is an illustrative smoke check against rounded
+published values, **not** a fresh upstream torch parity run. Existing TypeSafe
+confidence formulas remain unchanged, including the score confidence formula;
+probability/score agreement does not imply equality with another server's derived
+confidence statistic.
+
+Unverified here: fresh official torch-vs-ONNX parity, broader calibration/accuracy,
+FP32/q4f16 execution, Windows, native 4D execution, and real-weight Kev/d1
+regressions. Model-free legacy regression checks remain in the focused suite.
+The community author's 11-case FP32/q8/q4f16 comparisons are reported separately
+in [CLI.md](../../CLI.md#typesafe-compatible-endpoint), not claimed as local results.
 
 ## GenAI runtime compatibility
 

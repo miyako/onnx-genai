@@ -32,5 +32,8 @@
     <ClInclude Include="onnx-genai\systemone_laya.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="onnx-genai\systemone_strands.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

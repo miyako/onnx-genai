@@ -150,6 +150,7 @@
     <ClInclude Include="onnx-genai\systemone.h" />
     <ClInclude Include="onnx-genai\systemone_onnx.h" />
     <ClInclude Include="onnx-genai\systemone_laya.h" />
+    <ClInclude Include="onnx-genai\systemone_strands.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
