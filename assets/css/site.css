@@ -67,6 +67,27 @@ main { min-width: 0; }
 .visual-label { position: absolute; color: var(--muted); font: 9px/1.5 ui-monospace, monospace; letter-spacing: 1.4px; }
 .label-top { top: -5px; }
 .label-bottom { bottom: -5px; }
+.stack-panel { grid-column: 1 / -1; margin-top: 44px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.panel-top, .panel-bottom { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 18px; padding: 12px 22px; color: var(--muted); font: 10px/1.6 ui-monospace, "SFMono-Regular", monospace; letter-spacing: 1.4px; text-transform: uppercase; }
+.panel-top { border-bottom: 1px solid var(--line); }
+.panel-bottom { justify-content: flex-start; gap: 6px 22px; border-top: 1px solid var(--line); }
+.panel-bottom span::before { content: "+"; color: var(--accent); margin-right: 7px; }
+.panel-tag { color: var(--accent); }
+.panel-tag::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 7px; background: var(--accent); border-radius: 50%; vertical-align: 1px; }
+.stack-flow { display: flex; align-items: stretch; gap: 0; padding: 26px 22px; }
+.stack-node { position: relative; display: flex; flex: 1 1 0; align-items: center; gap: 14px; min-width: 0; padding: 16px 18px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; }
+.engine-node { border-color: var(--accent); }
+.node-mark { display: grid; place-items: center; flex: 0 0 44px; height: 44px; border-radius: 10px; background: var(--soft); color: var(--accent); font-size: 17px; font-weight: 750; letter-spacing: -.5px; }
+.file-mark { position: relative; }
+.file-mark::before { content: ""; width: 16px; height: 20px; border: 2px solid currentColor; border-radius: 2px 6px 2px 2px; box-sizing: border-box; }
+.node-logo { flex: 0 0 44px; border-radius: 10px; }
+.node-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.4; }
+.node-text strong { font-size: 14px; font-weight: 650; }
+.node-text small { color: var(--muted); font-size: 11px; }
+.node-badge { position: absolute; top: -9px; right: 12px; padding: 0 8px; background: var(--accent); color: var(--paper); border-radius: 99px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+.stack-link { display: flex; flex: 0 0 120px; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0 8px; color: var(--muted); font: 9px/1.4 ui-monospace, "SFMono-Regular", monospace; letter-spacing: .5px; text-align: center; }
+.link-line { position: relative; align-self: stretch; height: 0; border-top: 1px dashed var(--accent); }
+.link-line::after { content: ""; position: absolute; right: -1px; top: -4px; width: 7px; height: 7px; border-top: 1px solid var(--accent); border-right: 1px solid var(--accent); transform: rotate(45deg); }
 .section-intro { max-width: 730px; color: var(--muted); }
 .capability-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 30px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .capability { padding: 26px; min-width: 0; }
@@ -169,6 +190,17 @@ pre code { font-size: inherit; overflow-wrap: normal; }
   .capability:not(:last-child) { border-bottom: 1px solid var(--line); }
   .topbar > span > span { margin: 0 4px; }
   .topbar { gap: 12px; }
+}
+@media (max-width: 960px) {
+  .stack-flow { flex-direction: column; }
+  .stack-link { flex: 0 0 auto; flex-direction: row; gap: 10px; padding: 10px 0; }
+  .link-line { align-self: auto; width: 0; height: 22px; border-top: 0; border-left: 1px dashed var(--accent); }
+  .link-line::after { right: auto; top: auto; bottom: -1px; left: -4px; transform: rotate(135deg); }
+}
+@media (max-width: 480px) {
+  .stack-panel { margin-top: 30px; }
+  .panel-top, .panel-bottom { padding: 10px 14px; }
+  .stack-flow { padding: 20px 14px; }
 }
 @media (prefers-color-scheme: dark) {
   :root { color-scheme: dark; --paper: #17211c; --surface: #1e2a23; --ink: #e4e9df; --muted: #a9b8ad; --line: #35453a; --accent: #9dc9aa; --soft: #293d30; --code: #101b16; }
