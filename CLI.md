@@ -1,3 +1,8 @@
+---
+layout: default
+title: CLI & model reference
+---
+
 # onnx-genai
 
 ONNX Runtime GenAI Inference Engine
@@ -268,7 +273,7 @@ structured five-question requests with exact token IDs/readout positions and a
 largest displayed probability difference of `1e-8` on the pinned export above.
 This is adapter parity, not a fresh official torch comparison.
 **Windows and native 4D Strands execution remain unverified here.**
-See [the focused checks](cpp/tests/README.md#strands-decider-v1) for pinned
+See [the focused checks](https://github.com/miyako/onnx-genai/blob/main/cpp/tests/README.md#strands-decider-v1) for pinned
 revisions, local results and unverified paths.
 
 ## Converted ONNX Models

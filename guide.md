@@ -1,10 +1,11 @@
 ---
 layout: default
+title: 4D integration
 ---
 
 ![version](https://img.shields.io/badge/version-20%2B-E23089)
 ![platform](https://img.shields.io/static/v1?label=platform&message=mac-intel%20|%20mac-arm%20|%20win-64&color=blue)
-[![license](https://img.shields.io/github/license/miyako/onnx-genai)](LICENSE)
+[![license](https://img.shields.io/github/license/miyako/onnx-genai)](https://github.com/miyako/onnx-genai/blob/main/LICENSE)
 ![downloads](https://img.shields.io/github/downloads/miyako/onnx-genai/total)
 
 # Use ONNX Runtime from 4D
@@ -17,7 +18,7 @@ layout: default
 
 ONNX Runtime **1.29.0** is bundled for macOS universal and Windows x64/ARM64.
 The runtime's macOS deployment target is 13.3; other dependencies may require a
-newer macOS version. See [build instructions](build.md) for runtime provenance
+newer macOS version. See [build instructions]({{ '/build.html' | relative_url }}) for runtime provenance
 and replacement workflows.
 
 #### Quantisation
@@ -350,7 +351,7 @@ An "End-to-End" (E2E) model that takes raw string as input and returns vectors a
 | [Laya English (421M ModernBERT-large)](https://huggingface.co/receptron/laya-onnx/tree/d42786bdff8a7550316339c5fbf8f46caa83ea1b) | `systemone` | `laya.onnx` | Apache-2.0 |
 | [Strands Decider 2B Qwen3.5 v1 (fused community export)](https://huggingface.co/opticsWolf/strands-decider-2B-qwen3.5-v1-2610-onnx) | `systemone` | `onnx/model_q8.onnx` (CPU recommended) | Apache-2.0 |
 
-Use the existing `decision_model` slot for native text-only `noul`, `choice`, and `score`. The [4D download example](onnx-genai/Documentation/Classes/ONNX.md#strands-decider-v1-q8-cpu-recommended) covers tokenizer/config assets, external weights, offline setup, and the limited q8 versus q4f16 fidelity comparison. Folder downloads include all precisions, even when q8 is selected.
+Use the existing `decision_model` slot for native text-only `noul`, `choice`, and `score`. The [4D download example](https://github.com/miyako/onnx-genai/blob/main/onnx-genai/Documentation/Classes/ONNX.md#strands-decider-v1-q8-cpu-recommended) covers tokenizer/config assets, external weights, offline setup, and the limited q8 versus q4f16 fidelity comparison. Folder downloads include all precisions, even when q8 is selected.
 
 #### AI Kit compatibility
 
@@ -380,12 +381,12 @@ Kev-4B, d1-3B, English Laya and fused Strands Decider v1 ONNX exports support
 and `strands-decider`; their family aliases are `kev-latest`, `d1-latest`,
 `laya-latest` and `strands-decider-latest`, respectively, and only resolve to
 the loaded backend.
-See [CLI: TypeSafe Compatible Endpoint](CLI.md#typesafe-compatible-endpoint) for
+See [CLI: TypeSafe Compatible Endpoint]({{ '/CLI.html' | relative_url }}#typesafe-compatible-endpoint) for
 model layouts, request examples, limits and runtime requirements. The bundled
 CPU runtime is **1.29.0**, including support for d1's ONNX IR 13; Laya and
 Strands require no runtime bump. Rebuild the CLI/server for new backend support.
 For 4D downloading/loading, use the `systemone` domain and a relative
-graph name as shown in [the ONNX class documentation](onnx-genai/Documentation/Classes/ONNX.md).
+graph name as shown in [the ONNX class documentation](https://github.com/miyako/onnx-genai/blob/main/onnx-genai/Documentation/Classes/ONNX.md).
 
 Laya is **English only**, using the community export pinned to
 `d42786bdff8a7550316339c5fbf8f46caa83ea1b`. Keep `laya_config.json` and
@@ -408,4 +409,4 @@ of `1e-8`. This is adapter parity, not a fresh official torch comparison or
 broad calibration/accuracy validation. Per-primitive calibration was fitted
 on held-out short classification, not arbitrary traffic or every quantization.
 **Windows and native 4D Strands execution remain unverified here.**
-See [focused checks, provenance and caveats](cpp/tests/README.md#strands-decider-v1).
+See [focused checks, provenance and caveats](https://github.com/miyako/onnx-genai/blob/main/cpp/tests/README.md#strands-decider-v1).

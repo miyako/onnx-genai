@@ -1,5 +1,6 @@
 ---
 layout: default
+title: Eigen & CPU tuning
 ---
 
 # Eigen

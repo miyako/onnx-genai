@@ -1,5 +1,6 @@
 ---
 layout: default
+title: Speech dependencies
 ---
 
 # espeak-ng

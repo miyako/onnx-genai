@@ -1,5 +1,6 @@
 ---
 layout: default
+title: Build from source
 ---
 
 # Memo: Build Instructions

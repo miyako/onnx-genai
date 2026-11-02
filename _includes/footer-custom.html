@@ -1,4 +1,18 @@
 <script>
+{% if page.landing %}
+const guideSections = new Set([
+  "#use-onnx-runtime-from-4d", "#abstract", "#quantisation", "#usage",
+  "#chat-completions-model", "#embeddings-model",
+  "#chat-completion-models-not-compatible", "#decision-models", "#ai-kit-compatibility"
+]);
+function openLegacyGuideSection() {
+  if (guideSections.has(window.location.hash)) {
+    window.location.replace({{ '/guide.html' | relative_url | jsonify }} + window.location.hash);
+  }
+}
+openLegacyGuideSection();
+window.addEventListener("hashchange", openLegacyGuideSection);
+{% endif %}
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("pre > code").forEach((codeBlock) => {
     const pre = codeBlock.parentNode;
@@ -10,6 +24,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // Create button
     const button = document.createElement("button");
     button.className = "copy-btn";
+    button.type = "button";
+    button.setAttribute("aria-label", "Copy code");
+    button.setAttribute("aria-live", "polite");
     button.setAttribute("data-tooltip", "Copied!");
     button.innerHTML = `
       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
@@ -24,13 +41,20 @@ document.addEventListener("DOMContentLoaded", () => {
     button.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(codeBlock.innerText);
+        button.setAttribute("aria-label", "Code copied");
+        button.setAttribute("data-tooltip", "Copied!");
         button.classList.add("show-tooltip");
-        setTimeout(() => button.classList.remove("show-tooltip"), 1200);
+        setTimeout(() => {
+          button.classList.remove("show-tooltip");
+          button.setAttribute("aria-label", "Copy code");
+        }, 1600);
       } catch (err) {
         console.error("Copy failed:", err);
+        button.setAttribute("aria-label", "Copy failed. Select and copy the code manually.");
+        button.setAttribute("data-tooltip", "Copy failed. Select code manually.");
+        button.classList.add("show-tooltip");
       }
     });
   });
 });
 </script>
-
