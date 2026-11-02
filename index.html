@@ -14,12 +14,6 @@ landing: true
       <a class="button" href="{{ '/guide.html#usage' | relative_url }}">Use with 4D</a>
     </div>
   </div>
-  <div class="hero-visual" aria-hidden="true">
-    <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
-    <span class="visual-label label-top">LOCAL INFERENCE</span>
-    <img class="hero-icon" src="{{ site.logo | relative_url }}" width="192" height="192" alt="">
-    <span class="visual-label label-bottom">ONNX RUNTIME / CPU</span>
-  </div>
   <div class="stack-panel" role="group" aria-label="The local stack: your 4D application or HTTP client calls the onnx-genai server over HTTP on 127.0.0.1:8080, which runs a model you choose with ONNX Runtime">
     <div class="panel-top"><span>The local stack</span><span class="panel-tag">On your machine</span></div>
     <div class="stack-flow">
@@ -27,7 +21,7 @@ landing: true
       <div class="stack-link" aria-hidden="true"><span class="link-label">HTTP / 127.0.0.1:8080</span><span class="link-line"></span></div>
       <div class="stack-node engine-node"><img class="node-logo" src="{{ site.logo | relative_url }}" width="44" height="44" alt="" aria-hidden="true"><span class="node-text"><strong>onnx-genai server</strong><small>ONNX Runtime &middot; CPU-first</small></span><span class="node-badge">Inference</span></div>
       <div class="stack-link" aria-hidden="true"><span class="link-label">loads</span><span class="link-line"></span></div>
-      <div class="stack-node model-node"><span class="node-mark file-mark" aria-hidden="true"></span><span class="node-text"><strong>A model you choose</strong><small>ONNX GenAI model directory</small></span></div>
+      <div class="stack-node model-node"><span class="node-mark file-mark" aria-hidden="true">.onnx</span><span class="node-text"><strong>A model you choose</strong><small>ONNX GenAI model directory</small></span></div>
     </div>
     <div class="panel-bottom"><span>Chat</span><span>Embeddings</span><span>Reranking</span><span>Speech</span><span>Decisions</span></div>
   </div>
