@@ -1,4 +1,4 @@
-"""Exercise a rebuilt server; pass --kev and/or --d1 for real-model checks."""
+"""Exercise a rebuilt server; pass --kev, --d1 and/or --laya for real-model checks."""
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
@@ -73,7 +73,7 @@ def check_response(body, payload):
             assert abs(answer["score"] - sum(int(i) * p for i, p in probabilities.items())) < 1e-6
 
 
-def exercise(binary, backend=None, graph=None):
+def exercise(binary, backend=None, graph=None, semantic=True):
     binary = str(Path(binary).resolve())
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
@@ -82,7 +82,7 @@ def exercise(binary, backend=None, graph=None):
     command = [binary, "-s", "-p", str(port)]
     if graph:
         command += ["-D", graph]
-    with tempfile.TemporaryFile(mode="w+") as log:
+    with tempfile.TemporaryFile(mode="w+", dir=Path.cwd()) as log:
         process = subprocess.Popen(command, stdout=log, stderr=log)
         try:
             for _ in range(120):
@@ -109,8 +109,9 @@ def exercise(binary, backend=None, graph=None):
                 check_response(body, payload)
                 assert catalogue["data"][0]["id"] == body["model"]
                 assert catalogue["data"][0]["backend"] == backend
-                assert body["answers"]["refund"]["noul"] > 0.5
-                assert body["answers"]["team"]["choice"] == "billing"
+                if semantic:
+                    assert body["answers"]["refund"]["noul"] > 0.5
+                    assert body["answers"]["team"]["choice"] == "billing"
                 isolation_tolerance = 1e-3 if backend == "kev" else 1e-4
                 for name, question in payload["questions"].items():
                     single = dict(payload, questions={name: question})
@@ -132,9 +133,19 @@ def exercise(binary, backend=None, graph=None):
                     ))
                 assert all(status == 200 for status, _ in results), results
                 assert call(base, "/v1/systemone", dict(payload, model="wrong-model"))[0] == 422
+                if backend == "laya":
+                    for alias in ("kev-latest", "d1-latest"):
+                        assert call(base, "/v1/systemone", dict(payload, model=alias))[0] == 422
+                    too_wide = dict(payload, questions={
+                        "q": {"type": "choice", "criteria": {
+                            f"option_{i}": f"Candidate {i}" for i in range(255)
+                        }}
+                    })
+                    status, error = call(base, "/v1/systemone", too_wide)
+                    assert status == 422 and error["detail"][0]["loc"][-1] == "criteria", error
                 oversized = dict(payload, state="token " * 9000)
                 assert call(base, "/v1/systemone", oversized)[0] == 422
-                with tempfile.TemporaryDirectory() as directory:
+                with tempfile.TemporaryDirectory(dir=Path.cwd()) as directory:
                     input_path = Path(directory) / "request.json"
                     output_path = Path(directory) / "response.json"
                     input_path.write_text(json.dumps(payload))
@@ -146,11 +157,13 @@ def exercise(binary, backend=None, graph=None):
                     completed = subprocess.run(cli, capture_output=True, text=True, timeout=120)
                     assert completed.returncode != 0
                     assert "detail" in json.loads(output_path.read_text())
-                    relative = [binary, "-D", "onnx/" + Path(graph).name,
+                    graph_path = Path(graph).resolve()
+                    relative_root = graph_path.parent.parent if graph_path.parent.name == "onnx" else graph_path.parent
+                    relative = [binary, "-D", str(graph_path.relative_to(relative_root)),
                                 "-i", str(input_path), "-o", str(output_path)]
                     input_path.write_text(json.dumps(payload))
                     completed = subprocess.run(
-                        relative, cwd=Path(graph).resolve().parent.parent,
+                        relative, cwd=relative_root,
                         capture_output=True, text=True, timeout=120
                     )
                     assert completed.returncode == 0, completed.stderr
@@ -188,9 +201,19 @@ if __name__ == "__main__":
     parser.add_argument("binary")
     parser.add_argument("--kev")
     parser.add_argument("--d1")
+    parser.add_argument("--laya")
+    parser.add_argument("--fixtures", type=Path, help="Generated tiny Laya/Kev/d1 fixture root (no semantic quality assertions)")
     args = parser.parse_args()
     exercise(args.binary)
-    for backend in ("kev", "d1"):
+    for backend in ("kev", "d1", "laya"):
         graph = getattr(args, backend)
         if graph:
             exercise(args.binary, backend, graph)
+    if args.fixtures:
+        root = args.fixtures.resolve()
+        for backend, graph in (
+            ("laya", root / "model.onnx"),
+            ("kev", root / "dispatch-kev" / "model.onnx"),
+            ("d1", root / "dispatch-d1" / "decoder_model_merged.onnx"),
+        ):
+            exercise(args.binary, backend, str(graph), semantic=False)

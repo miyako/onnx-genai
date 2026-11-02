@@ -195,12 +195,30 @@ In addition, the following endpoints are available:
 |`/v1/audio/speech`|
 |`/v1/rerank`||
 |`/v1/contextualizedembeddings`|`/v1/contextualized/embeddings`
-|`/v1/systemone`|Text-only TypeSafe decision API (Kev or d1)|
+|`/v1/systemone`|Text-only TypeSafe decision API (Kev, d1 or Laya)|
 
 Load a decision model independently with `-D path/to/model.onnx`. Kev-0.6B,
-Kev-4B and d1-3B ONNX exports support `noul`, `choice` and `score` questions.
+Kev-4B, d1-3B and Laya ONNX exports support `noul`, `choice` and `score` questions.
 See [CLI: TypeSafe Compatible Endpoint](CLI.md#typesafe-compatible-endpoint) for
-model layouts, request examples, limits and runtime requirements. In particular,
-d1 requires a newer runtime than the bundled 1.23.2; 1.29.0 is available in this
-repository. For 4D downloading/loading, use the `systemone` domain and a relative
+model layouts, request examples, limits and runtime requirements. The bundled
+CPU runtime is **1.29.0**, including support for d1's ONNX IR 13; Laya requires
+no runtime bump. For 4D downloading/loading, use the `systemone` domain and a relative
 graph name as shown in [the ONNX class documentation](onnx-genai/Documentation/Classes/ONNX.md).
+
+Laya uses the **English-only, 421M ModernBERT-large** community export
+[`receptron/laya-onnx`](https://huggingface.co/receptron/laya-onnx/tree/d42786bdff8a7550316339c5fbf8f46caa83ea1b),
+pinned to `d42786bdff8a7550316339c5fbf8f46caa83ea1b`. Load
+`-D /models/laya-onnx/laya.onnx` on CPU and use `laya-latest` or the model
+directory's basename. Keep `laya_config.json` and `laya.onnx.data` beside the
+graph and preserve `tokenizer/tokenizer.json` and
+`tokenizer/tokenizer_config.json`. Mixed Kev/d1 and Laya metadata is rejected.
+Laya preserves the TypeSafe response/confidence contract without adding `act`
+fields. Inputs exceeding its configured 512-token rows, 192-token head,
+48-token options or 32,768-token padded batch are rejected, not truncated;
+see the CLI documentation for the equal-budget head rules.
+The export's published temperatures are used unchanged (finite positive values
+required), including community-calibrated `choice:11+ = 0.945`, which differs
+from the official checkpoint. An independent mixed-question CPU comparison
+measured a maximum raw-logit difference of `2.58e-5` against the pinned official
+PyTorch checkpoint; this does not establish universal parity, model quality or
+multilingual compatibility.

@@ -2,6 +2,7 @@
 #define ONNX_SYSTEMONE_RUNTIME_H
 
 #include "systemone.h"
+#include "systemone_laya.h"
 #include "tokenizers_cpp.h"
 #include <onnxruntime_cxx_api.h>
 #include <array>
@@ -65,6 +66,8 @@ struct D1Input {
     std::vector<std::vector<int32_t>> readout;
 };
 
+enum class Backend { Kev, D1, Laya };
+
 class Model {
     Ort::Env env_{ORT_LOGGING_LEVEL_WARNING, "SystemOne"};
     std::unique_ptr<Ort::Session> session_;
@@ -73,7 +76,9 @@ class Model {
     Json::Value config_;
     std::filesystem::path root_;
     std::string id_;
-    bool kev_ = false;
+    Backend backend_ = Backend::D1;
+    std::unique_ptr<LayaConfig> laya_;
+    std::array<int64_t, 4> laya_special_{};
     size_t context_limit_ = max_sequence_tokens;
     std::array<int64_t, 5> delimiters_{};
 
@@ -100,7 +105,35 @@ class Model {
 
     void validate_graphs() {
         const auto names = input_names(*session_);
-        if (kev_) {
+        if (backend_ == Backend::Laya) {
+            const std::set<std::string> expected{"input_ids", "attention_mask", "marker_pos", "marker_mask", "qtype"};
+            if (std::set<std::string>(names.begin(), names.end()) != expected || names.size() != expected.size())
+                throw std::runtime_error("Laya graph must take input_ids, attention_mask, marker_pos, marker_mask and qtype.");
+            for (size_t i = 0; i < names.size(); ++i) {
+                const auto type_info = session_->GetInputTypeInfo(i);
+                const auto info = type_info.GetTensorTypeAndShapeInfo();
+                const auto shape = info.GetShape();
+                const auto expected_type = names[i] == "marker_mask" ? ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL : ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64;
+                if (info.GetElementType() != expected_type || shape.size() != (names[i] == "qtype" ? 1 : 2) ||
+                    std::any_of(shape.begin(), shape.end(), [](int64_t dim) { return dim >= 0; }))
+                    throw std::runtime_error("Unsupported Laya input type or non-dynamic shape: " + names[i]);
+            }
+            Ort::AllocatorWithDefaultOptions allocator;
+            std::set<std::string> outputs;
+            for (size_t i = 0; i < session_->GetOutputCount(); ++i) {
+                const std::string name = session_->GetOutputNameAllocated(i, allocator).get();
+                outputs.insert(name);
+                const auto type_info = session_->GetOutputTypeInfo(i);
+                const auto info = type_info.GetTensorTypeAndShapeInfo();
+                const auto shape = info.GetShape();
+                if (info.GetElementType() != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT || shape.size() != 2 ||
+                    shape[0] >= 0 || (name == "logits" && shape[1] >= 0) ||
+                    (name == "act_probs" && shape[1] != 2))
+                    throw std::runtime_error("Unsupported Laya output type or shape: " + name);
+            }
+            if (outputs != std::set<std::string>{"logits", "act_probs"})
+                throw std::runtime_error("Laya graph must output logits and act_probs.");
+        } else if (backend_ == Backend::Kev) {
             if (std::set<std::string>(names.begin(), names.end()) !=
                 std::set<std::string>{"input_ids", "attention_mask"})
                 throw std::runtime_error("Kev graph must take input_ids and attention_mask.");
@@ -195,6 +228,62 @@ class Model {
         return probabilities;
     }
 
+    std::vector<std::vector<double>> run_laya(const Request& request, const std::vector<LayaInput>& inputs) {
+        size_t length = 0, width = 2;
+        for (const auto& input : inputs) {
+            length = std::max(length, input.ids.size());
+            width = std::max(width, input.markers.size());
+        }
+        const auto batch = inputs.size();
+        if (batch * length > max_request_tokens)
+            throw ValidationError({"questions"}, "Padded Laya request exceeds 32768 tokens; split the questions.");
+        std::vector<int64_t> ids(batch * length, laya_special_[3]), mask(batch * length, 0),
+            positions(batch * width, 0), types(batch);
+        std::unique_ptr<bool[]> markers(new bool[batch * width]{});
+        for (size_t row = 0; row < batch; ++row) {
+            const auto& input = inputs[row];
+            std::copy(input.ids.begin(), input.ids.end(), ids.begin() + row * length);
+            std::fill_n(mask.begin() + row * length, input.ids.size(), 1);
+            std::copy(input.markers.begin(), input.markers.end(), positions.begin() + row * width);
+            std::fill_n(markers.get() + row * width, input.markers.size(), true);
+            types[row] = input.qtype;
+        }
+        auto memory = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+        const std::array<int64_t, 2> sequence_shape{static_cast<int64_t>(batch), static_cast<int64_t>(length)};
+        const std::array<int64_t, 2> marker_shape{static_cast<int64_t>(batch), static_cast<int64_t>(width)};
+        const int64_t batch_size = static_cast<int64_t>(batch);
+        std::array<Ort::Value, 5> tensors{
+            Ort::Value::CreateTensor<int64_t>(memory, ids.data(), ids.size(), sequence_shape.data(), 2),
+            Ort::Value::CreateTensor<int64_t>(memory, mask.data(), mask.size(), sequence_shape.data(), 2),
+            Ort::Value::CreateTensor<int64_t>(memory, positions.data(), positions.size(), marker_shape.data(), 2),
+            Ort::Value::CreateTensor<bool>(memory, markers.get(), batch * width, marker_shape.data(), 2),
+            Ort::Value::CreateTensor<int64_t>(memory, types.data(), types.size(), &batch_size, 1)
+        };
+        const char* names[]{"input_ids", "attention_mask", "marker_pos", "marker_mask", "qtype"};
+        const char* outputs[]{"logits", "act_probs"};
+        auto result = session_->Run(Ort::RunOptions{nullptr}, names, tensors.data(), tensors.size(), outputs, 2);
+        if (result[0].GetTensorTypeAndShapeInfo().GetShape() != std::vector<int64_t>{batch_size, static_cast<int64_t>(width)} ||
+            result[1].GetTensorTypeAndShapeInfo().GetShape() != std::vector<int64_t>{batch_size, 2})
+            throw std::runtime_error("Laya returned invalid output shapes.");
+        std::vector<std::vector<double>> probabilities;
+        for (size_t row = 0; row < batch; ++row) {
+            double act_total = 0;
+            for (size_t i = 0; i < 2; ++i) {
+                const auto p = tensor_score(result[1], row * 2 + i);
+                if (!std::isfinite(p) || p < 0 || p > 1)
+                    throw std::runtime_error("Laya returned invalid act_probs.");
+                act_total += p;
+            }
+            if (std::abs(act_total - 1) > 1e-5) throw std::runtime_error("Laya act_probs do not sum to one.");
+            std::vector<double> logits;
+            const auto temperature = laya_->for_question(request.questions[row]);
+            for (size_t col = 0; col < inputs[row].markers.size(); ++col)
+                logits.push_back(tensor_score(result[0], row * width + col) / temperature);
+            probabilities.push_back(softmax(logits));
+        }
+        return probabilities;
+    }
+
     std::vector<double> run_d1(D1Input& input) {
         auto memory = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
         Ort::AllocatorWithDefaultOptions allocator;
@@ -273,19 +362,40 @@ public:
         if (!std::filesystem::is_regular_file(graph) || graph.extension() != ".onnx")
             throw std::runtime_error("-D requires a decision model .onnx file.");
         root_ = graph.parent_path();
-        if (!std::filesystem::exists(root_ / "config.json") && root_.filename() == "onnx") root_ = root_.parent_path();
+        if (!std::filesystem::exists(root_ / "config.json") &&
+            !std::filesystem::exists(root_ / "laya_config.json") && root_.filename() == "onnx")
+            root_ = root_.parent_path();
         if (root_.empty()) root_ = ".";
-        config_ = parse_json(read_file(root_ / "config.json"));
-        if (!config_.isObject() || config_.isMember("kev") == config_.isMember("d1"))
-            throw std::runtime_error("Decision config.json must identify exactly one backend: kev or d1.");
-        kev_ = config_.isMember("kev");
-        if (!(kev_ ? config_["kev"] : config_["d1"]).isObject())
+        if (std::filesystem::exists(root_ / "config.json")) {
+            config_ = parse_json(read_file(root_ / "config.json"));
+            if (!config_.isObject()) throw std::runtime_error("Decision config.json must be an object.");
+        }
+        const bool laya = std::filesystem::exists(root_ / "laya_config.json");
+        const int backends = static_cast<int>(config_.isMember("kev")) + static_cast<int>(config_.isMember("d1")) + static_cast<int>(laya);
+        if (backends != 1)
+            throw std::runtime_error("Decision metadata must identify exactly one backend: kev, d1 or laya.");
+        backend_ = laya ? Backend::Laya : config_.isMember("kev") ? Backend::Kev : Backend::D1;
+        if (laya) laya_ = std::make_unique<LayaConfig>(parse_json(read_file(root_ / "laya_config.json")));
+        else if (!(backend_ == Backend::Kev ? config_["kev"] : config_["d1"]).isObject())
             throw std::runtime_error("Invalid decision backend metadata.");
         auto absolute_root = std::filesystem::absolute(root_).lexically_normal();
         if (absolute_root.filename().empty()) absolute_root = absolute_root.parent_path();
         id_ = path_utf8(absolute_root.filename());
         if (id_.empty()) throw std::runtime_error("Decision model directory must have a non-empty name.");
-        auto tokenizer_config = parse_json(read_file(root_ / "tokenizer.json"));
+        auto tokenizer_config = parse_json(read_file(root_ / (laya ? "tokenizer/tokenizer.json" : "tokenizer.json")));
+        if (!tokenizer_config.isObject()) throw std::runtime_error("Invalid decision tokenizer metadata.");
+        if (laya) {
+            const auto metadata = parse_json(read_file(root_ / "tokenizer/tokenizer_config.json"));
+            if (!metadata.isObject()) throw std::runtime_error("Invalid Laya tokenizer configuration.");
+            const std::array<std::string, 4> keys{"cls_token", "sep_token", "mask_token", "pad_token"};
+            const std::array<std::string, 4> expected{"[CLS]", "[SEP]", "[MASK]", "[PAD]"};
+            for (size_t i = 0; i < keys.size(); ++i) {
+                const auto& token = metadata[keys[i]];
+                if ((!token.isString() || token.asString() != expected[i]) &&
+                    (!token.isObject() || token["content"] != expected[i]))
+                    throw std::runtime_error("Unsupported Laya special token: " + keys[i]);
+            }
+        }
         tokenizer_config["post_processor"] = Json::nullValue;
         tokenizer_config["truncation"] = Json::nullValue;
         tokenizer_config["padding"] = Json::nullValue;
@@ -297,7 +407,17 @@ public:
         options.AddConfigEntry("session.intra_op.allow_spinning", "0");
         options.DisableMemPattern();
         options.DisableCpuMemArena();
-        if (kev_) {
+        if (backend_ == Backend::Laya) {
+            std::set<int64_t> seen;
+            const std::array<std::string, 4> tokens{"[CLS]", "[SEP]", "[MASK]", "[PAD]"};
+            for (size_t i = 0; i < tokens.size(); ++i) {
+                const auto id = tokenizer_->TokenToId(tokens[i]);
+                if (id < 0 || !seen.insert(id).second || encode(tokens[i], false) != std::vector<int64_t>{id})
+                    throw std::runtime_error("Invalid Laya tokenizer special token: " + tokens[i]);
+                laya_special_[i] = id;
+            }
+            context_limit_ = laya_->max_len;
+        } else if (backend_ == Backend::Kev) {
             const auto& metadata = config_["kev"];
             const std::array<std::string, 5> keys{"state", "question", "option_start", "option_end", "decide"};
             std::set<int64_t> seen;
@@ -326,7 +446,19 @@ public:
     }
 
     const std::string& id() const { return id_; }
-    const char* backend() const { return kev_ ? "kev" : "d1"; }
+    const char* backend() const {
+        switch (backend_) {
+        case Backend::Kev: return "kev";
+        case Backend::D1: return "d1";
+        case Backend::Laya: return "laya";
+        }
+        throw std::runtime_error("Unknown decision backend.");
+    }
+
+    LayaInput prepare_laya(const Request& request, const Question& q) {
+        return laya_sequence(request, q, *laya_, laya_special_,
+            [&](const std::string& text) { return encode(text, false); });
+    }
 
     KevInput prepare_kev(const Request& request) {
         KevInput input;
@@ -418,14 +550,21 @@ public:
     }
 
     Json::Value evaluate(const Request& request) {
-        if (request.model != id_ && request.model != (kev_ ? "kev-latest" : "d1-latest"))
+        if (request.model != id_ && request.model != std::string(backend()) + "-latest")
             throw ValidationError({"model"}, "Requested model is not loaded. Use " + id_ + " or " + backend() + "-latest.");
         Json::Value result(Json::objectValue);
         result["model"] = id_;
         result["answers"] = Json::Value(Json::objectValue);
         size_t tokens = 0;
         std::vector<std::vector<double>> probabilities;
-        if (kev_) {
+        if (backend_ == Backend::Laya) {
+            std::vector<LayaInput> inputs;
+            for (const auto& q : request.questions) {
+                inputs.push_back(prepare_laya(request, q));
+                tokens += inputs.back().ids.size();
+            }
+            probabilities = run_laya(request, inputs);
+        } else if (backend_ == Backend::Kev) {
             auto input = prepare_kev(request);
             tokens = input.ids.size();
             probabilities = run_kev(input);

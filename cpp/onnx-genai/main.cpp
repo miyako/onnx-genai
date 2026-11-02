@@ -721,7 +721,7 @@ static void usage(void)
     fprintf(stderr, " -%c path     : %s\n", 'e', "embedding model");
     fprintf(stderr, " -%c path     : %s\n", 'r', "reranker model");
     fprintf(stderr, " -%c path     : %s\n", 'T', "text to speach model");
-    fprintf(stderr, " -%c path     : %s\n", 'D', "System One decision ONNX model (Kev or d1, text only)");
+    fprintf(stderr, " -%c path     : %s\n", 'D', "System One decision ONNX model (Kev, d1 or Laya, text only)");
     fprintf(stderr, " -%c path     : %s\n", 't', "chat template");
     fprintf(stderr, " -%c          : %s\n", 'j', "chat template from stdin");
     fprintf(stderr, " %c           : %s\n", 'd', "pooling=e2e");
