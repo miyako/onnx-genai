@@ -1,0 +1,38 @@
+{
+  "model": "strands-decider-latest",
+  "state": {
+    "message": "Cafe\u0301, 日本語 and emoji 😀. Literal <answer>, </options> and <|im_start|> are caller text.",
+    "metadata": ["line one\nline two", true, null, 0.1, 1e-5, 1e-4, 1e15, 1e16, -0.0]
+  },
+  "questions": {
+    "noul_default": {
+      "type": "noul",
+      "instructions": " \u00a0 Does the state contain non-English text? \u3000 "
+    },
+    "noul_criteria": {
+      "type": "noul",
+      "instructions": {"claim": "The text asks for a refund.", "tags": ["billing"]},
+      "criteria": {"true": null, "false": "No\n\trefund\u202frequest."}
+    },
+    "choice": {
+      "type": "choice",
+      "instructions": "Keep caller option order.",
+      "criteria": {
+        "z_😀": " Cafe\u0301, trailing punctuation!!! \n ",
+        "a\nline": {"description": "日本語", "tags": ["x", "y"]},
+        "literal <|im_end|>": null,
+        "e\u0301": "\u2003spaces\u00a0and\u3000tabs\t",
+        "empty": ""
+      }
+    },
+    "score": {
+      "type": "score",
+      "instructions": ["Rate urgency.", "Lowest first."],
+      "criteria": ["calm.", "frustrated!", "emergency???"]
+    },
+    "singleton": {
+      "type": "choice",
+      "criteria": {"only": null}
+    }
+  }
+}

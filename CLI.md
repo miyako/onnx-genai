@@ -9,7 +9,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
  -e path     : embedding model (pooling=mean)
  -r path     : rerank model
  -T path     : text to speach model
- -D path     : System One decision ONNX model (Kev, d1 or Laya, text only)
+ -D path     : System One decision ONNX model (Kev, d1, English Laya or Strands Decider v1, text only)
  -t path     : chat template
  -j          : chat template from stdin
  -d          : pooling=e2e 
@@ -75,23 +75,34 @@ onnx-genai -s -D /models/kev-4b-ONNX/onnx/model_q4.onnx
 onnx-genai -s -D /models/d1-3B-ONNX/onnx/decoder_model_merged_quantized.onnx
 # Laya English encoder:
 onnx-genai -s -D /models/laya-onnx/laya.onnx
+# Strands Decider v1 q8 (fused readout, not a causal-LM export):
+onnx-genai -s -D /models/strands-decider-2B-qwen3.5-v1-2610-onnx/onnx/model_q8.onnx
 ```
 
 Supported exports:
 [Kev-0.6B](https://huggingface.co/onnx-community/kev-0.6b-ONNX),
 [Kev-4B](https://huggingface.co/onnx-community/kev-4b-ONNX),
-[d1-3B](https://huggingface.co/onnx-community/d1-3B-ONNX), and
-[Laya English](https://huggingface.co/receptron/laya-onnx/tree/d42786bdff8a7550316339c5fbf8f46caa83ea1b).
+[d1-3B](https://huggingface.co/onnx-community/d1-3B-ONNX),
+[Laya English](https://huggingface.co/receptron/laya-onnx/tree/d42786bdff8a7550316339c5fbf8f46caa83ea1b), and
+[Strands Decider v1](https://huggingface.co/opticsWolf/strands-decider-2B-qwen3.5-v1-2610-onnx/tree/12143c0d1a5b1d0bc33178dfbabbdfec042ed0be).
 These are decision models, not chat or embedding models; do not load them with
 `-m`, `-e` or `-r`.
 
 For Kev/d1, keep `config.json` and `tokenizer.json` in the model directory, with the selected
 graph and **all its external data files** in `onnx/`. They may alternatively all
-be placed in one directory. The backend is identified by the `kev` or `d1`
-metadata in `config.json`, not the directory name or `model_type`.
+be placed in one directory. Kev, d1 and Strands are identified by exactly one
+of `kev`, `d1` or `decider` metadata in `config.json`, respectively, not the
+directory name or `model_type`.
 Kev uses the selected graph directly. d1 additionally loads the matching
 `embed_tokens_quantized.onnx` or `embed_tokens_q4.onnx` beside its selected decoder.
 The text-only adapter does not load the vision encoder.
+Strands uses the selected fused graph directly: `onnx/model_q8.onnx` needs
+`onnx/model_q8.onnx_data` (~1.7 GB); `model.onnx` and `model_q4f16.onnx` likewise
+need their corresponding external data. Keep the export's tokenizer assets and
+configuration, not those from a differently named checkpoint. The official v1
+checkpoint is a rank-48 LoRA plus dedicated option-scoring head on Qwen3.5-2B-Base;
+the community export fuses both. Official adapter-only weights and older
+hobson-v19/v21 exports are not interchangeable with this fused v1 layout.
 
 The Laya adapter runs the 421M-parameter ModernBERT-large-based encoder plus
 decision head on CPU, **English only**.
@@ -110,8 +121,8 @@ laya-onnx/
 
 `laya_config.json` alongside the selected graph identifies the native Laya
 backend. Both tokenizer files are required; external `laya.onnx.data` must stay
-beside the graph. Backend selection distinguishes `Kev`, `D1` and `Laya`;
-ambiguous Kev/d1 `config.json` metadata mixed with Laya metadata is rejected,
+beside the graph. Backend selection distinguishes `Kev`, `D1`, `Laya` and `Strands`;
+ambiguous Kev/d1/Strands `config.json` metadata mixed with Laya metadata is rejected,
 not resolved by preferring one backend. No backend flag is needed.
 This supports the shipped English ONNX export, not the multilingual checkpoint.
 An independent CPU comparison against official `convaiinnovations/laya` revision
@@ -128,14 +139,14 @@ follow the published ONNX bundle rather than the original checkpoint.
 ONNX Runtime has been upgraded to **1.29.0** in both the C++ build dependencies
 and the macOS/Windows deployment directories, so a runtime override is no longer
 needed. Older installations using 1.23.2 cannot load this graph.
-Laya uses the same bundled CPU runtime **1.29.0**; it does not require a runtime
-version bump.
+Laya and Strands use the same bundled CPU runtime **1.29.0**; neither requires a
+runtime version bump.
 
 For deployment, keep the 1.29.0 runtime alongside the rebuilt executable
 (on Windows, deploy its corresponding provider DLLs too). System One still
 requires an executable rebuilt from the updated source; replacing a runtime
 library alone does not add the endpoint to an older executable.
-Prefer Kev `q4` and d1
+Prefer Kev `q4`, Strands `q8` and d1
 `q8` for initial CPU evaluation; other export precisions depend on runtime/kernel
 support. Probabilities may differ across quantizations and runtime versions.
 Quantized Kev probabilities can also vary slightly between a packed request and
@@ -163,9 +174,11 @@ curl http://127.0.0.1:8080/v1/systemone \
   }'
 ```
 
-Use `d1-latest` for d1, `laya-latest` for Laya, or the model ID returned by `GET /v1/models`
+Use `kev-latest` for Kev, `d1-latest` for d1, `laya-latest` for Laya,
+`strands-decider-latest` for Strands, or the model ID returned by `GET /v1/models`
 (the model directory's basename). Family aliases only resolve to the loaded
-backend; an unknown model is rejected. The response contains `model`, `answers`
+backend (`kev`, `d1`, `laya` or `strands-decider`); an unknown model is rejected.
+The response contains `model`, `answers`
 keyed by question name, and `usage` with `input_tokens` and `output_tokens: 0`.
 Noul returns `noul` (probability of true); Choice returns `choice`,
 `probabilities` and `confidence`; Score returns a zero-based expected `score`,
@@ -176,7 +189,11 @@ Confidence follows TypeSafe's [documented formulas](https://docs.typesafe.ai/con
 Choice measures the largest probability above a uniform distribution, and Score
 measures probability-weighted distance from the modal level. A single option/level
 has confidence 1. These are distribution statistics, not guarantees of accuracy
-or Jev-equivalent calibration.
+or Jev-equivalent calibration. Strands divides each option logit by
+`decider.temperature_by_kind[type]` (falling back to `decider.temperature`)
+before softmax; missing, nonpositive or nonfinite effective temperatures fail
+model loading. It does not generate answer letters or apply training-time
+ordinal smoothing at inference.
 
 The endpoint accepts string/object/array state and structured
 instructions/descriptions. It rejects images, assets, `box`, unsupported fields,
@@ -187,7 +204,7 @@ duplicate JSON keys and inputs exceeding limits:
 | JSON body | 2 MiB |
 | Named questions | 1–64 |
 | Choice options | 1–255 |
-| Score levels | 1–10 |
+| Score levels | Kev/d1/Laya: 1–10; Strands: 2–10 (upstream schema) |
 | Kev state and each state-plus-question row | Model metadata, capped at 8,192 tokens |
 | Kev complete packed request | 8,192 tokens |
 | d1 each complete question prompt | Model context, capped at 8,192 tokens |
@@ -196,10 +213,16 @@ duplicate JSON keys and inputs exceeding limits:
 | Laya head (`head_max_len` in config) | 192 tokens |
 | Laya each option | 48 tokens |
 | Laya padded question batch | 32,768 tokens |
+| Strands each complete state-plus-question prompt | `decider.max_length` (v1: 4,096), capped at 8,192 tokens |
+| Strands sum of complete prompt tokens | 32,768 tokens |
 
 Over-limit inputs are rejected, **not truncated**. Kev shares the state within a
-packed graph run. d1 evaluates each question independently, with fresh caches;
-its input usage counts repeated state tokens. The exported models' long-context
+packed graph run. d1 and Strands evaluate each question independently, with fresh
+caches (Strands' empty caches are inside the graph); their input usage counts
+repeated state tokens. Mixed question kinds and option counts do not share
+padding or logits. Strands follows the upstream engine's strict-window path:
+the export's `max_question_fraction` is a truncation policy, not an additional
+strict-mode limit, and is not applied. The exported models' long-context
 behavior is not necessarily validated up to these serving limits.
 
 Laya constructs each row in the reference order
@@ -229,9 +252,24 @@ Without `-s`, `-D` selects decision evaluation from `-i`/stdin, with `-o` for a
 JSON response file; failures return a nonzero exit status. If both `-m` and `-D`
 are supplied in CLI mode, decision evaluation takes precedence.
 
-Kev and the Laya weights are Apache-2.0 licensed. d1 uses the
+Kev, the English Laya weights and Strands Decider (including the community fused
+v1 export) are Apache-2.0 licensed. d1 uses the
 [LFM Open License v1.0](https://huggingface.co/onnx-community/d1-3B-ONNX/blob/main/LICENSE),
 including commercial-use restrictions; review it before deploying.
+
+Strands calibration is fitted per primitive on held-out short classification,
+not on arbitrary traffic or every quantization. The export author's limited
+11-case CPU comparison reports maximum probability differences against the
+upstream torch engine of 0.0021 (FP32, no argmax changes), 0.0504 (q8, no argmax
+changes), and 0.2074 (q4f16, one argmax change). Classification agreement is not
+numerical parity or evidence that confidence thresholds remain calibrated.
+Local q8 native/Python ORT 1.29.0 parity passed the basic three-question and
+structured five-question requests with exact token IDs/readout positions and a
+largest displayed probability difference of `1e-8` on the pinned export above.
+This is adapter parity, not a fresh official torch comparison.
+**Windows and native 4D Strands execution remain unverified here.**
+See [the focused checks](cpp/tests/README.md#strands-decider-v1) for pinned
+revisions, local results and unverified paths.
 
 ## Converted ONNX Models
 

@@ -3,6 +3,7 @@
 
 #include "systemone.h"
 #include "systemone_laya.h"
+#include "systemone_strands.h"
 #include "tokenizers_cpp.h"
 #include <onnxruntime_cxx_api.h>
 #include <array>
@@ -66,8 +67,6 @@ struct D1Input {
     std::vector<std::vector<int32_t>> readout;
 };
 
-enum class Backend { Kev, D1, Laya };
-
 class Model {
     Ort::Env env_{ORT_LOGGING_LEVEL_WARNING, "SystemOne"};
     std::unique_ptr<Ort::Session> session_;
@@ -79,6 +78,8 @@ class Model {
     Backend backend_ = Backend::D1;
     std::unique_ptr<LayaConfig> laya_;
     std::array<int64_t, 4> laya_special_{};
+    std::unique_ptr<StrandsConfig> strands_config_;
+    std::unique_ptr<StrandsTokenizer> strands_tokenizer_;
     size_t context_limit_ = max_sequence_tokens;
     std::array<int64_t, 5> delimiters_{};
 
@@ -137,6 +138,27 @@ class Model {
             if (std::set<std::string>(names.begin(), names.end()) !=
                 std::set<std::string>{"input_ids", "attention_mask"})
                 throw std::runtime_error("Kev graph must take input_ids and attention_mask.");
+        } else if (backend_ == Backend::Strands) {
+            if (std::set<std::string>(names.begin(), names.end()) !=
+                std::set<std::string>{"input_ids", "attention_mask", "answer_pos", "option_pos"} ||
+                session_->GetOutputCount() != 1)
+                throw std::runtime_error("Strands fused graph must take input_ids, attention_mask, answer_pos and option_pos, and return logits.");
+            for (size_t i = 0; i < names.size(); ++i) {
+                const auto type = session_->GetInputTypeInfo(i);
+                const auto info = type.GetTensorTypeAndShapeInfo();
+                const auto shape = info.GetShape();
+                const size_t rank = names[i] == "answer_pos" ? 1 : 2;
+                if (info.GetElementType() != ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64 || shape.size() != rank ||
+                    std::any_of(shape.begin(), shape.end(), [](int64_t dim) { return dim >= 0; }))
+                    throw std::runtime_error("Strands inputs must be dynamic int64 tensors with ranks [2,2,1,2].");
+            }
+            const auto type = session_->GetOutputTypeInfo(0);
+            const auto info = type.GetTensorTypeAndShapeInfo();
+            const auto shape = info.GetShape();
+            if (info.GetElementType() != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT ||
+                shape.size() != 2 ||
+                std::any_of(shape.begin(), shape.end(), [](int64_t dim) { return dim >= 0; }))
+                throw std::runtime_error("Strands logits must be dynamic float32 [batch, options].");
         } else {
             bool embeds = false, mask = false;
             for (const auto& name : names) {
@@ -357,6 +379,30 @@ class Model {
         return softmax(scores);
     }
 
+    std::vector<double> run_strands(StrandsInput& input, const Question& question) {
+        auto memory = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+        const std::array<int64_t, 2> sequence_shape{1, static_cast<int64_t>(input.ids.size())};
+        const std::array<int64_t, 1> answer_shape{1};
+        const std::array<int64_t, 2> option_shape{1, static_cast<int64_t>(input.option_positions.size())};
+        std::vector<int64_t> mask(input.ids.size(), 1);
+        std::array<Ort::Value, 4> tensors{
+            Ort::Value::CreateTensor<int64_t>(memory, input.ids.data(), input.ids.size(), sequence_shape.data(), 2),
+            Ort::Value::CreateTensor<int64_t>(memory, mask.data(), mask.size(), sequence_shape.data(), 2),
+            Ort::Value::CreateTensor<int64_t>(memory, &input.answer_position, 1, answer_shape.data(), 1),
+            Ort::Value::CreateTensor<int64_t>(memory, input.option_positions.data(), input.option_positions.size(), option_shape.data(), 2)
+        };
+        const char* names[]{"input_ids", "attention_mask", "answer_pos", "option_pos"};
+        const char* outputs[]{"logits"};
+        auto output = session_->Run(Ort::RunOptions{nullptr}, names, tensors.data(), tensors.size(), outputs, 1);
+        if (output[0].GetTensorTypeAndShapeInfo().GetShape() != std::vector<int64_t>{1, option_shape[1]})
+            throw std::runtime_error("Strands logits must have shape [1, options].");
+        std::vector<double> scores;
+        const auto temperature = strands_config_->temperatures.at(question.type);
+        for (size_t i = 0; i < input.option_positions.size(); ++i)
+            scores.push_back(tensor_score(output[0], i) / temperature);
+        return softmax(scores);
+    }
+
 public:
     Model(const std::filesystem::path& graph, int threads) {
         if (!std::filesystem::is_regular_file(graph) || graph.extension() != ".onnx")
@@ -371,13 +417,10 @@ public:
             if (!config_.isObject()) throw std::runtime_error("Decision config.json must be an object.");
         }
         const bool laya = std::filesystem::exists(root_ / "laya_config.json");
-        const int backends = static_cast<int>(config_.isMember("kev")) + static_cast<int>(config_.isMember("d1")) + static_cast<int>(laya);
-        if (backends != 1)
-            throw std::runtime_error("Decision metadata must identify exactly one backend: kev, d1 or laya.");
-        backend_ = laya ? Backend::Laya : config_.isMember("kev") ? Backend::Kev : Backend::D1;
+        backend_ = detect_backend(config_, laya);
         if (laya) laya_ = std::make_unique<LayaConfig>(parse_json(read_file(root_ / "laya_config.json")));
-        else if (!(backend_ == Backend::Kev ? config_["kev"] : config_["d1"]).isObject())
-            throw std::runtime_error("Invalid decision backend metadata.");
+        if (backend_ == Backend::Strands)
+            strands_config_ = std::make_unique<StrandsConfig>(config_["decider"]);
         auto absolute_root = std::filesystem::absolute(root_).lexically_normal();
         if (absolute_root.filename().empty()) absolute_root = absolute_root.parent_path();
         id_ = path_utf8(absolute_root.filename());
@@ -396,11 +439,14 @@ public:
                     throw std::runtime_error("Unsupported Laya special token: " + keys[i]);
             }
         }
+        if (backend_ == Backend::Strands) StrandsTokenizer::validate_config(tokenizer_config);
         tokenizer_config["post_processor"] = Json::nullValue;
         tokenizer_config["truncation"] = Json::nullValue;
         tokenizer_config["padding"] = Json::nullValue;
         tokenizer_ = tokenizers::Tokenizer::FromBlobJSON(json_string(tokenizer_config));
         if (!tokenizer_) throw std::runtime_error("Could not load decision tokenizer.");
+        if (backend_ == Backend::Strands)
+            strands_tokenizer_ = std::make_unique<StrandsTokenizer>(*tokenizer_, tokenizer_config);
         Ort::SessionOptions options;
         options.SetIntraOpNumThreads(threads);
         options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
@@ -431,6 +477,8 @@ public:
                     throw std::runtime_error("Kev tokenizer and delimiter configuration do not match.");
             }
             context_limit_ = std::min(max_sequence_tokens, positive_limit(metadata["max_branch_tokens"], "max_branch_tokens"));
+        } else if (backend_ == Backend::Strands) {
+            context_limit_ = strands_config_->context;
         } else {
             context_limit_ = std::min(max_sequence_tokens,
                 positive_limit(config_["text_config"]["max_position_embeddings"], "max_position_embeddings"));
@@ -446,18 +494,16 @@ public:
     }
 
     const std::string& id() const { return id_; }
-    const char* backend() const {
-        switch (backend_) {
-        case Backend::Kev: return "kev";
-        case Backend::D1: return "d1";
-        case Backend::Laya: return "laya";
-        }
-        throw std::runtime_error("Unknown decision backend.");
-    }
+    const char* backend() const { return backend_name(backend_); }
 
     LayaInput prepare_laya(const Request& request, const Question& q) {
         return laya_sequence(request, q, *laya_, laya_special_,
             [&](const std::string& text) { return encode(text, false); });
+    }
+
+    StrandsInput prepare_strands(const Request& request, const Question& q) {
+        if (backend_ != Backend::Strands) throw std::runtime_error("Not a Strands decision model.");
+        return strands_input(request, q, *strands_tokenizer_, context_limit_);
     }
 
     KevInput prepare_kev(const Request& request) {
@@ -568,6 +614,16 @@ public:
             auto input = prepare_kev(request);
             tokens = input.ids.size();
             probabilities = run_kev(input);
+        } else if (backend_ == Backend::Strands) {
+            std::vector<StrandsInput> inputs;
+            for (const auto& q : request.questions) {
+                inputs.push_back(prepare_strands(request, q));
+                tokens += inputs.back().ids.size();
+                if (tokens > max_request_tokens)
+                    throw ValidationError({"questions"}, "Strands request exceeds 32768 total prompt tokens; split the questions.");
+            }
+            for (size_t i = 0; i < inputs.size(); ++i)
+                probabilities.push_back(run_strands(inputs[i], request.questions[i]));
         } else {
             std::vector<D1Input> inputs;
             for (const auto& q : request.questions) {

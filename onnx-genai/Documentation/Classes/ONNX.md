@@ -75,7 +75,7 @@ Each `cs.event.huggingface` descriptor has a `domain` property that determines w
 | `/v1/embeddings` | ✅ |
 | `/v1/rerank` | ✅ |
 | `/v1/audio/speech` | ✅ (TTS) |
-| `/v1/systemone` | ✅ (text-only Kev, d1 or Laya decision model via `-D`) |
+| `/v1/systemone` | Text-only Kev, d1, English Laya or Strands Decider v1 decisions via `-D`; native 4D Strands execution unverified here |
 
 ## Examples
 
@@ -214,7 +214,7 @@ the executable directly with `-s -D /models/laya-onnx/laya.onnx`.
 
 `laya_config.json` beside the selected graph identifies `Laya` automatically.
 Both tokenizer files are required, and `laya.onnx.data` stays beside the graph.
-Ambiguous Kev/d1 `config.json` metadata mixed with Laya metadata is rejected.
+Ambiguous Kev/d1/Strands `config.json` metadata mixed with Laya metadata is rejected.
 Use `laya-latest` or the directory basename (`laya-onnx`) in requests.
 The bundled CPU ONNX Runtime **1.29.0** is unchanged; rebuild the executable
 to obtain the native backend.
@@ -235,6 +235,77 @@ calibration. A bounded mixed-question CPU comparison measured a maximum
 raw-logit difference of `2.58e-5` against the pinned official PyTorch checkpoint;
 this is not universal parity or multilingual validation. See the CLI
 documentation for checkpoint revisions and comparison scope.
+
+#### Strands Decider v1 (q8, CPU recommended)
+
+Use the Apache-2.0 [current v1 fused community export](https://huggingface.co/opticsWolf/strands-decider-2B-qwen3.5-v1-2610-onnx/tree/12143c0d1a5b1d0bc33178dfbabbdfec042ed0be),
+not the older hobson-v19/v21 exports or the upstream PyTorch adapter:
+
+```4d
+var $decision : cs.event.huggingface
+$decision:=cs.event.huggingface.new(\
+    $homeFolder.folder("strands-decider-2B-qwen3.5-v1-2610-onnx"); \
+    "opticsWolf/strands-decider-2B-qwen3.5-v1-2610-onnx"; \
+    ""; \
+    "systemone"; \
+    "onnx/model_q8.onnx")
+
+var $huggingfaces : cs.event.huggingfaces
+$huggingfaces:=cs.event.huggingfaces.new([$decision])
+var $ONNX : cs.ONNX.ONNX
+$ONNX:=cs.ONNX.ONNX.new(8080; $huggingfaces; $homeFolder; {}; $event)
+```
+
+The existing `systemone` domain maps the repository root to `decision_model` and `onnx/model_q8.onnx` to `decision_model_name`. A native-Strands-capable executable recognizes the root `config.json`'s `decider` metadata; no new 4D API or backend flag is needed. This is native text-only decision inference for `noul`, `choice`, and `score`, not chat generation or multimodal inference.
+
+Keep these files in their repository layout:
+
+- `config.json`
+- `tokenizer.json` and `tokenizer_config.json`
+- `onnx/model_q8.onnx` and its external weights `onnx/model_q8.onnx_data`
+
+The folder descriptor downloads **all** repository files recursively, including alternative precision graphs and their external weights; selecting a name chooses the graph to execute, not a download filter. Allow space for the entire export (roughly 10.5 GB), not only the q8 weights (roughly 1.8 GB). No separate pointer-head graph or upstream adapter download is required for this fused export.
+
+Prefer q8 on CPU. In the export author's limited **11-case** comparison against the upstream torch engine, q8 had a maximum probability difference of **0.0504** and **no classification flips**, versus **0.2074** and **one flip** for q4f16. These are small-sample fidelity checks, not broad accuracy guarantees. `onnx/model_q4f16.onnx` is an explicit lower-fidelity alternative and needs its matching `.onnx_data` file.
+
+For local/offline use, set `{decision_model: $homeFolder.folder("strands-decider-2B-qwen3.5-v1-2610-onnx"); decision_model_name: "onnx/model_q8.onnx"}` with the required assets above already present. Explicit options retain precedence over descriptor mapping. See [`_models`](_models.md) for download/offline behavior.
+
+The generic downloader resolves files from `main`, not a pinned revision.
+For reproducible deployment, obtain the complete snapshot at
+`12143c0d1a5b1d0bc33178dfbabbdfec042ed0be` separately. Keep a nonempty
+descriptor collection: an empty collection selects default chat/embedding
+models and replaces the options. An online descriptor may update local files
+from `main`; for strictly pinned, download-free startup, launch the rebuilt
+executable directly with
+`-s -D /models/strands-decider-2B-qwen3.5-v1-2610-onnx/onnx/model_q8.onnx`.
+Use backend name `strands-decider`, alias `strands-decider-latest`, or the
+directory basename in requests. Family aliases only select their loaded backend;
+the other backends are `kev`, `d1` and `laya`, with aliases `kev-latest`,
+`d1-latest` and `laya-latest`.
+
+Strands divides option logits by the finite positive effective
+`decider.temperature_by_kind[type]`, falling back to `decider.temperature`,
+before softmax. Missing or invalid temperatures reject model loading.
+Calibration was fitted on held-out short classification, not arbitrary traffic
+or every quantization. It retains TypeSafe confidence formulas and does not
+apply training-time ordinal smoothing or generate answer letters.
+Score requires 2–10 levels; Choice allows 1–255 options, with 1–64 questions.
+Each complete prompt must fit `decider.max_length` (v1: 4,096, capped at 8,192
+tokens), and the sum must fit 32,768 tokens. Over-limit input is rejected, not
+truncated; `max_question_fraction` is a truncation policy, not an additional
+strict-mode limit. Each question runs independently with fresh graph-internal
+caches; usage includes repeated state. Long-context behavior is not necessarily
+validated to the serving limits.
+
+The bundled CPU runtime remains **ONNX Runtime 1.29.0**; rebuild the executable
+for native Strands support without a runtime bump. Local macOS arm64 q8
+native/Python ORT parity passed the basic three-question and structured
+five-question requests with exact token IDs/readout positions and a largest
+displayed probability difference of `1e-8`. This does not establish fidelity to
+the original torch weights, broader accuracy or calibration quality.
+**Native 4D and Windows Strands execution remain unverified here.**
+See [focused tests and source provenance](../../../cpp/tests/README.md#strands-decider-v1),
+including the export's unpinned upstream adapter revision.
 
 ### Test the chat completion endpoint
 

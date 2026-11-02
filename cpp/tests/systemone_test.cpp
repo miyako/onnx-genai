@@ -113,6 +113,79 @@ static void unit_tests() {
     try { softmax({std::numeric_limits<double>::infinity(), 0}); }
     catch (const std::runtime_error&) { rejected = true; }
     require(rejected, "Accepted infinite logits.");
+
+    require(detect_backend(parse_json(R"({"kev":{}})")) == Backend::Kev, "Kev dispatch changed.");
+    require(detect_backend(parse_json(R"({"d1":{}})")) == Backend::D1, "d1 dispatch changed.");
+    require(detect_backend(parse_json(R"({"decider":{}})")) == Backend::Strands, "Strands dispatch failed.");
+    require(detect_backend(Json::nullValue, true) == Backend::Laya, "Laya dispatch changed.");
+    for (const auto& text : {R"({"kev":{}})", R"({"d1":{}})", R"({"decider":{}})"}) {
+        rejected = false;
+        try { detect_backend(parse_json(text), true); } catch (const std::runtime_error&) { rejected = true; }
+        require(rejected, "Accepted mixed Laya/backend metadata.");
+    }
+    for (const auto& text : {"{}", R"({"kev":{},"decider":{}})", R"({"d1":{},"decider":{}})",
+                              R"({"decider":null})"}) {
+        rejected = false;
+        try { detect_backend(parse_json(text)); } catch (const std::runtime_error&) { rejected = true; }
+        require(rejected, "Accepted missing/ambiguous backend metadata.");
+    }
+    const StrandsConfig metadata(parse_json(R"({"max_length":4096,"temperature":2,
+        "temperature_by_kind":{"noul":1.1,"choice":0.8,"score":1.8}})"));
+    require(metadata.context == 4096, "Strands context metadata ignored.");
+    near(metadata.temperatures.at("noul"), 1.1);
+    near(metadata.temperatures.at("choice"), 0.8);
+    near(metadata.temperatures.at("score"), 1.8);
+    const StrandsConfig fallback(parse_json(R"({"max_length":16384,"temperature":2})"));
+    require(fallback.context == max_sequence_tokens, "Strands context service cap ignored.");
+    near(fallback.temperatures.at("score"), 2);
+    for (const auto& text : {R"({"max_length":0,"temperature":1})", R"({"max_length":1})",
+                              R"({"max_length":1,"temperature":0})",
+                              R"({"max_length":1,"temperature_by_kind":[]})",
+                              R"({"max_length":1,"temperature":1,"temperature_by_kind":{"score":-1}})"}) {
+        rejected = false;
+        try { StrandsConfig bad(parse_json(text)); } catch (const std::runtime_error&) { rejected = true; }
+        require(rejected, "Accepted invalid Strands metadata.");
+    }
+    auto nonfinite_temperature = parse_json(R"({"max_length":4096,"temperature":1})");
+    nonfinite_temperature["temperature"] = std::numeric_limits<double>::infinity();
+    rejected = false;
+    try { StrandsConfig bad(nonfinite_temperature); } catch (const std::runtime_error&) { rejected = true; }
+    require(rejected, "Accepted infinite Strands temperature.");
+    auto tokenizer_config = parse_json(R"({"model":{"type":"BPE"},"decoder":{"type":"ByteLevel"},
+        "normalizer":{"type":"NFC"},"post_processor":{"type":"ByteLevel","trim_offsets":false}})");
+    StrandsTokenizer::validate_config(tokenizer_config);
+    for (const auto& invalid_processor : {R"({"type":"TemplateProcessing"})", R"({"type":"ByteLevel","trim_offsets":true})"}) {
+        tokenizer_config["post_processor"] = parse_json(invalid_processor);
+        rejected = false;
+        try { StrandsTokenizer::validate_config(tokenizer_config); } catch (const std::runtime_error&) { rejected = true; }
+        require(rejected, "Accepted unsupported Strands post-processing.");
+    }
+    auto strands = parse_request(R"({"model":"strands-decider-latest","state":"  example  ",
+        "questions":{"n":{"type":"noul","instructions":"  Is it true?  "},
+        "c":{"type":"choice","criteria":{"z":"  first\n\tline ","a":null}},
+        "s":{"type":"score","criteria":["low","high"]}}})");
+    const auto noul_prompt = strands_prompt(strands, strands.questions[0]);
+    require(noul_prompt.state == "<state>\nexample\n</state>\n", "Strands state formatting differs.");
+    require(noul_prompt.question == "<question type=\"noul\">\nDecide whether the statement is true of the state.\n"
+        "Is it true?\n<options>\n1. false \xE2\x80\x94 the statement does not hold for this state\n"
+        "2. true \xE2\x80\x94 the statement holds for this state\n</options>\n</question>\n<answer>",
+        "Strands noul prompt differs from upstream.");
+    const auto choice_prompt = strands_prompt(strands, strands.questions[1]);
+    require(choice_prompt.question.substr(choice_prompt.option_spans[0].first,
+        choice_prompt.option_spans[0].second - choice_prompt.option_spans[0].first) ==
+        "1. z \xE2\x80\x94 first line", "Strands option span/rendering differs.");
+    require(choice_prompt.question.substr(choice_prompt.option_spans[1].first, 4) == "2. a",
+        "Strands option order changed.");
+    require(strands_prompt(strands, strands.questions[2]).question.find(
+        "1. 0 \xE2\x80\x94 low\n2. 1 \xE2\x80\x94 high") != std::string::npos, "Strands score labels differ.");
+    require(strands_whitespace("\xC2\xA0 x\xE3\x80\x80 y \xE2\x80\xAF", true) == "x y",
+        "Strands Unicode whitespace differs from Python.");
+    require(strands_json(parse_json(R"({"z":"\u65e5\u672c\u8a9e \ud83d\ude00","a":[0.1,1e-5,1e-4,1e15,1e16,-0.0]})")) ==
+        "{\n  \"z\": \"\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E \xF0\x9F\x98\x80\",\n  \"a\": [\n"
+        "    0.1,\n    1e-05,\n    0.0001,\n    1000000000000000.0,\n    1e+16,\n    -0.0\n  ]\n}",
+        "Strands structured JSON differs from Python.");
+    near(softmax({0 / metadata.temperatures.at("choice"), 1 / metadata.temperatures.at("choice")})[1],
+        1 / (1 + std::exp(-1.25)));
 }
 
 static void model_tests(const std::filesystem::path& graph) {
@@ -176,6 +249,10 @@ static void model_tests(const std::filesystem::path& graph) {
         const auto encoded = model.prepare_laya(injection, injection.questions[0]);
         const auto original = model.prepare_laya(request, request.questions[0]);
         require(encoded.markers == original.markers, "Caller MASK text changed question markers.");
+    } else if (std::string(model.backend()) == "strands-decider") {
+        const auto encoded = model.prepare_strands(injection, injection.questions[0]);
+        require(encoded.option_positions.size() == 2, "Caller text changed Strands option spans.");
+        require(encoded.answer_position == static_cast<int64_t>(encoded.ids.size()) - 1, "Wrong Strands answer marker.");
     } else {
         const auto encoded = model.prepare_d1(injection, injection.questions[0]);
         require(!encoded.ids.empty(), "Escaped d1 prompt is empty.");
@@ -193,12 +270,31 @@ static void model_tests(const std::filesystem::path& graph) {
     try { model.evaluate(wrong_model); }
     catch (const ValidationError&) { rejected = true; }
     require(rejected, "Wrong model name was accepted.");
+    auto alias = request;
+    alias.model = std::string(model.backend()) + "-latest";
+    require(model.evaluate(alias)["model"] == model.id(), "Backend alias failed.");
     std::cout << json_string(response) << "\n";
 }
 
 int main(int argc, char* argv[]) {
     try {
         unit_tests();
+        if (argc == 4 && std::string(argv[1]) == "--strands-inputs") {
+            Model model(std::filesystem::u8path(argv[2]), 2);
+            const auto request = parse_request(read_file(std::filesystem::u8path(argv[3])));
+            Json::Value prepared(Json::objectValue);
+            for (const auto& q : request.questions) {
+                const auto input = model.prepare_strands(request, q);
+                auto& row = prepared[q.id];
+                row["input_ids"] = Json::Value(Json::arrayValue);
+                for (auto id : input.ids) row["input_ids"].append(Json::Int64(id));
+                row["option_pos"] = Json::Value(Json::arrayValue);
+                for (auto pos : input.option_positions) row["option_pos"].append(Json::Int64(pos));
+                row["answer_pos"] = Json::Int64(input.answer_position);
+            }
+            std::cout << json_string(prepared) << "\n";
+            return 0;
+        }
         if (argc > 1) model_tests(std::filesystem::u8path(argv[1]));
         std::cout << "System One tests passed.\n";
         return 0;

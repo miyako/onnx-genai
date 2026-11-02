@@ -1,4 +1,4 @@
-"""Exercise a rebuilt server; pass --kev, --d1 and/or --laya for real-model checks."""
+"""Exercise a rebuilt server; pass decision graph arguments for real-model checks."""
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
@@ -12,7 +12,7 @@ import urllib.error
 import urllib.request
 
 
-def call(base, path, payload=None):
+def call(base, path, payload=None, timeout=120):
     data = None if payload is None else (
         payload.encode() if isinstance(payload, str) else json.dumps(payload).encode()
     )
@@ -20,7 +20,7 @@ def call(base, path, payload=None):
         base + path, data=data, headers={"Content-Type": "application/json"}
     )
     try:
-        response = urllib.request.urlopen(request, timeout=120)
+        response = urllib.request.urlopen(request, timeout=timeout)
     except urllib.error.HTTPError as error:
         response = error
     with response:
@@ -203,10 +203,11 @@ if __name__ == "__main__":
     parser.add_argument("--d1")
     parser.add_argument("--laya")
     parser.add_argument("--fixtures", type=Path, help="Generated tiny Laya/Kev/d1 fixture root (no semantic quality assertions)")
+    parser.add_argument("--strands", help="Current v1 fused Strands Decider graph")
     args = parser.parse_args()
     exercise(args.binary)
-    for backend in ("kev", "d1", "laya"):
-        graph = getattr(args, backend)
+    for backend, graph in (("kev", args.kev), ("d1", args.d1), ("laya", args.laya),
+                           ("strands-decider", args.strands)):
         if graph:
             exercise(args.binary, backend, graph)
     if args.fixtures:

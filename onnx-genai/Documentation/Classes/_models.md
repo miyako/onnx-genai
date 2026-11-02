@@ -36,6 +36,8 @@ In offline mode the following domain-to-option mappings are applied directly:
 
 For `systemone`, use a `4D.Folder` pointing to the local repository root and a selected ONNX `name` relative to it (for example `onnx/model_q4.onnx` for Kev or `onnx/decoder_model_merged_quantized.onnx` for d1). The folder-based recursive download preserves the entire repository layout, including root `config.json` and `tokenizer.json`, sibling ONNX graphs, and external data beside the selected graph. A single-file descriptor is insufficient for these models. Offline mapping uses the same root and name without requiring metadata downloads.
 
+For native Strands Decider v1, use `opticsWolf/strands-decider-2B-qwen3.5-v1-2610-onnx` (Apache-2.0), an empty descriptor path, domain `systemone`, and selected name `onnx/model_q8.onnx` (CPU recommended). The unchanged recursive rules include root `config.json`, `tokenizer.json`, `tokenizer_config.json`, and `onnx/model_q8.onnx_data` alongside the selected graph. They also download the other precisions: `name` is not a download filter. Offline use requires the selected graph, its external weights, and these root assets to be present already. See the [4D example and fidelity caveats](ONNX.md#strands-decider-v1-q8-cpu-recommended).
+
 ### Properties
 
 | Property | Type | Description |

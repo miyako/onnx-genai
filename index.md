@@ -341,6 +341,17 @@ An "End-to-End" (E2E) model that takes raw string as input and returns vectors a
 |⚠️|[EXAONE&nbsp;3.5&nbsp;2.4B](https://huggingface.co/keisuke-miyako/EXAONE-3.5-2.4B-Instruct-onnx-int4-cpu)|`2.4`|`2.66`|`32768`|`102400`|`English`&nbsp;`Korean`
 |⚠️|[InternLM&nbsp;1.8B](https://huggingface.co/keisuke-miyako/internlm2_5-1_8b-chat-onnx-in4-cpu)|`1.8`|`1.86`|`32768`|`92544`|`English`&nbsp;`Chinese`
 
+#### Decision models
+
+| Model | 4D domain | Selected graph | License |
+| --- | --- | --- | --- |
+| [Kev-0.6B](https://huggingface.co/onnx-community/kev-0.6b-ONNX), [Kev-4B](https://huggingface.co/onnx-community/kev-4b-ONNX) | `systemone` | `onnx/model_q4.onnx` | Apache-2.0 |
+| [d1-3B](https://huggingface.co/onnx-community/d1-3B-ONNX) | `systemone` | `onnx/decoder_model_merged_quantized.onnx` | LFM Open License v1.0 (commercial-use restrictions) |
+| [Laya English (421M ModernBERT-large)](https://huggingface.co/receptron/laya-onnx/tree/d42786bdff8a7550316339c5fbf8f46caa83ea1b) | `systemone` | `laya.onnx` | Apache-2.0 |
+| [Strands Decider 2B Qwen3.5 v1 (fused community export)](https://huggingface.co/opticsWolf/strands-decider-2B-qwen3.5-v1-2610-onnx) | `systemone` | `onnx/model_q8.onnx` (CPU recommended) | Apache-2.0 |
+
+Use the existing `decision_model` slot for native text-only `noul`, `choice`, and `score`. The [4D download example](onnx-genai/Documentation/Classes/ONNX.md#strands-decider-v1-q8-cpu-recommended) covers tokenizer/config assets, external weights, offline setup, and the limited q8 versus q4f16 fidelity comparison. Folder downloads include all precisions, even when q8 is selected.
+
 #### AI Kit compatibility
 
 The API is compatible with the following [Open AI](https://platform.openai.com/docs/api-reference/) endpoints: 
@@ -361,12 +372,40 @@ In addition, the following endpoints are available:
 |`/v1/audio/speech`|
 |`/v1/rerank`||
 |`/v1/contextualizedembeddings`|`/v1/contextualized/embeddings`
-|`/v1/systemone`|Text-only TypeSafe decision API (Kev or d1)|
+|`/v1/systemone`|Text-only TypeSafe decision API (Kev, d1, English Laya or Strands Decider v1)|
 
 Load a decision model independently with `-D path/to/model.onnx`. Kev-0.6B,
-Kev-4B and d1-3B ONNX exports support `noul`, `choice` and `score` questions.
+Kev-4B, d1-3B, English Laya and fused Strands Decider v1 ONNX exports support
+`noul`, `choice` and `score` questions. Backend names are `kev`, `d1`, `laya`
+and `strands-decider`; their family aliases are `kev-latest`, `d1-latest`,
+`laya-latest` and `strands-decider-latest`, respectively, and only resolve to
+the loaded backend.
 See [CLI: TypeSafe Compatible Endpoint](CLI.md#typesafe-compatible-endpoint) for
-model layouts, request examples, limits and runtime requirements. In particular,
-d1 requires a newer runtime than the bundled 1.23.2; 1.29.0 is available in this
-repository. For 4D downloading/loading, use the `systemone` domain and a relative
+model layouts, request examples, limits and runtime requirements. The bundled
+CPU runtime is **1.29.0**, including support for d1's ONNX IR 13; Laya and
+Strands require no runtime bump. Rebuild the CLI/server for new backend support.
+For 4D downloading/loading, use the `systemone` domain and a relative
 graph name as shown in [the ONNX class documentation](onnx-genai/Documentation/Classes/ONNX.md).
+
+Laya is **English only**, using the community export pinned to
+`d42786bdff8a7550316339c5fbf8f46caa83ea1b`. Keep `laya_config.json` and
+`laya.onnx.data` beside the graph and both tokenizer JSON files under
+`tokenizer/`. Ambiguous backend metadata is rejected. Laya retains the TypeSafe
+response/confidence contract without `act` fields. Its configured 512-token
+rows, 192-token head, 48-token options and 32,768-token padded batch are
+reject-not-truncate limits; see the CLI for equal-budget head rules.
+Published finite positive temperatures are consumed unchanged, including
+community-calibrated `choice:11+ = 0.945`, not the official checkpoint's
+`0.10058280825614929`. A four-row CPU comparison against the pinned official
+checkpoint measured a maximum raw-logit difference of `2.58e-5`; it does not
+establish universal parity, model quality or multilingual compatibility.
+
+Strands q8 evaluation uses export revision
+`12143c0d1a5b1d0bc33178dfbabbdfec042ed0be`. The basic three-question and
+structured five-question requests passed native/Python ORT 1.29.0 parity with
+exact token IDs/readout positions and a largest displayed probability difference
+of `1e-8`. This is adapter parity, not a fresh official torch comparison or
+broad calibration/accuracy validation. Per-primitive calibration was fitted
+on held-out short classification, not arbitrary traffic or every quantization.
+**Windows and native 4D Strands execution remain unverified here.**
+See [focused checks, provenance and caveats](cpp/tests/README.md#strands-decider-v1).

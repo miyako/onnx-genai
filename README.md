@@ -195,14 +195,19 @@ In addition, the following endpoints are available:
 |`/v1/audio/speech`|
 |`/v1/rerank`||
 |`/v1/contextualizedembeddings`|`/v1/contextualized/embeddings`
-|`/v1/systemone`|Text-only TypeSafe decision API (Kev, d1 or Laya)|
+|`/v1/systemone`|Text-only TypeSafe decision API (Kev, d1, English Laya or Strands Decider v1)|
 
 Load a decision model independently with `-D path/to/model.onnx`. Kev-0.6B,
-Kev-4B, d1-3B and Laya ONNX exports support `noul`, `choice` and `score` questions.
+Kev-4B, d1-3B, English Laya and the fused Strands Decider 2B Qwen3.5 v1 ONNX
+exports support `noul`, `choice` and `score` questions.
+Use `kev-latest`, `d1-latest`, `laya-latest` or `strands-decider-latest` for
+the corresponding loaded backend (`kev`, `d1`, `laya` or `strands-decider`).
+For Strands, `q8` is recommended for initial CPU evaluation.
 See [CLI: TypeSafe Compatible Endpoint](CLI.md#typesafe-compatible-endpoint) for
 model layouts, request examples, limits and runtime requirements. The bundled
-CPU runtime is **1.29.0**, including support for d1's ONNX IR 13; Laya requires
-no runtime bump. For 4D downloading/loading, use the `systemone` domain and a relative
+CPU runtime is **1.29.0**, including support for d1's ONNX IR 13; Laya and
+Strands require no runtime bump. Rebuild the CLI/server to enable new backends.
+For 4D downloading/loading, use the `systemone` domain and a relative
 graph name as shown in [the ONNX class documentation](onnx-genai/Documentation/Classes/ONNX.md).
 
 Laya uses the **English-only, 421M ModernBERT-large** community export
@@ -211,7 +216,7 @@ pinned to `d42786bdff8a7550316339c5fbf8f46caa83ea1b`. Load
 `-D /models/laya-onnx/laya.onnx` on CPU and use `laya-latest` or the model
 directory's basename. Keep `laya_config.json` and `laya.onnx.data` beside the
 graph and preserve `tokenizer/tokenizer.json` and
-`tokenizer/tokenizer_config.json`. Mixed Kev/d1 and Laya metadata is rejected.
+`tokenizer/tokenizer_config.json`. Mixed Kev/d1/Strands and Laya metadata is rejected.
 Laya preserves the TypeSafe response/confidence contract without adding `act`
 fields. Inputs exceeding its configured 512-token rows, 192-token head,
 48-token options or 32,768-token padded batch are rejected, not truncated;
@@ -222,3 +227,13 @@ from the official checkpoint. An independent mixed-question CPU comparison
 measured a maximum raw-logit difference of `2.58e-5` against the pinned official
 PyTorch checkpoint; this does not establish universal parity, model quality or
 multilingual compatibility.
+
+Strands uses the pinned
+[`opticsWolf` fused v1 export](https://huggingface.co/opticsWolf/strands-decider-2B-qwen3.5-v1-2610-onnx/tree/12143c0d1a5b1d0bc33178dfbabbdfec042ed0be).
+Calibration is per primitive and not validated for arbitrary traffic or every
+quantization. Local q8 native/Python ORT parity passed the basic three-question
+and structured five-question requests with exact token IDs/readout positions
+and a largest displayed probability difference of `1e-8` on ORT 1.29.0.
+This is adapter parity, not a fresh official torch comparison or accuracy claim;
+Windows and native 4D Strands execution remain unverified here.
+See [focused checks and provenance](cpp/tests/README.md#strands-decider-v1).

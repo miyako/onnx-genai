@@ -11,6 +11,29 @@
 
 namespace systemone {
 
+enum class Backend { Kev, D1, Laya, Strands };
+
+inline const char* backend_name(Backend backend) {
+    switch (backend) {
+    case Backend::Kev: return "kev";
+    case Backend::D1: return "d1";
+    case Backend::Laya: return "laya";
+    case Backend::Strands: return "strands-decider";
+    }
+    throw std::runtime_error("Unknown decision backend.");
+}
+
+inline Backend detect_backend(const Json::Value& config, bool laya = false) {
+    if ((!config.isObject() && !(laya && config.isNull())) ||
+        unsigned(config.isMember("kev")) + unsigned(config.isMember("d1")) +
+            unsigned(config.isMember("decider")) + unsigned(laya) != 1)
+        throw std::runtime_error("Decision metadata must identify exactly one backend: kev, d1, laya or decider.");
+    if (laya) return Backend::Laya;
+    const auto key = config.isMember("kev") ? "kev" : config.isMember("d1") ? "d1" : "decider";
+    if (!config[key].isObject()) throw std::runtime_error("Invalid decision backend metadata.");
+    return config.isMember("kev") ? Backend::Kev : config.isMember("d1") ? Backend::D1 : Backend::Strands;
+}
+
 constexpr size_t max_body_bytes = 2 * 1024 * 1024;
 constexpr size_t max_questions = 64;
 constexpr size_t max_sequence_tokens = 8192;
