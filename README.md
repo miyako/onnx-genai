@@ -1,7 +1,7 @@
 # ONNX Runtime GenAI
 Local inference engine
 
-**aknowledgements**: [microsoft/onnxruntime-genai](https://github.com/microsoft/onnxruntime-genai)
+**acknowledgements**: [microsoft/onnxruntime-genai](https://github.com/microsoft/onnxruntime-genai)
 
 #### Abstract
 
