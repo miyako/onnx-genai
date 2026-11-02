@@ -15,12 +15,12 @@ landing: true
     </div>
   </div>
   <div class="stack-panel" role="group" aria-label="The local stack: your 4D application or HTTP client calls the onnx-genai server over HTTP on 127.0.0.1:8080, which runs a model you choose with ONNX Runtime">
-    <div class="panel-top"><span>The local stack</span><span class="panel-tag">On your machine</span></div>
+    <div class="panel-top"><span class="panel-label">The local stack</span><span class="panel-tag">On your machine</span></div>
     <div class="stack-flow">
       <div class="stack-node app-node"><span class="node-mark" aria-hidden="true">4D</span><span class="node-text"><strong>Your application</strong><small>4D component or any HTTP client</small></span></div>
-      <div class="stack-link" aria-hidden="true"><span class="link-label">HTTP / 127.0.0.1:8080</span><span class="link-line"></span></div>
-      <div class="stack-node engine-node"><img class="node-logo" src="{{ site.logo | relative_url }}" width="44" height="44" alt="" aria-hidden="true"><span class="node-text"><strong>onnx-genai server</strong><small>ONNX Runtime &middot; CPU-first</small></span><span class="node-badge">Inference</span></div>
-      <div class="stack-link" aria-hidden="true"><span class="link-label">loads</span><span class="link-line"></span></div>
+      <div class="stack-link">HTTP / 127.0.0.1:8080</div>
+      <div class="stack-node engine-node"><img class="node-logo" src="{{ site.logo | relative_url }}" width="52" height="52" alt="" aria-hidden="true"><span class="node-text"><strong>onnx-genai server</strong><small>ONNX Runtime &middot; CPU-first</small></span><span class="node-badge">Inference</span></div>
+      <div class="stack-link">loads</div>
       <div class="stack-node model-node"><span class="node-mark file-mark" aria-hidden="true">.onnx</span><span class="node-text"><strong>A model you choose</strong><small>ONNX GenAI model directory</small></span></div>
     </div>
     <div class="panel-bottom"><span>Chat</span><span>Embeddings</span><span>Reranking</span><span>Speech</span><span>Decisions</span></div>
