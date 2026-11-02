@@ -54,7 +54,7 @@ main { min-width: 0; }
 .landing .hero { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(300px, 380px); align-items: center; gap: 0 44px; padding: 72px 0 48px; }
 .hero-copy { min-width: 0; }
 .eyebrow { margin-bottom: 18px; color: var(--accent); }
-.hero h1 span { color: var(--muted); }
+.hero h1 span { color: var(--accent); }
 .lede { max-width: 610px; color: var(--muted); font-size: 17px; line-height: 1.8; }
 .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
 .button { display: inline-flex; align-items: center; justify-content: center; gap: 16px; min-height: 44px; padding: 11px 17px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); text-decoration: none; font-size: 13px; font-weight: 600; }
