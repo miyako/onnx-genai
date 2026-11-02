@@ -13,7 +13,7 @@
     <a class="skip-link" href="#main">Skip to content</a>
     <aside class="sidebar">
       <a class="brand" href="{{ '/' | relative_url }}" aria-label="ONNX GenAI home">
-        <img src="{{ site.logo | relative_url }}" width="44" height="44" alt="">
+        <img src="{{ site.logo | relative_url }}" width="42" height="42" alt="">
         <span>ONNX<span class="brand-subtitle">GenAI for 4D</span></span>
       </a>
       <p class="sidebar-caption">Local models.<br>More possibilities.</p>
@@ -41,7 +41,7 @@
         <span>Documentation <span aria-hidden="true">/</span> <strong>{{ page.title | default: page.name | remove: '.md' | escape }}</strong></span>
         <div><a href="{{ site.github.repository_url }}/releases">Releases</a><a href="{{ site.github.repository_url }}">GitHub <span aria-hidden="true">&#8599;</span></a></div>
       </header>
-      <main id="main" class="{% if page.landing %}landing{% else %}document{% endif %}">
+      <main id="main" tabindex="-1" class="{% if page.landing %}landing{% else %}document{% endif %}">
         {{ content }}
       </main>
       <footer class="site-footer">
