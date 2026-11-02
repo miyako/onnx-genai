@@ -15,6 +15,11 @@ layout: default
 
 > The inference engine used in this component is configured to primarily run on CPU cores, for maximum compatibility. 
 
+ONNX Runtime **1.29.0** is bundled for macOS universal and Windows x64/ARM64.
+The runtime's macOS deployment target is 13.3; other dependencies may require a
+newer macOS version. See [build instructions](build.md) for runtime provenance
+and replacement workflows.
+
 #### Quantisation
 
 The `fp32` format is accurate but consumes `4` bytes per weight and pretty slow on a CPU. It is generally not suitable for production. You should only use it as a reference.
@@ -338,12 +343,7 @@ An "End-to-End" (E2E) model that takes raw string as input and returns vectors a
 
 #### AI Kit compatibility
 
-The text-only TypeSafe-compatible `/v1/systemone` endpoint supports Kev and d1
-decision models via the dedicated `-D` option. See
-[CLI documentation](CLI.md#typesafe-compatible-endpoint) for model setup, examples,
-limits and d1's newer ONNX Runtime requirement.
-
-The API is compatible with [Open AI](https://platform.openai.com/docs/api-reference/embeddings). 
+The API is compatible with the following [Open AI](https://platform.openai.com/docs/api-reference/) endpoints: 
 
 |Class|API|Availability|
 |-|-|:-:|
@@ -353,3 +353,20 @@ The API is compatible with [Open AI](https://platform.openai.com/docs/api-refere
 |Moderations|`/v1/moderations`||
 |Embeddings|`/v1/embeddings`|✅|
 |Files|`/v1/files`||
+
+In addition, the following endpoints are available:
+
+|API|Alias|
+|-|-|
+|`/v1/audio/speech`|
+|`/v1/rerank`||
+|`/v1/contextualizedembeddings`|`/v1/contextualized/embeddings`
+|`/v1/systemone`|Text-only TypeSafe decision API (Kev or d1)|
+
+Load a decision model independently with `-D path/to/model.onnx`. Kev-0.6B,
+Kev-4B and d1-3B ONNX exports support `noul`, `choice` and `score` questions.
+See [CLI: TypeSafe Compatible Endpoint](CLI.md#typesafe-compatible-endpoint) for
+model layouts, request examples, limits and runtime requirements. In particular,
+d1 requires a newer runtime than the bundled 1.23.2; 1.29.0 is available in this
+repository. For 4D downloading/loading, use the `systemone` domain and a relative
+graph name as shown in [the ONNX class documentation](onnx-genai/Documentation/Classes/ONNX.md).

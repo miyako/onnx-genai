@@ -177,7 +177,7 @@ $onnx.terminate()
 
 #### AI Kit compatibility
 
-The API is compatibile with the following [Open AI](https://platform.openai.com/docs/api-reference/) endpoints: 
+The API is compatible with the following [Open AI](https://platform.openai.com/docs/api-reference/) endpoints: 
 
 |Class|API|Availability|
 |-|-|:-:|
