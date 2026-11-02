@@ -1,6 +1,8 @@
 # ONNX Runtime GenAI
 Local inference engine
 
+[Explore the documentation site](https://miyako.github.io/onnx-genai/) for an overview, a first-request walkthrough, and the [4D integration guide](https://miyako.github.io/onnx-genai/guide.html).
+
 **acknowledgements**: [microsoft/onnxruntime-genai](https://github.com/microsoft/onnxruntime-genai)
 
 #### Abstract
