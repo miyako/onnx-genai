@@ -12,9 +12,11 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 	This:C1470.event:=$event
 	This:C1470._onResponse:=$formula
 	This:C1470.options:=$options#Null:C1517 ? $options : {}
-	This:C1470.options.onTerminate:=This:C1470.event.onTerminate
-	This:C1470.options.onStdErr:=This:C1470.event.onStdErr
-	This:C1470.options.onStdOut:=This:C1470.event.onStdOut
+	If (This:C1470.event#Null:C1517)
+		This:C1470.options.onTerminate:=This:C1470.event.onTerminate
+		This:C1470.options.onStdErr:=This:C1470.event.onStdErr
+		This:C1470.options.onStdOut:=This:C1470.event.onStdOut
+	End if 
 	This:C1470.options.port:=$port
 	This:C1470.offline:=False:C215
 	
@@ -108,13 +110,26 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 	
 Function download()
 	
+	If (This:C1470.files.length=0)
+		This:C1470._onNothingToDownload()
+		return 
+	End if 
+	
+	For each ($file; This:C1470.files)
+		$file.downloadId:=Generate UUID:C1066
+	End for each 
+	
+	var $owner : Object
+	var $downloadId : Text
+	$owner:=This:C1470
 	For each ($file; This:C1470.files)
 		If ($file.folder.exists)\
 			 && (OB Instance of:C1731($file.folder; 4D:C1709.Folder) ? ($file.folder.file($file.path).exists) : ($file.folder.exists))\
 			 && (OB Instance of:C1731($file.folder; 4D:C1709.Folder) ? ($file.folder.file($file.path).size=$file.size) : ($file.folder.size=$file.size))
-			This:C1470.onDownload($file.oid)
+			This:C1470.onDownload($file.oid; $file.downloadId)
 			continue
 		End if 
+		$downloadId:=$file.downloadId
 		cs:C1710.event.download.new(\
 			This:C1470; \
 			OB Instance of:C1731($file.folder; 4D:C1709.Folder) ? $file.folder.file($file.path) : $file.folder; \
@@ -123,16 +138,37 @@ Function download()
 			["https://huggingface.co"; $file.USER; $file.REPO; "resolve"; $file.BRANCH; $file.path].join("/"); \
 			This:C1470.options; \
 			This:C1470._onResponse; \
-			This:C1470.event; This:C1470.onDownload).head()
+			This:C1470.event; Formula:C1597($owner.onDownload($1; $downloadId))).head()
 	End for each 
 	
-Function onDownload($oid : Text)
+Function onDownload($oid : Text; $downloadId : Text)
 	
-	This:C1470.files:=This:C1470.files.filter(Formula:C1597($1.value.oid#$2); $oid)
+	var $count : Integer
+	$count:=This:C1470.files.length
+	If ($downloadId#"")
+		//files that share an OID are separate destinations
+		This:C1470.files:=This:C1470.files.filter(Formula:C1597($1.value.downloadId#$2); $downloadId)
+	Else 
+		This:C1470.files:=This:C1470.files.filter(Formula:C1597($1.value.oid#$2); $oid)
+	End if 
 	
-	If (This:C1470.files.length=0)
+	If (This:C1470.files.length=0) && ($count#0)
 		This:C1470.start()
 	End if 
+	
+Function _notifyError($error : cs:C1710.event.error)
+	
+	If (This:C1470.event#Null:C1517)
+		If (Value type:C1509(This:C1470.event.onError)=Is object:K8:27)
+			If (OB Instance of:C1731(This:C1470.event.onError; 4D:C1709.Function))
+				This:C1470.event.onError.call(This:C1470; This:C1470.options; $error)
+			End if 
+		End if 
+	End if 
+	
+Function _onNothingToDownload()
+	//virtual
+	This:C1470.start()
 	
 Function models() : cs:C1710.event.models
 	//virtual

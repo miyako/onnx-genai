@@ -54,7 +54,7 @@ If `option.chat_template` is set, it is posted to stdin rather than appended to 
 
 | Value type | CLI form |
 | --- | --- |
-| Real / Integer | `-x value` or `--key value` |
+| Real / Integer | `-x value` or `--key value` (always `.` as the decimal separator, regardless of system locale) |
 | Text | `-x escaped-value` or `--key escaped-value` |
 | Boolean `True` | `-x` or `--key` (no value) |
 | 4D.File (exists) | `-x escaped-path` or `--key escaped-path` |
@@ -68,7 +68,7 @@ var $onnx : cs.ONNX.ONNX
 $onnx:=cs.ONNX.ONNX.new(8080; $huggingfaces; $homeFolder; $options; $event)
 ```
 
-To terminate:
+To terminate (if no server is running on 8080, `new()` without arguments launches the default models instead):
 
 ```4d
 $onnx:=cs.ONNX.ONNX.new()

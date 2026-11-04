@@ -11,7 +11,7 @@
 
 `_ONNX_Controller` is the default controller used by [`_ONNX`](_ONNX.md). It inherits all command-queue and worker-management behaviour from [`_CLI_Controller`](_CLI_Controller.md).
 
-`onData`, `onDataError`, `onResponse`, and `onError` are intentionally left as the inherited no-op `_onEvent` handler. Only `onTerminate` is overridden, forwarding the termination event to the owning `_server` instance's `onTerminate` callback. This reflects `onnx-genai`'s role as a long-running HTTP server rather than a command with parseable incremental output.
+`onData`, `onDataError`, `onResponse`, and `onError` are intentionally left as the inherited no-op `_onEvent` handler. Only `onTerminate` is overridden, forwarding the termination event to the owning `_server` instance's `onTerminate` callback. This reflects `onnx-genai`'s role as a long-running HTTP server rather than a command with parseable incremental output. Keeping stdout/stderr quiet is intentional: a long-running server can produce a large amount of output. `event.onStdOut` and `event.onStdErr` are copied into the server options but are not bound by `_server`.
 
 ### Overridden event callbacks
 

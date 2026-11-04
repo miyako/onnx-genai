@@ -28,6 +28,8 @@ Obtains the server worker via `cs.ONNX.workers.worker` and calls `terminate()` o
 ## Examples
 
 ```4d
+// ONNX.new() with no arguments does nothing if a server is running on 8080;
+// otherwise it downloads (if needed) and launches the default models
 var $onnx : cs.ONNX.ONNX
 $onnx:=cs.ONNX.ONNX.new()
 $onnx.terminate()

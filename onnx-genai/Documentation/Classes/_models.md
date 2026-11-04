@@ -7,13 +7,13 @@
 | --- | --- | --- | --- |
 | port | Integer | -> | Port stored in `options.port` |
 | huggingfaces | cs.event.huggingfaces | -> | One or more Hugging Face model descriptors |
-| options | Object | -> | Server options object (mutated to add `port`, `onTerminate`, `onStdErr`, `onStdOut`) |
+| options | Object | -> | Server options object (mutated to add `port`; when `event` is not `Null`, also `onTerminate`, `onStdErr`, `onStdOut`) |
 | formula | 4D.Function | -> | Internal response callback forwarded to the download helper |
-| event | cs.event.event | -> | Callback functions |
+| event | cs.event.event | -> | Callback functions, or `Null` for no callbacks |
 
 ## Description
 
-`_models` is the download-and-startup orchestrator. On construction it iterates the `huggingfaces` collection, queries the Hugging Face API to resolve file and directory metadata, and builds an internal `files` queue. If the network is unreachable (`request.response.status = Null`) the class sets `offline: true`, maps the model folder and filename directly from the descriptor's `domain` and `name`, and skips downloading.
+`_models` is the download-and-startup orchestrator. On construction it iterates the `huggingfaces` collection, queries the Hugging Face API to resolve file and directory metadata, and builds an internal `files` queue. If the API cannot be reached for an entry (`request.response.status = Null`) the class sets `offline: true` and maps that entry's model folder and filename directly from the descriptor's `domain` and `name`. Other entries are still resolved and queued for download.
 
 URL formats accepted in `huggingface.URL`:
 
@@ -46,21 +46,30 @@ For native Strands Decider v1, use `opticsWolf/strands-decider-2B-qwen3.5-v1-261
 | files | Collection | Resolved file metadata objects pending download |
 | options | Object | Merged server options |
 | event | cs.event.event | Callback functions |
-| offline | Boolean | `True` when the Hugging Face API could not be reached |
+| offline | Boolean | `True` when the Hugging Face API could not be reached for at least one entry |
 
 ### Methods
 
 #### download ()
 
-Iterates `files`. For each file already present on disk with the correct size, `onDownload` is called immediately (skipping the HTTP fetch). Otherwise a `cs.event.download` is created to fetch the file from Hugging Face.
+If `files` is empty, calls `_onNothingToDownload()` instead (the base implementation calls `start()`; see [`_Model`](_Model.md)). Otherwise gives each entry its own `downloadId`, then iterates `files`. For each file already present on disk with the correct size, `onDownload` is called immediately (skipping the HTTP fetch). Otherwise a `cs.event.download` is created to fetch the file from Hugging Face; its completion calls `onDownload(oid; downloadId)`.
 
-#### onDownload (oid : Text)
+#### onDownload (oid : Text; downloadId : Text)
 
 | Parameter | Type | | Description |
 | --- | --- | --- | --- |
 | oid | Text | -> | OID of the file that finished downloading |
+| downloadId | Text | -> | Destination identity assigned by `download()`; when omitted, every entry with `oid` is removed |
 
-Removes the completed file from `files`. When `files` is empty (all downloads done) it calls `start()`.
+Removes the completed destination from `files`. Files with the same OID at different destinations are tracked separately. When this empties `files` (all downloads done) it calls `start()`; a late or repeated completion does not.
+
+#### _notifyError (error : cs.event.error)
+
+Calls `event.onError` with receiver `This` and arguments `(options; error)` when `event` is not `Null` and `onError` is a function.
+
+#### _onNothingToDownload () *(virtual)*
+
+Called by `download()` when there are no files to download. The base implementation calls `start()`. Overridden in [`_Model`](_Model.md).
 
 #### models () → cs.event.models *(virtual)*
 
