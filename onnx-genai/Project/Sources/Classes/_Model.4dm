@@ -15,7 +15,8 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 	
 	Super:C1705($port; $huggingfaces; $options; $formula; $event)
 	
-	If (Not:C34(This:C1470.offline))
+	//entries that could not reach Hugging Face are mapped offline; download the others
+	If (Not:C34(This:C1470.offline)) || (This:C1470.files.length#0)
 		This:C1470.download()
 	End if 
 	
@@ -31,10 +32,14 @@ Function models() : cs:C1710.event.models
 	
 	return cs:C1710.event.models.new($models)
 	
-Function onDownload($oid : Text)
+Function onDownload($oid : Text; $downloadId : Text)
 	
 	var $downloaded : cs:C1710.event.huggingface
-	$downloaded:=This:C1470.files.query("oid == :1"; $oid).first()
+	If ($downloadId#"")
+		$downloaded:=This:C1470.files.query("downloadId == :1"; $downloadId).first()
+	Else 
+		$downloaded:=This:C1470.files.query("oid == :1"; $oid).first()
+	End if 
 	
 	If ($downloaded#Null:C1517)
 		var $model : Object
@@ -59,7 +64,7 @@ Function onDownload($oid : Text)
 		End case 
 	End if 
 	
-	Super:C1706.onDownload($oid)
+	Super:C1706.onDownload($oid; $downloadId)
 	
 Function _onNothingToDownload()
 	
@@ -89,6 +94,10 @@ Function _onNothingToDownload()
 	
 Function start()
 	
+	If (This:C1470.files.length#0)
+		//deferred until the pending downloads complete
+		return 
+	End if 
 	If (This:C1470._started)
 		return 
 	End if 

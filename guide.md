@@ -91,7 +91,9 @@ Unless the server is already running (in which case the constructor does nothing
 1. The specified model is downloaded via HTTP
 2. The `onnx-genai` program is started
 
-If there is nothing to download (none of the `huggingfaces` resolves to a file), the server is started only when at least one model option (`chat_completion_model`, `embeddings_model`, `rerank_model`, `decision_model` or `tts_model`) is an existing local folder. Otherwise `event.onError` receives an error with code `2` and the server is not started. Offline startup (Hugging Face unreachable) is unchanged. The server is launched at most once per wrapper attempt. `event` may be `Null`, in which case no callbacks are delivered.
+To run local models only, pass no `huggingfaces` and set at least one model option (`chat_completion_model`, `embeddings_model`, `rerank_model`, `decision_model` or `tts_model`) to a `4D.Folder`. The default models are used only when neither is given; your other `options` are kept, and `chat_template` is only set if you did not set it.
+
+If there is nothing to download (no `huggingfaces`, or none of them resolves to a file), the server is started only when at least one model option is an existing local folder. Otherwise `event.onError` receives an error with code `2` and the server is not started. If Hugging Face cannot be reached for some entries, those are mapped from their local folders and the other entries are still downloaded before the server starts. The server is launched at most once per wrapper attempt. `event` may be `Null`, in which case no callbacks are delivered.
 
 `onSuccess` means the launch was requested, not that the models are loaded: the server starts listening only after loading, so poll `/v1/models` before sending requests.
 
