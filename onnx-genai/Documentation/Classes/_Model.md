@@ -9,13 +9,13 @@
 | huggingfaces | cs.event.huggingfaces | -> | Model download parameters |
 | options | Object | -> | Command-line options (mutated; model folder and filename keys are set as downloads complete) |
 | formula | 4D.Function | -> | Internal response callback |
-| event | cs.event.event | -> | Callback functions |
+| event | cs.event.event | -> | Callback functions, or `Null` for no callbacks |
 
 ## Description
 
 `_Model` is the concrete implementation of [`_models`](_models.md). After calling `Super` it immediately triggers `download()` unless `offline` is `true`.
 
-It overrides three methods from `_models`:
+It overrides these methods from `_models`:
 
 ### models () → cs.event.models
 
@@ -43,9 +43,13 @@ Then calls `Super.onDownload($oid)` to remove the entry from `files` and trigger
 | --- | --- | --- | --- |
 | oid | Text | -> | OID of the completed download |
 
+### _onNothingToDownload ()
+
+Called by `download()` when no file needs downloading. Calls `start()` when at least one of `chat_completion_model`, `embeddings_model`, `rerank_model`, `decision_model` or `tts_model` in `options` is an existing `4D.Folder`. Otherwise it calls `event.onError` with code `2` (including the given model paths, if any) and does not launch. Offline startup is handled by the `start` method and is not affected.
+
 ### start ()
 
-Overrides the virtual base. Creates a `cs.ONNX.workers.worker` wrapping `_server`, calls `worker.start(port, options)`, then fires `event.onSuccess` with the current options and model list.
+Overrides the virtual base. Launches at most once per instance; later calls are ignored. Creates a `cs.ONNX.workers.worker` wrapping `_server`, calls `worker.start(port, options)`, then fires `event.onSuccess` with the current options and model list. `onSuccess` means the launch was requested, not that the server is ready; poll `/v1/models`.
 
 ### Properties
 

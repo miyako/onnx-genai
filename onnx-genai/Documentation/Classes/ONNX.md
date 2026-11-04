@@ -17,6 +17,10 @@
 
 If a server is already running on the specified `port`, the constructor exits immediately without starting a new one.
 
+`event.onSuccess` reports that the launch was requested, not that the models are loaded. The server only starts listening after loading its models, so poll `/v1/models` before sending requests.
+
+If none of the `huggingfaces` resolves to a file, there is nothing to download: the server is started only when at least one model option (`chat_completion_model`, `embeddings_model`, `rerank_model`, `decision_model`, `tts_model`) is an existing `4D.Folder`. Otherwise `event.onError` receives an error with code `2` (naming the given paths, if any) and nothing is launched. Offline startup is unchanged. The server is launched at most once per wrapper attempt, and `event` may be `Null` (no callbacks are delivered).
+
 Parameter defaults applied by the constructor:
 
 - `port`: defaults to `8080` if `0`, negative, or greater than `65535`
@@ -88,7 +92,7 @@ $homeFolder:=Folder(fk home folder).folder(".ONNX")
 var $event : cs.event.event
 $event:=cs.event.event.new()
 $event.onError:=Formula(ALERT($2.message))
-$event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" loaded!"))
+$event.onSuccess:=Formula(ALERT($2.models.extract("name").join(",")+" launch requested"))  // not yet ready; poll /v1/models
 $event.onData:=Formula(MESSAGE(This.file.fullName+":"+String((This.range.end/This.range.length)*100; "###.00%")))
 $event.onResponse:=Formula(LOG EVENT(Into 4D debug message; This.file.fullName+":download complete"))
 $event.onTerminate:=Formula(LOG EVENT(Into 4D debug message; (["process"; $1.pid; "terminated!"].join(" "))))
@@ -376,6 +380,8 @@ End if
 ### Terminate the server
 
 ```4d
+// ONNX.new() with no arguments is not a lightweight handle: if no server is
+// running on 8080, it downloads (if needed) and launches the default models
 var $onnx : cs.ONNX.ONNX
 $onnx:=cs.ONNX.ONNX.new()
 $onnx.terminate()

@@ -119,7 +119,7 @@ Function start($option : Object) : 4D:C1709.SystemWorker
 		
 		Case of 
 			: ($valueType=Is real:K8:4)
-				$command+=($prefix+$key+" "+String:C10($arg.value)+" ")
+				$command+=($prefix+$key+" "+_argNumber($arg.value)+" ")
 			: ($valueType=Is text:K8:3)
 				$command+=($prefix+$key+" "+This:C1470.escape($arg.value)+" ")
 			: ($valueType=Is boolean:K8:9) && ($arg.value)

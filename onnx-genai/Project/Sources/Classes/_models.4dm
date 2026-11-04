@@ -12,9 +12,11 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 	This:C1470.event:=$event
 	This:C1470._onResponse:=$formula
 	This:C1470.options:=$options#Null:C1517 ? $options : {}
-	This:C1470.options.onTerminate:=This:C1470.event.onTerminate
-	This:C1470.options.onStdErr:=This:C1470.event.onStdErr
-	This:C1470.options.onStdOut:=This:C1470.event.onStdOut
+	If (This:C1470.event#Null:C1517)
+		This:C1470.options.onTerminate:=This:C1470.event.onTerminate
+		This:C1470.options.onStdErr:=This:C1470.event.onStdErr
+		This:C1470.options.onStdOut:=This:C1470.event.onStdOut
+	End if 
 	This:C1470.options.port:=$port
 	This:C1470.offline:=False:C215
 	
@@ -108,6 +110,11 @@ Class constructor($port : Integer; $huggingfaces : cs:C1710.event.huggingfaces; 
 	
 Function download()
 	
+	If (This:C1470.files.length=0)
+		This:C1470._onNothingToDownload()
+		return 
+	End if 
+	
 	For each ($file; This:C1470.files)
 		If ($file.folder.exists)\
 			 && (OB Instance of:C1731($file.folder; 4D:C1709.Folder) ? ($file.folder.file($file.path).exists) : ($file.folder.exists))\
@@ -133,6 +140,20 @@ Function onDownload($oid : Text)
 	If (This:C1470.files.length=0)
 		This:C1470.start()
 	End if 
+	
+Function _notifyError($error : cs:C1710.event.error)
+	
+	If (This:C1470.event#Null:C1517)
+		If (Value type:C1509(This:C1470.event.onError)=Is object:K8:27)
+			If (OB Instance of:C1731(This:C1470.event.onError; 4D:C1709.Function))
+				This:C1470.event.onError.call(This:C1470; This:C1470.options; $error)
+			End if 
+		End if 
+	End if 
+	
+Function _onNothingToDownload()
+	//virtual
+	This:C1470.start()
 	
 Function models() : cs:C1710.event.models
 	//virtual

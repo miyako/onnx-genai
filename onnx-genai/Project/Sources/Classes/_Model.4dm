@@ -7,6 +7,7 @@ property decision_model : 4D:C1709.Folder
 property decision_model_name : Text
 property tts_model : 4D:C1709.Folder
 property tts_model_name : Text
+property _started : Boolean
 
 Class extends _models
 
@@ -60,8 +61,38 @@ Function onDownload($oid : Text)
 	
 	Super:C1706.onDownload($oid)
 	
+Function _onNothingToDownload()
+	
+	var $key : Text
+	var $paths : Collection
+	$paths:=[]
+	For each ($key; ["chat_completion_model"; "embeddings_model"; "rerank_model"; "decision_model"; "tts_model"])
+		If (Value type:C1509(This:C1470.options[$key])=Is object:K8:27)
+			If (OB Instance of:C1731(This:C1470.options[$key]; 4D:C1709.Folder))
+				If (This:C1470.options[$key].exists)
+					This:C1470.start()
+					return 
+				End if 
+			End if 
+			If (OB Instance of:C1731(This:C1470.options[$key]; 4D:C1709.Folder)) || (OB Instance of:C1731(This:C1470.options[$key]; 4D:C1709.File))
+				$paths.push(This:C1470.options[$key].path)
+			End if 
+		End if 
+	End for each 
+	var $message : Text
+	$message:="no model to load: nothing to download and no model option is an existing folder"
+	If ($paths.length#0)
+		$message+=": "+$paths.join(", ")
+	End if 
+	LOG EVENT:C667(Into 4D debug message:K38:5; "ONNX: "+$message)
+	This:C1470._notifyError(cs:C1710.event.error.new(2; $message; This:C1470.models()))
+	
 Function start()
 	
+	If (This:C1470._started)
+		return 
+	End if 
+	This:C1470._started:=True:C214
 	var $ONNX : cs:C1710.workers.worker
 	$ONNX:=cs:C1710.workers.worker.new(cs:C1710._server)
 	$ONNX.start(This:C1470.options.port; This:C1470.options)
