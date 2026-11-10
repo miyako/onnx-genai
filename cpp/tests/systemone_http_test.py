@@ -73,7 +73,7 @@ def check_response(body, payload):
             assert abs(answer["score"] - sum(int(i) * p for i, p in probabilities.items())) < 1e-6
 
 
-def exercise(binary, backend=None, graph=None, semantic=True):
+def exercise(binary, backend=None, graph=None, semantic=True, packed=False):
     binary = str(Path(binary).resolve())
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
@@ -118,7 +118,14 @@ def exercise(binary, backend=None, graph=None, semantic=True):
                     single_status, isolated = call(base, "/v1/systemone", single)
                     assert single_status == 200, isolated
                     a, b = body["answers"][name], isolated["answers"][name]
-                    if question["type"] == "noul":
+                    if packed:
+                        # LiquidAI d1 reads a state's questions in one "set" row: packing moves the
+                        # probabilities by design, so only the decisions must agree.
+                        if question["type"] == "noul":
+                            assert (a["noul"] > 0.5) == (b["noul"] > 0.5), (name, a, b)
+                        elif question["type"] == "choice":
+                            assert a["choice"] == b["choice"], (name, a, b)
+                    elif question["type"] == "noul":
                         assert abs(a["noul"] - b["noul"]) < isolation_tolerance
                     else:
                         assert all(
@@ -201,6 +208,7 @@ if __name__ == "__main__":
     parser.add_argument("binary")
     parser.add_argument("--kev")
     parser.add_argument("--d1")
+    parser.add_argument("--lfm3", help="LiquidAI d1-2B / d1-Omni-2B decoder graph (served as d1)")
     parser.add_argument("--laya")
     parser.add_argument("--fixtures", type=Path, help="Generated tiny Laya/Kev/d1 fixture root (no semantic quality assertions)")
     parser.add_argument("--strands", help="Current v1 fused Strands Decider graph")
@@ -210,6 +218,8 @@ if __name__ == "__main__":
                            ("strands-decider", args.strands)):
         if graph:
             exercise(args.binary, backend, graph)
+    if args.lfm3:
+        exercise(args.binary, "d1", args.lfm3, packed=True)
     if args.fixtures:
         root = args.fixtures.resolve()
         for backend, graph in (

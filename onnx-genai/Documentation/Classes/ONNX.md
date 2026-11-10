@@ -79,7 +79,7 @@ Each `cs.event.huggingface` descriptor has a `domain` property that determines w
 | `/v1/embeddings` | ✅ |
 | `/v1/rerank` | ✅ |
 | `/v1/audio/speech` | ✅ (TTS) |
-| `/v1/systemone` | Text-only Kev, d1, English Laya or Strands Decider v1 decisions via `-D`; native 4D Strands execution unverified here |
+| `/v1/systemone` | Text-only Kev, d1, LiquidAI d1, English Laya or Strands Decider v1 decisions via `-D`; native 4D Strands execution unverified here |
 
 ## Examples
 
@@ -163,7 +163,20 @@ Replace `owner/decision-model` or `owner/d1-model` with the actual repository. B
 
 **d1 runtime requirement:** the bundled runtime is now **ONNX Runtime 1.29.0**, which can load the d1 graph's IR version 13. Both the C++ build dependencies and the macOS/Windows deployment libraries have been updated; no `DYLD_LIBRARY_PATH` override is needed. Older installations using 1.23.2 must update their runtime libraries. System One also requires an executable rebuilt from the updated source; a runtime-only update does not add the endpoint to an older executable. See the root `CLI.md` for deployment instructions.
 
-d1 support is text-only. Each question starts with a fresh conversation and KV cache; usage counts include the full repeated-state prompts, not just the new question text.
+#### LiquidAI d1-2B / d1-Omni-2B (q8)
+
+These repositories hold every precision plus the vision and audio encoders (over 20 GB). The folder descriptor downloads the whole tree, so place the files the text adapter needs in a local folder instead and pass it as an option: `config.json`, `tokenizer.json`, `tokenizer_config.json`, `calibration.json` and `onnx/decoder_q8.onnx` with `onnx/decoder_q8.onnx_data`.
+
+```4d
+var $ONNX : cs.ONNX.ONNX
+$ONNX:=cs.ONNX.ONNX.new(8080; Null; $homeFolder; {\
+    decision_model: $homeFolder.folder("LiquidAI/d1-2B-ONNX"); \
+    decision_model_name: "onnx/decoder_q8.onnx"}; $event)
+```
+
+The executable recognises these exports by `d1_attention` in `config.json` and serves them as `d1` (`d1-latest`). They read the state and up to 16 questions in one pass, so answers differ slightly from asking each question alone.
+
+d1 (d1-3B) support is text-only. Each question starts with a fresh conversation and KV cache; usage counts include the full repeated-state prompts, not just the new question text.
 
 For existing local files, the equivalent options are `{decision_model: $homeFolder.folder("decision-model"); decision_model_name: "onnx/model_q4.onnx"}`. Explicit options take precedence over domain mapping. If the model metadata request is offline, the descriptor's root folder and selected name are mapped directly and existing files are used. Bare names such as `model_q4.onnx` resolve at the root first, then under `onnx/`; explicit relative paths avoid ambiguity.
 

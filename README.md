@@ -205,11 +205,13 @@ In addition, the following endpoints are available:
 |`/v1/audio/speech`|
 |`/v1/rerank`||
 |`/v1/contextualizedembeddings`|`/v1/contextualized/embeddings`
-|`/v1/systemone`|Text-only TypeSafe decision API (Kev, d1, English Laya or Strands Decider v1)|
+|`/v1/systemone`|Text-only TypeSafe decision API (Kev, d1, LiquidAI d1, English Laya or Strands Decider v1)|
 
 Load a decision model independently with `-D path/to/model.onnx`. Kev-0.6B,
-Kev-4B, d1-3B, English Laya and the fused Strands Decider 2B Qwen3.5 v1 ONNX
-exports support `noul`, `choice` and `score` questions.
+Kev-4B, d1-3B, LiquidAI d1-2B and d1-Omni-2B, English Laya and the fused
+Strands Decider 2B Qwen3.5 v1 ONNX exports support `noul`, `choice` and `score`
+questions. LiquidAI's exports pack up to 16 questions after the state into one
+decoder pass; see the CLI documentation for their layout and limitations.
 Use `kev-latest`, `d1-latest`, `laya-latest` or `strands-decider-latest` for
 the corresponding loaded backend (`kev`, `d1`, `laya` or `strands-decider`).
 For Strands, `q8` is recommended for initial CPU evaluation.

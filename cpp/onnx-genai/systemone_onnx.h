@@ -3,6 +3,7 @@
 
 #include "systemone.h"
 #include "systemone_laya.h"
+#include "systemone_lfm3.h"
 #include "systemone_strands.h"
 #include "tokenizers_cpp.h"
 #include <onnxruntime_cxx_api.h>
@@ -80,6 +81,7 @@ class Model {
     std::array<int64_t, 4> laya_special_{};
     std::unique_ptr<StrandsConfig> strands_config_;
     std::unique_ptr<StrandsTokenizer> strands_tokenizer_;
+    std::unique_ptr<Lfm3Config> lfm3_;
     size_t context_limit_ = max_sequence_tokens;
     std::array<int64_t, 5> delimiters_{};
 
@@ -138,6 +140,30 @@ class Model {
             if (std::set<std::string>(names.begin(), names.end()) !=
                 std::set<std::string>{"input_ids", "attention_mask"})
                 throw std::runtime_error("Kev graph must take input_ids and attention_mask.");
+        } else if (backend_ == Backend::Lfm3) {
+            const std::set<std::string> required{"input_ids", "attention_mask", "position_ids", "question_ids", "slot_positions"};
+            const std::set<std::string> media{"image_features", "video_features", "audio_features"};
+            std::set<std::string> seen;
+            for (size_t i = 0; i < names.size(); ++i) {
+                seen.insert(names[i]);
+                const auto type = session_->GetInputTypeInfo(i);
+                const auto info = type.GetTensorTypeAndShapeInfo();
+                const auto shape = info.GetShape();
+                if (required.count(names[i])) {
+                    if (info.GetElementType() != ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64 ||
+                        shape.size() != (names[i] == "slot_positions" ? 1u : 2u))
+                        throw std::runtime_error("Unsupported d1 input type or rank: " + names[i]);
+                } else if (media.count(names[i])) {
+                    if (shape.size() != 2 || (shape[1] >= 0 && static_cast<size_t>(shape[1]) != lfm3_->hidden) ||
+                        (info.GetElementType() != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT &&
+                         info.GetElementType() != ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16))
+                        throw std::runtime_error("Unsupported d1 media feature input: " + names[i]);
+                } else {
+                    throw std::runtime_error("Unsupported d1 decoder input: " + names[i]);
+                }
+            }
+            for (const auto& name : required)
+                if (!seen.count(name)) throw std::runtime_error("d1 decoder lacks input: " + name);
         } else if (backend_ == Backend::Strands) {
             if (std::set<std::string>(names.begin(), names.end()) !=
                 std::set<std::string>{"input_ids", "attention_mask", "answer_pos", "option_pos"} ||
@@ -379,6 +405,62 @@ class Model {
         return softmax(scores);
     }
 
+    // One packed row: logits come back only at its answer slots, [slots, vocabulary].
+    std::vector<std::vector<double>> run_lfm3(Lfm3Row& row, const std::vector<Lfm3Question>& questions) {
+        auto memory = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+        Ort::AllocatorWithDefaultOptions allocator;
+        const std::array<int64_t, 2> shape{1, static_cast<int64_t>(row.ids.size())};
+        const std::array<int64_t, 1> slot_shape{static_cast<int64_t>(row.slots.size())};
+        std::vector<int64_t> mask(row.ids.size(), 1), positions(row.ids.size());
+        for (size_t i = 0; i < positions.size(); ++i) positions[i] = static_cast<int64_t>(i);
+        const auto names = input_names(*session_);
+        std::vector<const char*> raw_names;
+        std::vector<Ort::Value> tensors;
+        for (size_t i = 0; i < names.size(); ++i) {
+            raw_names.push_back(names[i].c_str());
+            auto sequence = [&](std::vector<int64_t>& data) {
+                return Ort::Value::CreateTensor<int64_t>(memory, data.data(), data.size(), shape.data(), shape.size());
+            };
+            if (names[i] == "input_ids") tensors.push_back(sequence(row.ids));
+            else if (names[i] == "attention_mask") tensors.push_back(sequence(mask));
+            else if (names[i] == "position_ids") tensors.push_back(sequence(positions));
+            else if (names[i] == "question_ids") tensors.push_back(sequence(row.question_ids));
+            else if (names[i] == "slot_positions")
+                tensors.push_back(Ort::Value::CreateTensor<int64_t>(
+                    memory, row.slots.data(), row.slots.size(), slot_shape.data(), slot_shape.size()));
+            else {  // text only: no picture, video or audio features
+                const auto type = session_->GetInputTypeInfo(i).GetTensorTypeAndShapeInfo().GetElementType();
+                const std::array<int64_t, 2> empty{0, static_cast<int64_t>(lfm3_->hidden)};
+                tensors.push_back(Ort::Value::CreateTensor(allocator, empty.data(), empty.size(), type));
+            }
+        }
+        const char* output_names[]{"logits"};
+        auto output = session_->Run(Ort::RunOptions{nullptr}, raw_names.data(), tensors.data(), tensors.size(), output_names, 1);
+        const auto output_shape = output[0].GetTensorTypeAndShapeInfo().GetShape();
+        if (output_shape.size() != 2 || output_shape[0] != slot_shape[0] || output_shape[1] <= 0)
+            throw std::runtime_error("d1 logits must have shape [slots, vocabulary].");
+        const auto vocabulary = static_cast<size_t>(output_shape[1]);
+        std::vector<std::vector<double>> probabilities;
+        for (size_t slot = 0; slot < row.questions.size(); ++slot) {
+            const auto& question = questions[row.questions[slot]];
+            const double temperature = lfm3_->temperature(question.bucket);
+            std::vector<double> scores;
+            for (const auto& group : question.groups) {
+                double best = -std::numeric_limits<double>::infinity();
+                for (int64_t token : group) {
+                    if (token < 0 || static_cast<size_t>(token) >= vocabulary)
+                        throw std::runtime_error("d1 readout token is outside the output vocabulary.");
+                    const double score = tensor_score(output[0], slot * vocabulary + static_cast<size_t>(token));
+                    if (!std::isfinite(score)) throw std::runtime_error("d1 returned a non-finite readout score.");
+                    best = std::max(best, score);
+                }
+                scores.push_back(best / temperature);
+            }
+            probabilities.push_back(softmax(scores));
+        }
+        return probabilities;
+    }
+
     std::vector<double> run_strands(StrandsInput& input, const Question& question) {
         auto memory = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
         const std::array<int64_t, 2> sequence_shape{1, static_cast<int64_t>(input.ids.size())};
@@ -440,6 +522,13 @@ public:
             }
         }
         if (backend_ == Backend::Strands) StrandsTokenizer::validate_config(tokenizer_config);
+        if (backend_ == Backend::Lfm3) {
+            const auto optional = [&](const char* name) {
+                return std::filesystem::exists(root_ / name) ? parse_json(read_file(root_ / name)) : Json::Value();
+            };
+            lfm3_ = std::make_unique<Lfm3Config>(Lfm3Config::load(
+                config_, optional("calibration.json"), tokenizer_config, optional("tokenizer_config.json")));
+        }
         tokenizer_config["post_processor"] = Json::nullValue;
         tokenizer_config["truncation"] = Json::nullValue;
         tokenizer_config["padding"] = Json::nullValue;
@@ -479,6 +568,8 @@ public:
             context_limit_ = std::min(max_sequence_tokens, positive_limit(metadata["max_branch_tokens"], "max_branch_tokens"));
         } else if (backend_ == Backend::Strands) {
             context_limit_ = strands_config_->context;
+        } else if (backend_ == Backend::Lfm3) {
+            context_limit_ = max_sequence_tokens;
         } else {
             context_limit_ = std::min(max_sequence_tokens,
                 positive_limit(config_["text_config"]["max_position_embeddings"], "max_position_embeddings"));
@@ -495,6 +586,7 @@ public:
 
     const std::string& id() const { return id_; }
     const char* backend() const { return backend_name(backend_); }
+    bool lfm3() const { return backend_ == Backend::Lfm3; }
 
     LayaInput prepare_laya(const Request& request, const Question& q) {
         return laya_sequence(request, q, *laya_, laya_special_,
@@ -544,6 +636,15 @@ public:
             input.option_ends.push_back(std::move(ends));
         }
         return input;
+    }
+
+    // Packed rows for LiquidAI d1 (LFM3); `questions` receives each question's suffix and readout.
+    std::vector<Lfm3Row> prepare_lfm3(const Request& request, std::vector<Lfm3Question>& questions) {
+        if (backend_ != Backend::Lfm3) throw std::runtime_error("Not a LiquidAI d1 decision model.");
+        const Lfm3Encode encode_text = [&](const std::string& text) { return encode(text, false); };
+        questions.clear();
+        for (const auto& q : request.questions) questions.push_back(lfm3_question(q, *lfm3_, encode_text));
+        return lfm3_rows(request, questions, *lfm3_, encode_text, context_limit_);
     }
 
     D1Input prepare_d1(const Request& request, const Question& q) {
@@ -624,6 +725,20 @@ public:
             }
             for (size_t i = 0; i < inputs.size(); ++i)
                 probabilities.push_back(run_strands(inputs[i], request.questions[i]));
+        } else if (backend_ == Backend::Lfm3) {
+            std::vector<Lfm3Question> questions;
+            auto rows = prepare_lfm3(request, questions);
+            for (const auto& row : rows) {
+                tokens += row.ids.size();
+                if (tokens > max_request_tokens)
+                    throw ValidationError({"questions"}, "d1 request exceeds 32768 total prompt tokens; split the questions.");
+            }
+            probabilities.resize(request.questions.size());
+            for (auto& row : rows) {
+                auto answers = run_lfm3(row, questions);
+                for (size_t slot = 0; slot < row.questions.size(); ++slot)
+                    probabilities[row.questions[slot]] = std::move(answers[slot]);
+            }
         } else {
             std::vector<D1Input> inputs;
             for (const auto& q : request.questions) {

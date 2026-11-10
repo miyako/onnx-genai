@@ -11,7 +11,9 @@
 
 namespace systemone {
 
-enum class Backend { Kev, D1, Laya, Strands };
+// D1 is the community d1-3B export (a "d1" metadata object); Lfm3 is LiquidAI's own d1 export
+// (d1-2B, d1-Omni-2B: flat "d1_*" keys). Both answer to the "d1" family alias.
+enum class Backend { Kev, D1, Laya, Strands, Lfm3 };
 
 inline const char* backend_name(Backend backend) {
     switch (backend) {
@@ -19,16 +21,19 @@ inline const char* backend_name(Backend backend) {
     case Backend::D1: return "d1";
     case Backend::Laya: return "laya";
     case Backend::Strands: return "strands-decider";
+    case Backend::Lfm3: return "d1";
     }
     throw std::runtime_error("Unknown decision backend.");
 }
 
 inline Backend detect_backend(const Json::Value& config, bool laya = false) {
+    const bool lfm3 = config.isObject() && config.isMember("d1_attention");
     if ((!config.isObject() && !(laya && config.isNull())) ||
         unsigned(config.isMember("kev")) + unsigned(config.isMember("d1")) +
-            unsigned(config.isMember("decider")) + unsigned(laya) != 1)
-        throw std::runtime_error("Decision metadata must identify exactly one backend: kev, d1, laya or decider.");
+            unsigned(config.isMember("decider")) + unsigned(laya) + unsigned(lfm3) != 1)
+        throw std::runtime_error("Decision metadata must identify exactly one backend: kev, d1, d1_attention, laya or decider.");
     if (laya) return Backend::Laya;
+    if (lfm3) return Backend::Lfm3;
     const auto key = config.isMember("kev") ? "kev" : config.isMember("d1") ? "d1" : "decider";
     if (!config[key].isObject()) throw std::runtime_error("Invalid decision backend metadata.");
     return config.isMember("kev") ? Backend::Kev : config.isMember("d1") ? Backend::D1 : Backend::Strands;
