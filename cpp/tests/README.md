@@ -275,6 +275,38 @@ regressions. Model-free legacy regression checks remain in the focused suite.
 The community author's 11-case FP32/q8/q4f16 comparisons are reported separately
 in [CLI.md](../../CLI.md#typesafe-compatible-endpoint), not claimed as local results.
 
+## LiquidAI d1 (d1-2B, d1-Omni-2B)
+
+The pure suite in `systemone_test.cpp` covers dispatch on `d1_attention`, config
+and `calibration.json` validation, temperature buckets, special-token breaking,
+option codes (both schemes), the noul/choice/score prompts, set packing
+(`question_ids`, answer slots) and splitting rows at the token limit. With a
+graph it adds the real-model checks; packed and isolated questions are compared
+by decision only, since "set" attention lets the state read every packed question:
+
+```sh
+./systemone-test /models/d1-2B-ONNX/onnx/decoder_q8.onnx
+python3 cpp/tests/systemone_http_test.py /path/to/rebuilt/onnx-genai \
+  --lfm3 /models/d1-2B-ONNX/onnx/decoder_q8.onnx
+```
+
+`systemone_lfm3_parity_test.py` independently rebuilds the packed rows from the
+checkpoint's published prompt and packing rules, runs the same decoder with
+Python `onnxruntime` and requires equal input token counts and probability
+differences below `1e-6` on four requests (mixed types, special tokens in caller
+text, 40 options with structured descriptions, 21 questions over two rows).
+Start the server with the graph and pass its printed intra-op thread count:
+
+```sh
+python3 cpp/tests/systemone_lfm3_parity_test.py \
+  /models/d1-2B-ONNX/onnx/decoder_q8.onnx http://127.0.0.1:8080 --threads 8
+```
+
+On macOS arm64 with ONNX Runtime 1.29.0 and 8 threads, d1-2B q8 and
+d1-Omni-2B q8 both matched to `3e-16`. This checks the C++ adapter against an independent reading of the
+reference code on the same ONNX graph; it is not a comparison with LiquidAI's
+PyTorch engine, whose code was not executed here.
+
 ## GenAI runtime compatibility
 
 The runtime upgrade also needs to preserve the separate GenAI library's

@@ -356,6 +356,7 @@ An "End-to-End" (E2E) model that takes raw string as input and returns vectors a
 | --- | --- | --- | --- |
 | [Kev-0.6B](https://huggingface.co/onnx-community/kev-0.6b-ONNX), [Kev-4B](https://huggingface.co/onnx-community/kev-4b-ONNX) | `systemone` | `onnx/model_q4.onnx` | Apache-2.0 |
 | [d1-3B](https://huggingface.co/onnx-community/d1-3B-ONNX) | `systemone` | `onnx/decoder_model_merged_quantized.onnx` | LFM Open License v1.0 (commercial-use restrictions) |
+| [d1-2B](https://huggingface.co/LiquidAI/d1-2B-ONNX), [d1-Omni-2B](https://huggingface.co/LiquidAI/d1-Omni-2B-ONNX) (text only) | `systemone` | `onnx/decoder_q8.onnx` | LFM Open License v1.0 (commercial-use restrictions) |
 | [Laya English (421M ModernBERT-large)](https://huggingface.co/receptron/laya-onnx/tree/d42786bdff8a7550316339c5fbf8f46caa83ea1b) | `systemone` | `laya.onnx` | Apache-2.0 |
 | [Strands Decider 2B Qwen3.5 v1 (fused community export)](https://huggingface.co/opticsWolf/strands-decider-2B-qwen3.5-v1-2610-onnx) | `systemone` | `onnx/model_q8.onnx` (CPU recommended) | Apache-2.0 |
 
@@ -381,10 +382,11 @@ In addition, the following endpoints are available:
 |`/v1/audio/speech`|
 |`/v1/rerank`||
 |`/v1/contextualizedembeddings`|`/v1/contextualized/embeddings`
-|`/v1/systemone`|Text-only TypeSafe decision API (Kev, d1, English Laya or Strands Decider v1)|
+|`/v1/systemone`|Text-only TypeSafe decision API (Kev, d1, LiquidAI d1, English Laya or Strands Decider v1)|
 
 Load a decision model independently with `-D path/to/model.onnx`. Kev-0.6B,
-Kev-4B, d1-3B, English Laya and fused Strands Decider v1 ONNX exports support
+Kev-4B, d1-3B, LiquidAI d1-2B and d1-Omni-2B, English Laya and fused Strands
+Decider v1 ONNX exports support
 `noul`, `choice` and `score` questions. Backend names are `kev`, `d1`, `laya`
 and `strands-decider`; their family aliases are `kev-latest`, `d1-latest`,
 `laya-latest` and `strands-decider-latest`, respectively, and only resolve to

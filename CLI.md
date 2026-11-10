@@ -14,7 +14,7 @@ Usage:  onnx-genai -s -m chat_completion_model -e embedding_model -p port
  -e path     : embedding model (pooling=mean)
  -r path     : rerank model
  -T path     : text to speach model
- -D path     : System One decision ONNX model (Kev, d1, English Laya or Strands Decider v1, text only)
+ -D path     : System One decision ONNX model (Kev, d1, LiquidAI d1, English Laya or Strands Decider v1, text only)
  -t path     : chat template
  -j          : chat template from stdin
  -d          : pooling=e2e 
@@ -78,6 +78,8 @@ onnx-genai -s -D /models/kev-0.6b-ONNX/onnx/model_q4.onnx
 onnx-genai -s -D /models/kev-4b-ONNX/onnx/model_q4.onnx
 # d1 q8:
 onnx-genai -s -D /models/d1-3B-ONNX/onnx/decoder_model_merged_quantized.onnx
+# LiquidAI d1-2B or d1-Omni-2B q8 (text only):
+onnx-genai -s -D /models/d1-2B-ONNX/onnx/decoder_q8.onnx
 # Laya English encoder:
 onnx-genai -s -D /models/laya-onnx/laya.onnx
 # Strands Decider v1 q8 (fused readout, not a causal-LM export):
@@ -88,6 +90,8 @@ Supported exports:
 [Kev-0.6B](https://huggingface.co/onnx-community/kev-0.6b-ONNX),
 [Kev-4B](https://huggingface.co/onnx-community/kev-4b-ONNX),
 [d1-3B](https://huggingface.co/onnx-community/d1-3B-ONNX),
+[d1-2B](https://huggingface.co/LiquidAI/d1-2B-ONNX),
+[d1-Omni-2B](https://huggingface.co/LiquidAI/d1-Omni-2B-ONNX),
 [Laya English](https://huggingface.co/receptron/laya-onnx/tree/d42786bdff8a7550316339c5fbf8f46caa83ea1b), and
 [Strands Decider v1](https://huggingface.co/opticsWolf/strands-decider-2B-qwen3.5-v1-2610-onnx/tree/12143c0d1a5b1d0bc33178dfbabbdfec042ed0be).
 These are decision models, not chat or embedding models; do not load them with
@@ -96,11 +100,31 @@ These are decision models, not chat or embedding models; do not load them with
 For Kev/d1, keep `config.json` and `tokenizer.json` in the model directory, with the selected
 graph and **all its external data files** in `onnx/`. They may alternatively all
 be placed in one directory. Kev, d1 and Strands are identified by exactly one
-of `kev`, `d1` or `decider` metadata in `config.json`, respectively, not the
+of `kev`, `d1` or `decider` metadata in `config.json`, respectively (LiquidAI d1
+by `d1_attention`), not the
 directory name or `model_type`.
 Kev uses the selected graph directly. d1 additionally loads the matching
 `embed_tokens_quantized.onnx` or `embed_tokens_q4.onnx` beside its selected decoder.
 The text-only adapter does not load the vision encoder.
+
+LiquidAI's own d1 exports, [d1-2B](https://huggingface.co/LiquidAI/d1-2B-ONNX) and [d1-Omni-2B](https://huggingface.co/LiquidAI/d1-Omni-2B-ONNX) (text only), are identified by
+`d1_attention` in `config.json` and are served as backend `d1` too (`d1-latest`).
+Keep `config.json`, `tokenizer.json`, `tokenizer_config.json` and
+`calibration.json` at the repository root, with the selected
+`onnx/decoder[_q4|_q8].onnx` and **all** of its `.onnx_data*` shards beside it;
+the vision and audio encoders are not needed. A state and up to `d1_set_size`
+(16) questions are packed into one decoder row and read in a single pass without
+a cache ("set" attention: each question attends to the state and itself, the state
+reads every question). Answers therefore differ slightly from asking each question
+alone (at most about 0.02 in probability on the d1-2B q8 checks, with no change of
+decision). Prompts, option codes (`d1_codes`), readout tokens and the
+`calibration.json` temperature (per question bucket, else `default`) follow the
+checkpoint's published reference code. Typed questions (`text`, `number`, `date`,
+`box`, `boxes`, multiple choice), the `calibration.json` tables and picture, video
+or audio input are not supported. d1-Omni-2B uses the same adapter with an empty
+audio input. `decoder_q8` is verified on CPU; `decoder_q4` also targets CPU, while
+the `f16` decoders are meant for GPUs.
+
 Strands uses the selected fused graph directly: `onnx/model_q8.onnx` needs
 `onnx/model_q8.onnx_data` (~1.7 GB); `model.onnx` and `model_q4f16.onnx` likewise
 need their corresponding external data. Keep the export's tokenizer assets and
@@ -214,6 +238,8 @@ duplicate JSON keys and inputs exceeding limits:
 | Kev complete packed request | 8,192 tokens |
 | d1 each complete question prompt | Model context, capped at 8,192 tokens |
 | d1 sum of question prompt tokens | 32,768 tokens |
+| LiquidAI d1 each packed row (state plus up to `d1_set_size` questions) | 8,192 tokens; fewer questions go in a row when needed |
+| LiquidAI d1 sum of packed row tokens | 32,768 tokens |
 | Laya complete question row (`max_len` in config) | 512 tokens |
 | Laya head (`head_max_len` in config) | 192 tokens |
 | Laya each option | 48 tokens |
@@ -260,7 +286,8 @@ are supplied in CLI mode, decision evaluation takes precedence.
 Kev, the English Laya weights and Strands Decider (including the community fused
 v1 export) are Apache-2.0 licensed. d1 uses the
 [LFM Open License v1.0](https://huggingface.co/onnx-community/d1-3B-ONNX/blob/main/LICENSE),
-including commercial-use restrictions; review it before deploying.
+including commercial-use restrictions; review it before deploying. LiquidAI's
+d1-2B and d1-Omni-2B exports use the same license.
 
 Strands calibration is fitted per primitive on held-out short classification,
 not on arbitrary traffic or every quantization. The export author's limited
